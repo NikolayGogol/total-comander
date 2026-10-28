@@ -398,12 +398,12 @@ function setupIpcHandlers() {
       const ejectScript = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$letter = '${letter}'
-$drivePath = "$letter\`:\\"
+$target = '${letter}'
+$drivePath = '${letter}:\\'
 
 # 1. Dismount mounted ISO / Disk Image if applicable
 try {
-    $vol = Get-Volume -DriveLetter $letter -ErrorAction SilentlyContinue
+    $vol = Get-Volume -DriveLetter $target -ErrorAction SilentlyContinue
     if ($vol) {
         $img = Get-DiskImage -DevicePath $vol.Path -ErrorAction SilentlyContinue
         if ($img) {
@@ -439,7 +439,9 @@ try {
     $pc = $sh.Namespace(17)
     if ($pc) {
         foreach ($item in $pc.Items()) {
-            if ($item.Path -eq $drivePath -or $item.Path -eq "$letter\`:" -or $item.Name -like "*($letter`:)*" -or $item.Name -like "*$letter\`:*") {
+            $p = $item.Path
+            $n = $item.Name
+            if ($p -eq $drivePath -or $p -like ($target + ':*') -or $n -like ('*(' + $target + ':)*') -or $n -like ('*' + $target + ':*')) {
                 foreach ($verb in $item.Verbs()) {
                     $vName = $verb.Name.Replace('&', '').Trim()
                     if ($vName -match '^(Eject|Вилучити|Витягнути|Извлечь|Wysuń|Auswerfen|Éjecter)') {
@@ -456,7 +458,7 @@ try {
 
 # 4. Fallback mountvol dismount
 try {
-    & mountvol.exe "$letter\`:" /p 2>$null
+    & mountvol.exe ($target + ':') /p 2>$null
 } catch {}
 
 # Allow Windows Explorer time to process asynchronous COM verb
