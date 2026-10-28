@@ -4,6 +4,8 @@ export interface FileItem {
   isDirectory: boolean
   isFile: boolean
   isSymlink: boolean
+  isApp?: boolean
+  appIcon?: string
   size: number
   mtime: number
   birthtime: number
@@ -81,6 +83,7 @@ export interface ElectronAPI {
   readFile: (filePath: string, maxBytes?: number) => Promise<{ success: boolean; content?: string; isBinary?: boolean; error?: string }>
   writeFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>
   openPath: (filePath: string) => Promise<{ success: boolean; error?: string }>
+  showInFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>
   openInTerminal: (dirPath: string) => Promise<{ success: boolean; error?: string }>
   quickLook: (filePath: string) => Promise<{ success: boolean; error?: string }>
   getDirSize: (dirPath: string) => Promise<{ success: boolean; size?: number; count?: number; error?: string }>

@@ -1,0 +1,94 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: transparent;
+}
+
+.context-menu {
+  position: fixed;
+  left: var(--menu-x, 0px);
+  top: var(--menu-y, 0px);
+  z-index: 10000;
+  min-width: 230px;
+  max-width: 280px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: $size-space-xs 0;
+  backdrop-filter: $blur-backdrop;
+  user-select: none;
+}
+
+.menu-item {
+  @include button-base;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: $size-space-xs $size-space-lg;
+  gap: $size-space-md;
+  font-size: $font-size-sm;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
+
+  &:hover {
+    background-color: var(--row-hover);
+    color: var(--accent-blue);
+
+    .menu-item-icon {
+      color: var(--accent-blue);
+    }
+  }
+
+  &.is-danger {
+    color: var(--accent-rose);
+
+    .menu-item-icon {
+      color: var(--accent-rose);
+    }
+
+    &:hover {
+      background-color: rgba(225, 29, 72, 0.12);
+      color: #f43f5e;
+
+      .menu-item-icon {
+        color: #f43f5e;
+      }
+    }
+  }
+
+  .menu-item-icon {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: color 0.1s ease;
+  }
+
+  .menu-item-label {
+    flex: 1;
+    text-align: left;
+    @include truncate-text;
+    font-weight: $font-weight-medium;
+  }
+
+  .menu-item-shortcut {
+    font-family: $font-family-mono;
+    font-size: $font-size-2xs;
+    color: var(--text-dim);
+    background: var(--bg-subtle);
+    padding: 1px $size-space-xs;
+    border-radius: $radius-xs;
+    border: 1px solid var(--border-pill);
+    flex-shrink: 0;
+  }
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: $size-space-xs 0;
+}

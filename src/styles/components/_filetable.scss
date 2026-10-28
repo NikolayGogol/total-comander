@@ -26,20 +26,21 @@
     position: sticky;
     top: 0;
     background: var(--bg-table-header);
-    color: $color-text-dim;
-    font-weight: $font-weight-semibold;
+    color: var(--text-secondary);
+    font-weight: $font-weight-bold;
     font-size: $font-size-xs;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     text-align: left;
     padding: $size-space-sm $size-space-lg;
-    border-bottom: 1px solid $color-border-subtle;
+    border-bottom: 1.5px solid var(--border-subtle);
     z-index: 2;
     cursor: pointer;
     user-select: none;
+    transition: color 0.12s ease, background-color 0.12s ease;
 
     &:hover {
-      color: $color-text-main;
+      color: var(--accent-blue);
     }
   }
 
@@ -57,25 +58,29 @@
 }
 
 .col-ext {
-  color: $color-text-dim;
-  width: 60px;
+  color: var(--text-muted);
+  width: 65px;
+  font-weight: $font-weight-medium;
 }
 
 .col-size {
   text-align: right;
-  color: $color-text-muted;
-  width: 80px;
+  color: var(--text-secondary);
+  width: 85px;
+  font-variant-numeric: tabular-nums;
 }
 
 .col-date {
-  color: $color-text-dim;
-  width: 130px;
+  color: var(--text-muted);
+  width: 135px;
+  font-variant-numeric: tabular-nums;
 }
 
 .col-perms {
-  color: $color-text-dim;
-  width: 90px;
+  color: var(--text-dim);
+  width: 95px;
   font-size: $font-size-xs;
+  letter-spacing: 0.5px;
 }
 
 // Row states
@@ -84,27 +89,41 @@
   transition: background-color 0.08s ease;
   border-bottom: 1px solid var(--row-border);
 
+  // Alternating zebra striping
+  &:nth-child(even) {
+    background-color: var(--row-alt);
+  }
+
   &:hover {
-    background-color: $color-row-hover;
+    background-color: var(--row-hover) !important;
   }
 
   &.is-cursor {
-    outline: 1px solid $color-row-cursor-border;
-    outline-offset: -1px;
-    background-color: $color-row-cursor;
+    outline: 1.5px solid var(--row-cursor-border);
+    outline-offset: -1.5px;
+    background-color: var(--row-cursor) !important;
   }
 
   &.is-selected {
-    background-color: $color-row-selected !important;
-    color: var(--row-selected-text);
+    background-color: var(--row-selected) !important;
+    color: var(--row-selected-text) !important;
+
+    .item-icon {
+      filter: brightness(1.2);
+    }
   }
 
   &.is-parent {
-    color: $color-accent-cyan;
+    color: var(--accent-cyan);
     font-weight: $font-weight-semibold;
+    background-color: rgba(2, 132, 199, 0.04);
+
+    &:hover {
+      background-color: rgba(2, 132, 199, 0.1) !important;
+    }
 
     .parent-icon {
-      color: $color-accent-cyan;
+      color: var(--accent-cyan);
     }
   }
 
@@ -119,8 +138,40 @@
 
   &.is-drag-target {
     background-color: var(--row-selected) !important;
-    outline: 2px dashed $color-accent-blue;
+    outline: 2px dashed var(--accent-blue);
   }
+}
+
+.dir-badge {
+  display: inline-block;
+  font-size: $font-size-2xs;
+  font-weight: $font-weight-bold;
+  padding: 1px $size-space-xs;
+  border-radius: $radius-xs;
+  color: var(--accent-blue);
+  background: rgba(37, 99, 235, 0.09);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  letter-spacing: 0.5px;
+}
+
+.app-badge {
+  display: inline-block;
+  font-size: $font-size-2xs;
+  font-weight: $font-weight-bold;
+  padding: 1px $size-space-xs;
+  border-radius: $radius-xs;
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.09);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  letter-spacing: 0.5px;
+}
+
+.app-icon-img {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 3px;
 }
 
 .col-icon-name {
@@ -131,18 +182,41 @@
   .item-icon {
     flex-shrink: 0;
 
-    &.icon-folder { color: #3b82f6; }
-    &.icon-image { color: #10b981; }
-    &.icon-video { color: #f43f5e; }
-    &.icon-audio { color: #ec4899; }
-    &.icon-code { color: #8b5cf6; }
-    &.icon-doc { color: #06b6d4; }
-    &.icon-archive { color: #f59e0b; }
-    &.icon-default { color: $color-text-muted; }
+    &.icon-folder { color: #2563eb; }
+    &.icon-image { color: #059669; }
+    &.icon-video { color: #e11d48; }
+    &.icon-audio { color: #c026d3; }
+    &.icon-code { color: #7c3aed; }
+    &.icon-doc { color: #0284c7; }
+    &.icon-archive { color: #d97706; }
+    &.icon-default { color: var(--text-muted); }
   }
 
   .item-name {
     @include truncate-text;
+  }
+}
+
+[data-theme='dark'] {
+  .col-icon-name .item-icon {
+    &.icon-folder { color: #3b82f6; }
+    &.icon-image { color: #10b981; }
+    &.icon-video { color: #f43f5e; }
+    &.icon-audio { color: #ec4899; }
+    &.icon-code { color: #a855f7; }
+    &.icon-doc { color: #06b6d4; }
+    &.icon-archive { color: #f59e0b; }
+  }
+
+  .dir-badge {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  .app-badge {
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.16);
+    border-color: rgba(168, 85, 247, 0.35);
   }
 }
 

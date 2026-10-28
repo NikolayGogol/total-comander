@@ -43,6 +43,7 @@
         @sort="(field) => setSort('left', field)"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
+        @context-menu="(payload) => handleContextMenu('left', payload)"
       />
 
       <!-- Right Pane -->
@@ -66,6 +67,7 @@
         @sort="(field) => setSort('right', field)"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
+        @context-menu="(payload) => handleContextMenu('right', payload)"
       />
     </main>
 
@@ -112,6 +114,18 @@
       @jump-to="jumpToSearchFile"
     />
 
+    <!-- Right-Click Context Menu -->
+    <ContextMenu 
+      :visible="contextMenuState.visible"
+      :x="contextMenuState.x"
+      :y="contextMenuState.y"
+      :item="contextMenuState.item"
+      :current-path="activePaneState.currentPath"
+      :selected-count="activePaneState.selectedPaths.size"
+      @action="handleContextMenuAction"
+      @close="contextMenuState.visible = false"
+    />
+
     <!-- Toast Notifications -->
     <div class="toast-container">
       <div 
@@ -134,6 +148,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import type { PaneState, DriveItem, FileItem, SortField } from './types'
+import { getParentPath, getPathLeafName, isRootPath, normalizePath } from './utils/paths'
 import TitleBar from './components/TitleBar.vue'
 import DriveBar from './components/DriveBar.vue'
 import PaneView from './components/pane/PaneView.vue'
@@ -142,6 +157,7 @@ import ViewerModal from './components/ViewerModal.vue'
 import EditorModal from './components/EditorModal.vue'
 import OperationModal from './components/OperationModal.vue'
 import SearchModal from './components/SearchModal.vue'
+import ContextMenu from './components/ContextMenu.vue'
 
 const activePaneId = ref<'left' | 'right'>('left')
 const showHidden = ref(false)
@@ -159,14 +175,15 @@ function toggleTheme() {
 
 function createDefaultPaneState(initialPath: string): PaneState {
   const tabId = 'tab-' + Math.random().toString(36).substring(2, 9)
+  const cleanPath = normalizePath(initialPath)
   return {
-    currentPath: initialPath,
+    currentPath: cleanPath,
     tabs: [
       {
         id: tabId,
-        title: initialPath.split('/').filter(Boolean).pop() || 'Root',
-        path: initialPath,
-        history: [initialPath],
+        title: getPathLeafName(cleanPath),
+        path: cleanPath,
+        history: [cleanPath],
         historyIndex: 0,
       },
     ],
@@ -223,6 +240,21 @@ const operationModal = reactive<{
 const searchModal = reactive({
   open: false,
   initialDir: '',
+})
+
+// Right-click Context Menu State
+const contextMenuState = reactive<{
+  visible: boolean
+  x: number
+  y: number
+  item: FileItem | null
+  paneId: 'left' | 'right'
+}>({
+  visible: false,
+  x: 0,
+  y: 0,
+  item: null,
+  paneId: 'left',
 })
 
 // Toast notification stack
@@ -286,7 +318,7 @@ async function loadDirectory(pane: PaneState, dirPath: string) {
       const currentTab = pane.tabs.find((t) => t.id === pane.activeTabId)
       if (currentTab) {
         currentTab.path = dirPath
-        currentTab.title = dirPath.split('/').filter(Boolean).pop() || 'Root'
+        currentTab.title = getPathLeafName(dirPath)
       }
 
       sortItems(res.data, pane.sortField, pane.sortOrder)
@@ -362,11 +394,11 @@ function navigatePane(paneKey: 'left' | 'right', targetPath: string) {
 
 function goUp(paneKey: 'left' | 'right') {
   const p = paneKey === 'left' ? leftPane : rightPane
-  if (p.currentPath === '/') return
-  const parts = p.currentPath.split('/').filter(Boolean)
-  parts.pop()
-  const parentPath = '/' + parts.join('/')
-  navigatePane(paneKey, parentPath)
+  if (isRootPath(p.currentPath)) return
+  const parentPath = getParentPath(p.currentPath)
+  if (parentPath && parentPath !== p.currentPath) {
+    navigatePane(paneKey, parentPath)
+  }
 }
 
 function canGoBack(paneKey: 'left' | 'right'): boolean {
@@ -424,7 +456,7 @@ function newTab(paneKey: 'left' | 'right') {
   const newId = 'tab-' + Math.random().toString(36).substring(2, 9)
   p.tabs.push({
     id: newId,
-    title: p.currentPath.split('/').filter(Boolean).pop() || 'Root',
+    title: getPathLeafName(p.currentPath),
     path: p.currentPath,
     history: [p.currentPath],
     historyIndex: 0,
@@ -602,6 +634,120 @@ function jumpToSearchFile(filePath: string) {
   navigatePane(activePaneId.value, dir)
 }
 
+function handleContextMenu(paneId: 'left' | 'right', payload: { x: number; y: number; item: FileItem | null }) {
+  activePaneId.value = paneId
+  const p = paneId === 'left' ? leftPane : rightPane
+  if (payload.item) {
+    const idx = p.items.findIndex((i) => i.path === payload.item!.path)
+    if (idx !== -1 && !p.selectedPaths.has(payload.item.path)) {
+      p.cursorIndex = idx
+    }
+  }
+  contextMenuState.visible = true
+  contextMenuState.x = payload.x
+  contextMenuState.y = payload.y
+  contextMenuState.item = payload.item
+  contextMenuState.paneId = paneId
+}
+
+async function handleContextMenuAction(action: string, item: FileItem | null) {
+  switch (action) {
+    case 'open':
+      if (item) {
+        if (item.isApp) {
+          await openFileNative(item)
+        } else if (item.isDirectory) {
+          navigatePane(contextMenuState.paneId, item.path)
+        } else {
+          await openFileNative(item)
+        }
+      }
+      break
+
+    case 'show-package-contents':
+      if (item) {
+        navigatePane(contextMenuState.paneId, item.path)
+      }
+      break
+
+    case 'view':
+      if (item && !item.isDirectory) {
+        viewerModal.filePath = item.path
+        viewerModal.fileName = item.name
+        viewerModal.fileSize = item.size
+        viewerModal.open = true
+      }
+      break
+
+    case 'edit':
+      if (item && !item.isDirectory) {
+        editorModal.filePath = item.path
+        editorModal.fileName = item.name
+        editorModal.open = true
+      }
+      break
+
+    case 'copy':
+      handleBottomAction('copy')
+      break
+
+    case 'move':
+      handleBottomAction('move')
+      break
+
+    case 'rename':
+      handleBottomAction('rename')
+      break
+
+    case 'delete':
+      handleBottomAction('delete')
+      break
+
+    case 'clipboard-copy':
+      copySelectedToClipboard('copy')
+      break
+
+    case 'clipboard-cut':
+      copySelectedToClipboard('cut')
+      break
+
+    case 'paste':
+      pasteFromClipboard()
+      break
+
+    case 'show-in-folder':
+      if (item) {
+        try {
+          await window.electronAPI.showInFolder(item.path)
+          showShortcutToast('Finder', `Показано у Finder: ${item.name}`)
+        } catch (err: any) {
+          showToast(err.message, 'error')
+        }
+      }
+      break
+
+    case 'terminal':
+      openActiveTerminal()
+      break
+
+    case 'mkdir':
+      handleBottomAction('mkdir')
+      break
+
+    case 'newfile':
+      handleBottomAction('newfile')
+      break
+
+    case 'select-all':
+      selectAllInActivePane()
+      break
+
+    case 'refresh':
+      refreshPane(contextMenuState.paneId)
+      break
+  }
+}
+
 async function onOperationConfirm(payload: { opType: string; target: string }) {
   operationModal.open = false
   const { opType, target } = payload
@@ -691,6 +837,14 @@ async function handleDragDrop(sourcePaths: string[], targetDir: string) {
 
 // Global Keyboard Shortcuts
 function handleGlobalShortcuts(e: KeyboardEvent) {
+  if (contextMenuState.visible) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      contextMenuState.visible = false
+      return
+    }
+  }
+
   if (viewerModal.open || editorModal.open || operationModal.open || searchModal.open) {
     if (e.key === 'Escape') {
       viewerModal.open = false
@@ -1033,9 +1187,10 @@ onMounted(async () => {
     document.documentElement.setAttribute('data-theme', currentTheme.value)
     const sys = await window.electronAPI.getSystemInfo()
     homeDir.value = sys.homeDir || '/'
+    const defaultRoot = '/'
     await Promise.all([
       loadDirectory(leftPane, homeDir.value),
-      loadDirectory(rightPane, '/'),
+      loadDirectory(rightPane, defaultRoot),
       loadDrivesList(),
     ])
 

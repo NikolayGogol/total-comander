@@ -33,11 +33,9 @@ function formatPermissions(mode: number, isDirectory: boolean): string {
 }
 
 function createWindow() {
-  const iconPath = process.platform === 'win32'
-    ? path.join(__dirname, '../build/icon.ico')
-    : path.join(__dirname, '../build/icon.png')
+  const iconPath = path.join(__dirname, '../build/icon.png')
 
-  if (process.platform === 'darwin' && app.dock && fs.existsSync(iconPath)) {
+  if (app.dock && fs.existsSync(iconPath)) {
     app.dock.setIcon(iconPath)
   }
 
@@ -48,8 +46,8 @@ function createWindow() {
     minHeight: 600,
     title: 'Total Commander',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: process.platform === 'darwin' ? { x: 14, y: 14 } : undefined,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 14, y: 14 },
     backgroundColor: '#121418',
     show: false,
     webPreferences: {
@@ -172,11 +170,11 @@ function setupVolumeWatcher() {
   }
 }
 
-async function getVolumeInfo(volPath: string): Promise<{ type: 'usb' | 'dmg' | 'volume'; isRemovable: boolean }> {
+async function getVolumeInfo(volPath: string): Promise<{ isUSB: boolean; isRemovable: boolean }> {
   return new Promise((resolve) => {
     exec(`diskutil info -plist "${volPath}"`, (err, stdout) => {
       if (err || !stdout) {
-        return resolve({ type: 'volume', isRemovable: false })
+        return resolve({ isUSB: false, isRemovable: false })
       }
       const busMatch = stdout.match(/<key>BusProtocol<\/key>\s*<string>([^<]+)<\/string>/i)
       const bus = busMatch ? busMatch[1].trim() : ''
@@ -184,18 +182,30 @@ async function getVolumeInfo(volPath: string): Promise<{ type: 'usb' | 'dmg' | '
       const isInternal = internalMatch ? internalMatch[1] === 'true' : false
       const ejectableMatch = stdout.match(/<key>Ejectable<\/key>\s*<(true|false)\/>/i)
       const isEjectable = ejectableMatch ? ejectableMatch[1] === 'true' : false
+      const isDiskImage = bus.toLowerCase().includes('disk image') || bus.toLowerCase().includes('virtual')
 
-      if (bus.toUpperCase() === 'USB') {
-        resolve({ type: 'usb', isRemovable: true })
-      } else if (bus === 'Disk Image') {
-        resolve({ type: 'dmg', isRemovable: true })
-      } else if (!isInternal || isEjectable) {
-        resolve({ type: 'usb', isRemovable: isEjectable })
-      } else {
-        resolve({ type: 'volume', isRemovable: isEjectable })
-      }
+      // STRICT USB: Only real external physical USB devices (excluding DMG disk images and internal system partitions)
+      const isUSB = !isInternal && !isDiskImage && bus.toUpperCase() === 'USB'
+
+      resolve({ isUSB, isRemovable: isEjectable })
     })
   })
+}
+
+const appIconCache = new Map<string, string>()
+
+async function getAppIcon(appPath: string): Promise<string | undefined> {
+  if (appIconCache.has(appPath)) {
+    return appIconCache.get(appPath)
+  }
+  try {
+    const icon = await app.getFileIcon(appPath, { size: 'normal' })
+    const dataUrl = icon.toDataURL()
+    appIconCache.set(appPath, dataUrl)
+    return dataUrl
+  } catch {
+    return undefined
+  }
 }
 
 function setupIpcHandlers() {
@@ -204,7 +214,7 @@ function setupIpcHandlers() {
     return {
       homeDir: os.homedir(),
       tmpDir: os.tmpdir(),
-      platform: process.platform,
+      platform: 'darwin',
       username: os.userInfo().username,
     }
   })
@@ -221,11 +231,13 @@ function setupIpcHandlers() {
         if (isHidden && !showHidden) continue
 
         const itemPath = path.join(resolvedPath, entry.name)
+        const isApp = entry.name.endsWith('.app')
+
         try {
           const stats = await fsPromises.lstat(itemPath)
           const isDir = entry.isDirectory() || (entry.isSymbolicLink() && stats.isDirectory())
           const isFile = entry.isFile() || (entry.isSymbolicLink() && stats.isFile())
-          const ext = isDir ? '' : path.extname(entry.name).toLowerCase()
+          const ext = isApp ? 'app' : (isDir ? '' : path.extname(entry.name).toLowerCase())
 
           items.push({
             name: entry.name,
@@ -233,6 +245,7 @@ function setupIpcHandlers() {
             isDirectory: isDir,
             isFile: isFile,
             isSymlink: entry.isSymbolicLink(),
+            isApp,
             size: isDir ? 0 : stats.size,
             mtime: stats.mtimeMs,
             birthtime: stats.birthtimeMs,
@@ -249,15 +262,26 @@ function setupIpcHandlers() {
             isDirectory: entry.isDirectory(),
             isFile: entry.isFile(),
             isSymlink: entry.isSymbolicLink(),
+            isApp,
             size: 0,
             mtime: 0,
             birthtime: 0,
             mode: 0,
             permissions: entry.isDirectory() ? 'drwxr-xr-x' : '-rw-r--r--',
-            extension: path.extname(entry.name).toLowerCase(),
+            extension: isApp ? 'app' : path.extname(entry.name).toLowerCase(),
             isHidden,
           })
         }
+      }
+
+      // Extract native macOS icons for all application bundles (.app)
+      const appItems = items.filter((i) => i.isApp)
+      if (appItems.length > 0) {
+        await Promise.all(
+          appItems.map(async (item: any) => {
+            item.appIcon = await getAppIcon(item.path)
+          })
+        )
       }
 
       return { success: true, data: items }
@@ -269,57 +293,48 @@ function setupIpcHandlers() {
   // Quick Access / Drives & USB Media
   ipcMain.handle('fs:getDrives', async () => {
     try {
-      const isWin = process.platform === 'win32'
       const home = os.homedir()
-      const rootPath = isWin ? (process.env.SystemDrive ? process.env.SystemDrive + '\\' : 'C:\\') : '/'
-      const rootName = isWin ? `Локальний диск (${rootPath})` : 'Macintosh HD'
-
       const drives: any[] = [
-        { name: rootName, path: rootPath, icon: 'HardDrive', type: 'root', isRemovable: false },
+        { name: 'Macintosh HD', path: '/', icon: 'HardDrive', type: 'root', isRemovable: false },
         { name: 'Home (~)', path: home, icon: 'Home', type: 'home', isRemovable: false },
         { name: 'Desktop', path: path.join(home, 'Desktop'), icon: 'Monitor', type: 'folder', isRemovable: false },
         { name: 'Documents', path: path.join(home, 'Documents'), icon: 'FileText', type: 'folder', isRemovable: false },
         { name: 'Downloads', path: path.join(home, 'Downloads'), icon: 'Download', type: 'folder', isRemovable: false },
+        { name: 'Applications', path: '/Applications', icon: 'Grid', type: 'folder', isRemovable: false },
       ]
 
-      if (!isWin) {
-        drives.push({ name: 'Applications', path: '/Applications', icon: 'Grid', type: 'folder', isRemovable: false })
-      }
+      // Check /Volumes on macOS (ONLY real external physical USB drives, exclude DMGs & system recovery)
+      const ignoredVolumes = new Set([
+        'Macintosh HD',
+        'Recovery',
+        'Preboot',
+        'VM',
+        'Update',
+        'Data',
+        'TimeMachine',
+        '.timemachine',
+      ])
 
-      // Check /Volumes on macOS or drive letters on Windows
-      if (process.platform === 'darwin') {
-        try {
-          const volumes = await fsPromises.readdir('/Volumes')
-          for (const vol of volumes) {
-            if (vol === 'Macintosh HD') continue
-            const volPath = path.join('/Volumes', vol)
-            const volInfo = await getVolumeInfo(volPath)
+      try {
+        const volumes = await fsPromises.readdir('/Volumes')
+        for (const vol of volumes) {
+          if (vol.startsWith('.') || ignoredVolumes.has(vol)) continue
+          const volPath = path.join('/Volumes', vol)
+          const volInfo = await getVolumeInfo(volPath)
+
+          // Only add real physical USB drives
+          if (volInfo.isUSB) {
             drives.push({
               name: vol,
               path: volPath,
-              icon: volInfo.type === 'usb' ? 'Usb' : volInfo.type === 'dmg' ? 'Disc' : 'HardDrive',
-              type: volInfo.type,
-              isRemovable: volInfo.isRemovable,
-            })
-          }
-        } catch {
-          // Ignore volume read error if any
-        }
-      } else if (isWin) {
-        // Enumerate Windows drive letters (D:, E:, F:, G:, etc.)
-        const letters = 'DEFGHIJKLMNOPQRSTUVWXYZ'.split('')
-        for (const letter of letters) {
-          const driveLetterPath = `${letter}:\\`
-          if (fs.existsSync(driveLetterPath)) {
-            drives.push({
-              name: `Диск (${letter}:)`,
-              path: driveLetterPath,
-              icon: 'HardDrive',
-              type: 'volume',
+              icon: 'Usb',
+              type: 'usb',
               isRemovable: true,
             })
           }
         }
+      } catch {
+        // Ignore volume read error if any
       }
 
       // Filter only paths that actually exist and attach free/total disk space
@@ -530,7 +545,7 @@ function setupIpcHandlers() {
     }
   })
 
-  // Open with macOS default app
+  // Open with system default app
   ipcMain.handle('fs:openPath', async (_, filePath: string) => {
     try {
       const result = await shell.openPath(filePath)
@@ -543,18 +558,22 @@ function setupIpcHandlers() {
     }
   })
 
-  // Open Directory in System Terminal (macOS Terminal / Windows cmd or PowerShell)
+  // Show file in native macOS Finder
+  ipcMain.handle('fs:showInFolder', async (_, targetPath: string) => {
+    try {
+      shell.showItemInFolder(targetPath)
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Open Directory in macOS Terminal
   ipcMain.handle('fs:openInTerminal', async (_, dirPath: string) => {
     try {
-      if (process.platform === 'win32') {
-        exec(`start cmd /K cd /D "${dirPath}"`, (err) => {
-          if (err) console.error('Failed to open CMD:', err)
-        })
-      } else {
-        exec(`open -a Terminal "${dirPath}"`, (err) => {
-          if (err) console.error('Failed to open Terminal:', err)
-        })
-      }
+      exec(`open -a Terminal "${dirPath}"`, (err) => {
+        if (err) console.error('Failed to open Terminal:', err)
+      })
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }

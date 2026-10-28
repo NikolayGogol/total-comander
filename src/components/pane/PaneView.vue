@@ -46,6 +46,7 @@
       @select-range="(from, to) => $emit('select-range', from, to)"
       @sort="(field) => $emit('sort', field)"
       @drop-items="(sources, target) => $emit('drag-drop-items', sources, target)"
+      @context-menu="(payload) => $emit('context-menu', payload)"
     />
 
     <!-- Pane Footer / Stats -->
@@ -93,6 +94,7 @@ const emit = defineEmits<{
   (e: 'sort', field: SortField): void
   (e: 'open-native', item: FileItem): void
   (e: 'drag-drop-items', sourcePaths: string[], targetDir: string): void
+  (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null }): void
 }>()
 
 const filterText = ref('')

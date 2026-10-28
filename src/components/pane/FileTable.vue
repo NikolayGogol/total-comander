@@ -8,6 +8,7 @@
     @dragover.prevent="onTableDragOver"
     @dragleave="isDragOverTable = false"
     @drop.prevent="onTableDrop"
+    @contextmenu.prevent="onTableContextMenu"
   >
     <table class="file-table">
       <thead>
@@ -65,14 +66,22 @@
           @drop.prevent.stop="onItemDrop($event, item)"
           @click="handleRowClick($event, item, index)"
           @dblclick="handleRowDblClick(item)"
+          @contextmenu.prevent.stop="onRowContextMenu($event, item, index)"
         >
           <td class="col-name">
             <div class="col-icon-name">
+              <img 
+                v-if="item.appIcon" 
+                :src="item.appIcon" 
+                class="item-icon app-icon-img" 
+                :alt="item.name" 
+              />
               <component 
+                v-else 
                 :is="getIconComponent(item)" 
                 :size="14" 
                 :class="['item-icon', getIconModifier(item)]"
-                :title="item.isDirectory ? 'Папка: ' + item.name : (item.extension ? item.extension.toUpperCase() + ' ' : '') + 'Файл: ' + item.name + ' (' + formatBytes(item.size) + ')'"
+                :title="item.isApp ? 'Програма macOS: ' + item.name : (item.isDirectory ? 'Папка: ' + item.name : (item.extension ? item.extension.toUpperCase() + ' ' : '') + 'Файл: ' + item.name + ' (' + formatBytes(item.size) + ')')"
               />
               <span 
                 class="item-name" 
@@ -84,8 +93,14 @@
               </span>
             </div>
           </td>
-          <td class="col-ext" :title="item.isDirectory ? 'Папка' : (item.extension || 'Без розширення')">{{ item.isDirectory ? '' : item.extension }}</td>
-          <td class="col-size" :title="item.isDirectory ? 'Папка' : formatNumber(item.size) + ' байт'">{{ item.isDirectory ? '<DIR>' : formatBytes(item.size) }}</td>
+          <td class="col-ext" :title="item.isApp ? 'Програма macOS' : (item.isDirectory ? 'Папка' : (item.extension || 'Без розширення'))">
+            {{ item.isApp ? 'APP' : (item.isDirectory ? '' : item.extension) }}
+          </td>
+          <td class="col-size" :title="item.isApp ? 'Програма macOS (.app)' : (item.isDirectory ? 'Папка' : formatNumber(item.size) + ' байт')">
+            <span v-if="item.isApp" class="app-badge">&lt;APP&gt;</span>
+            <span v-else-if="item.isDirectory" class="dir-badge">&lt;DIR&gt;</span>
+            <span v-else>{{ formatBytes(item.size) }}</span>
+          </td>
           <td class="col-date" :title="'Дата зміни: ' + formatDate(item.mtime)">{{ formatDate(item.mtime) }}</td>
           <td class="col-perms" :title="'Права доступу UNIX: ' + item.permissions">{{ item.permissions }}</td>
         </tr>
@@ -143,6 +158,7 @@ const emit = defineEmits<{
   (e: 'select-range', fromIndex: number, toIndex: number): void
   (e: 'sort', field: SortField): void
   (e: 'drop-items', sourcePaths: string[], targetDir: string): void
+  (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null }): void
 }>()
 
 const wrapperRef = ref<HTMLElement | null>(null)
@@ -157,6 +173,17 @@ function setCursor(idx: number) {
   emit('update-cursor', idx)
 }
 
+function onRowContextMenu(e: MouseEvent, item: FileItem, index: number) {
+  if (!props.selectedPaths.has(item.path)) {
+    setCursor(index)
+  }
+  emit('context-menu', { x: e.clientX, y: e.clientY, item })
+}
+
+function onTableContextMenu(e: MouseEvent) {
+  emit('context-menu', { x: e.clientX, y: e.clientY, item: null })
+}
+
 function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
   if (e.shiftKey) {
     emit('select-range', props.cursorIndex >= 0 ? props.cursorIndex : 0, index)
@@ -169,7 +196,10 @@ function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
 }
 
 function handleRowDblClick(item: FileItem) {
-  if (item.isDirectory) {
+  if (item.isApp) {
+    // Launch macOS Application bundle
+    emit('open-native', item)
+  } else if (item.isDirectory) {
     emit('navigate', item.path)
   } else {
     // Open in native default app (like macOS Finder)
@@ -210,7 +240,9 @@ function handleKeyDown(e: KeyboardEvent) {
       emit('go-up')
     } else if (props.cursorIndex >= 0 && props.cursorIndex < len) {
       const item = props.items[props.cursorIndex]
-      if (item.isDirectory) {
+      if (item.isApp) {
+        emit('open-native', item)
+      } else if (item.isDirectory) {
         emit('navigate', item.path)
       } else {
         emit('open-native', item)
@@ -303,6 +335,9 @@ function getIconModifier(item: FileItem): string {
 
 function getShortItemTooltip(item?: FileItem): string {
   if (!item) return ''
+  if (item.isApp) {
+    return `🚀 ${item.name} • Програма macOS`
+  }
   if (item.isDirectory) {
     return `📁 ${item.name} • Папка`
   }
@@ -312,6 +347,16 @@ function getShortItemTooltip(item?: FileItem): string {
 
 function getItemTooltip(item?: FileItem): string {
   if (!item) return ''
+  if (item.isApp) {
+    return [
+      `🚀 Програма: ${item.name || ''}`,
+      `Тип: Програма Apple macOS (.app)`,
+      `Шлях: ${item.path || ''}`,
+      `Змінено: ${formatDate(item.mtime)}`,
+      `Права доступу: ${item.permissions || '--'}`,
+      `💡 Подвійний клік або Enter — запустити програму`,
+    ].join('\n')
+  }
   if (item.isDirectory) {
     return [
       `📁 Папка: ${item.name || ''}`,

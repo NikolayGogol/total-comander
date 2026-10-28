@@ -149,32 +149,7 @@ npm run build:dmg:arm64
 
 ---
 
-### 4. Packaging & Distribution for Windows (NSIS Installer & Portable EXE)
-
-| Command | Purpose & Description |
-| :--- | :--- |
-| `npm run build:win:x64` | **Створення 64-бітного інсталятора для Windows** (`.exe`). Збирає бандл, створює повноцінний установник NSIS з іконкою `build/icon.ico` та ярликами на Робочому столі та в Меню Пуск. |
-| `npm run build:win:portable` | **Створення Portable-версії для Windows**: один автономний `.exe` файл, який не потребує інсталяції і запускається з будь-якої папки або USB-накопичувача. |
-| `npm run build:win:arm64` | Створює збірку для сучасних Windows-пристроїв на базі ARM64 (наприклад, Snapdragon X Elite). |
-| `npm run build:win` | Створює стандартний набір збірок для Windows (NSIS інсталятор + Portable exe). |
-| `npm run build:all` | **Мультиплатформна збірка**: генерує одночасно пакети для macOS (.dmg) та Windows (.exe). |
-
-```bash
-# Створити Windows x64 інсталятор (.exe)
-npm run build:win:x64
-
-# Створити портативну версію Windows (.exe)
-npm run build:win:portable
-```
-
-> **Результат збірки для Windows**: готові файли з'являються у каталозі `release/`:
-> - `release/Total Commander-Setup-1.0.0-x64.exe` — інсталятор NSIS (з майстром налаштування та ярликами).
-> - `release/Total Commander-1.0.0-portable.exe` — портативна версія для запуску без встановлення.
-> - `release/win-unpacked/` — розпакований виконуваний каталог.
-
----
-
-### 5. Lifecycle Hooks
+### 4. Lifecycle Hooks
 
 | Hook | Purpose & Description |
 | :--- | :--- |

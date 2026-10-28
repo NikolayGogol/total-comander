@@ -51,11 +51,6 @@
 | `npm run build` | Компілює production бандл (Vue UI в `dist/`, Electron main/preload в `dist-electron/`). |
 | `npm run build:dmg` | **Створює готовий DMG пакет встановлення для macOS** (у папку `release/`). |
 | `npm run build:dmg:arm64` | Створює нативний Apple Silicon (M1/M2/M3/M4) `.dmg` пакет. |
-| `npm run build:win` | **Створює інсталятори для Windows** (NSIS інсталятор та Portable .exe у `release/`). |
-| `npm run build:win:x64` | Створює 64-бітний Windows NSIS інсталятор (`.exe`). |
-| `npm run build:win:portable` | Створює портативну версію Windows без встановлення. |
-| `npm run build:win:arm64` | Створює Windows інсталятор для пристроїв ARM64. |
-| `npm run build:all` | Збирає пакети одночасно для macOS (.dmg) та Windows (.exe). |
 | `npm run run:prod` | Збирає бандл та запускає його у продакшн режимі Electron. |
 
 ---
@@ -66,7 +61,6 @@
 total-comander/
 ├── build/
 │   ├── icon.icns            # Нативна іконка macOS (16x16 ... 1024x1024 Retina)
-│   ├── icon.ico             # Нативна багаторозмірна іконка Windows (16x16 ... 256x256)
 │   ├── icon.png             # Головне PNG-зображення іконки (1024x1024)
 │   └── icon.iconset/        # Повний набір усіх стандартних резолюцій Apple
 ├── electron/

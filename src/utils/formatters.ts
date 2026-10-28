@@ -66,7 +66,6 @@ export function getFileTypeDescription(ext?: string | null, isDir?: boolean): st
   if (isDir) return 'Папка'
   const cleanExt = (typeof ext === 'string' ? ext : '').toLowerCase().replace('.', '').trim()
   if (cleanExt === 'dmg') return 'Образ диска Apple macOS (.dmg)'
-  if (cleanExt === 'exe') return 'Виконуваний файл Windows (.exe)'
   if (cleanExt === 'app') return 'Програма macOS (.app)'
   if (['zip', 'tar', 'gz', '7z', 'rar', 'xz'].includes(cleanExt)) return 'Стиснений архів'
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'].includes(cleanExt)) return 'Графічне зображення'

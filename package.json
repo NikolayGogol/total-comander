@@ -11,11 +11,6 @@
     "build": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build",
     "build:dmg": "vite build && electron-builder --mac dmg",
     "build:dmg:arm64": "vite build && electron-builder --mac dmg --arm64",
-    "build:win": "vite build && electron-builder --win",
-    "build:win:x64": "vite build && electron-builder --win --x64",
-    "build:win:arm64": "vite build && electron-builder --win --arm64",
-    "build:win:portable": "vite build && electron-builder --win portable --x64",
-    "build:all": "vite build && electron-builder --mac dmg --win nsis",
     "run:prod": "vite build && electron .",
     "postinstall": "cp build/icon.icns node_modules/electron/dist/Electron.app/Contents/Resources/electron.icns 2>/dev/null || true; /usr/libexec/PlistBuddy -c \"Set :CFBundleDisplayName 'Total Commander'\" node_modules/electron/dist/Electron.app/Contents/Info.plist 2>/dev/null || true; /usr/libexec/PlistBuddy -c \"Set :CFBundleName 'Total Commander'\" node_modules/electron/dist/Electron.app/Contents/Info.plist 2>/dev/null || true"
   },
@@ -53,34 +48,6 @@
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "identity": null
-    },
-    "win": {
-      "icon": "build/icon.ico",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Total Commander"
-    },
-    "portable": {
-      "artifactName": "${productName}-${version}-portable.${ext}"
     },
     "dmg": {
       "contents": [

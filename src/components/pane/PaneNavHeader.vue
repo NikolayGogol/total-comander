@@ -24,7 +24,7 @@
 
     <button 
       class="nav-btn" 
-      :disabled="currentPath === '/'" 
+      :disabled="isRootPath(currentPath)" 
       data-tooltip="Батьківська папка (..)"
       data-tooltip-pos="bottom"
       title="Перейти у батьківську директорію (Backspace або ..)"
@@ -50,15 +50,15 @@
       <div v-else class="breadcrumbs">
         <span 
           class="crumb" 
-          title="Кореневий розділ (/)"
-          @click.stop="$emit('navigate', '/')"
-        >/</span>
-        <template v-for="(segment, idx) in pathSegments" :key="idx">
-          <span class="crumb-sep">/</span>
+          :title="'Кореневий розділ (' + pathInfo.root + ')'"
+          @click.stop="$emit('navigate', pathInfo.root)"
+        >{{ pathInfo.root }}</span>
+        <template v-for="(segment, idx) in pathInfo.segments" :key="idx">
+          <span class="crumb-sep">{{ pathSep }}</span>
           <span 
             class="crumb" 
-            :title="'Перейти до: ' + getSegmentFullPath(idx)"
-            @click.stop="$emit('navigate', getSegmentFullPath(idx))"
+            :title="'Перейти до: ' + getSegmentFullPath(pathInfo.root, pathInfo.segments, idx)"
+            @click.stop="$emit('navigate', getSegmentFullPath(pathInfo.root, pathInfo.segments, idx))"
           >
             {{ segment }}
           </span>
@@ -103,6 +103,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
+import { isRootPath, getPathSegments, getSegmentFullPath } from '../../utils/paths'
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -132,14 +133,11 @@ const isEditing = ref(false)
 const editPath = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 
-const pathSegments = computed(() => {
-  return props.currentPath.split('/').filter(Boolean)
+const pathInfo = computed(() => {
+  return getPathSegments(props.currentPath)
 })
 
-function getSegmentFullPath(idx: number): string {
-  const parts = pathSegments.value.slice(0, idx + 1)
-  return '/' + parts.join('/')
-}
+const pathSep = '/'
 
 function startEditing() {
   editPath.value = props.currentPath

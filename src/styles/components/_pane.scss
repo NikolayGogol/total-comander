@@ -50,10 +50,11 @@
     }
 
     &.is-active {
-      color: $color-text-main;
+      color: var(--accent-blue);
       background: $color-bg-panel;
       border-color: $color-border-subtle;
-      font-weight: $font-weight-semibold;
+      border-top: 2px solid var(--accent-blue);
+      font-weight: $font-weight-bold;
     }
 
     .tab-title {
@@ -157,19 +158,21 @@
       white-space: nowrap;
 
       .crumb {
-        color: $color-text-muted;
+        color: var(--text-secondary);
+        font-weight: $font-weight-medium;
         cursor: pointer;
         padding: 1px $size-space-xs;
         border-radius: $radius-xs;
 
         &:hover {
           background: var(--row-hover);
-          color: $color-text-main;
+          color: var(--accent-blue);
         }
       }
 
       .crumb-sep {
-        color: $color-text-dim;
+        color: var(--accent-blue);
+        font-weight: $font-weight-semibold;
       }
     }
   }
