@@ -1,0 +1,263 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.pane-card {
+  display: flex;
+  flex-direction: column;
+  background: $color-bg-panel;
+  border-radius: $radius-md;
+  border: 1px solid $color-border-subtle;
+  overflow: hidden;
+  min-height: 0;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &.is-active {
+    border-color: $color-border-active;
+    box-shadow: $shadow-glow-active;
+  }
+}
+
+// Pane Tabs
+.pane-tabs-bar {
+  display: flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid $color-border-subtle;
+  padding: $size-space-xs $size-space-sm 0 $size-space-sm;
+  gap: $size-space-xs;
+  overflow-x: auto;
+
+  .pane-tab {
+    display: flex;
+    align-items: center;
+    gap: $size-space-sm;
+    padding: $size-space-xs $size-space-lg;
+    border-radius: $radius-sm $radius-sm 0 0;
+    background: $color-bg-inactive-tab;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: $color-text-dim;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    max-width: $size-tab-max-width;
+    transition: all 0.12s ease;
+
+    &:hover {
+      color: $color-text-secondary;
+      background: var(--row-hover);
+    }
+
+    &.is-active {
+      color: $color-text-main;
+      background: $color-bg-panel;
+      border-color: $color-border-subtle;
+      font-weight: $font-weight-semibold;
+    }
+
+    .tab-title {
+      @include truncate-text;
+    }
+
+    .tab-close {
+      @include flex-center;
+      width: $size-tab-close-btn;
+      height: $size-tab-close-btn;
+      border-radius: $radius-full;
+      opacity: 0.5;
+      transition: opacity 0.15s ease;
+
+      &:hover {
+        opacity: 1;
+        background: var(--border-hover);
+      }
+    }
+  }
+
+  .tab-add-btn {
+    @include button-base;
+    @include flex-center;
+    color: $color-text-dim;
+    padding: $size-space-xs $size-space-md;
+    font-size: $font-size-base;
+
+    &:hover {
+      background: var(--row-hover);
+      color: $color-text-main;
+    }
+  }
+}
+
+// Pane Navigation Header
+.pane-header {
+  display: flex;
+  align-items: center;
+  gap: $size-space-sm;
+  padding: $size-space-sm $size-space-md;
+  background: $color-bg-panel-header;
+  border-bottom: 1px solid $color-border-subtle;
+
+  .nav-btn {
+    @include button-base;
+    @include flex-center;
+    background: var(--bg-pill);
+    border: 1px solid var(--border-pill);
+    color: $color-text-muted;
+    border-radius: $radius-xs;
+    width: $size-btn-nav;
+    height: $size-btn-nav;
+
+    &:hover:not(:disabled) {
+      background: var(--row-hover);
+      color: $color-text-main;
+      border-color: $color-border-subtle;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  .path-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--bg-input);
+    border: 1px solid $color-border-subtle;
+    border-radius: $radius-sm;
+    padding: $size-space-2xs $size-space-md;
+    font-family: $font-family-mono;
+    font-size: $font-size-sm;
+    min-width: 0;
+    cursor: text;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus-within {
+      border-color: $color-accent-blue;
+      box-shadow: 0 0 0 1px $color-accent-blue;
+    }
+
+    .path-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: $color-text-main;
+      font-family: $font-family-mono;
+      font-size: $font-size-sm;
+    }
+
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: $size-space-xs;
+      overflow: hidden;
+      white-space: nowrap;
+
+      .crumb {
+        color: $color-text-muted;
+        cursor: pointer;
+        padding: 1px $size-space-xs;
+        border-radius: $radius-xs;
+
+        &:hover {
+          background: var(--row-hover);
+          color: $color-text-main;
+        }
+      }
+
+      .crumb-sep {
+        color: $color-text-dim;
+      }
+    }
+  }
+
+  .filter-box {
+    display: flex;
+    align-items: center;
+    gap: $size-space-sm;
+    background: var(--bg-input);
+    border: 1px solid $color-border-subtle;
+    border-radius: $radius-sm;
+    padding: $size-space-2xs $size-space-md;
+    width: $size-filter-box-width;
+
+    .filter-icon {
+      color: $color-text-dim;
+      flex-shrink: 0;
+    }
+
+    .filter-clear-btn {
+      color: $color-text-dim;
+      cursor: pointer;
+      flex-shrink: 0;
+
+      &:hover {
+        color: $color-text-main;
+      }
+    }
+
+    .filter-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: $color-text-main;
+      font-size: $font-size-sm;
+      width: 100%;
+    }
+  }
+}
+
+// Pane Footer
+.pane-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $size-space-xs $size-space-lg;
+  background: $color-bg-panel-header;
+  border-top: 1px solid $color-border-subtle;
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  color: $color-text-dim;
+  height: $size-pane-footer-height;
+  gap: $size-space-sm;
+
+  .pane-footer-left {
+    display: flex;
+    align-items: center;
+    gap: $size-space-md;
+    @include truncate-text;
+    min-width: 0;
+  }
+
+  .pane-footer-selected {
+    color: $color-accent-blue;
+    font-weight: $font-weight-semibold;
+  }
+
+  .pane-footer-space {
+    display: inline-flex;
+    align-items: center;
+    gap: $size-space-xs;
+    padding: 2px $size-space-sm;
+    background: var(--bg-subtle);
+    border-radius: $radius-xs;
+    border: 1px solid var(--border-pill);
+    color: var(--accent-cyan);
+    font-size: $font-size-2xs;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    .pane-footer-space-icon {
+      color: var(--accent-cyan);
+      flex-shrink: 0;
+    }
+  }
+
+  .pane-footer-right {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}

@@ -1,0 +1,22 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-app-gradient);
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+.dual-pane-container {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $size-space-md;
+  padding: $size-space-md;
+  overflow: hidden;
+  min-height: 0;
+}

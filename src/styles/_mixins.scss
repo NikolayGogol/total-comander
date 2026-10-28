@@ -1,0 +1,53 @@
+@use './variables' as *;
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin truncate-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: $radius-full;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--border-hover);
+  }
+}
+
+@mixin button-base {
+  background: transparent;
+  border: 1px solid transparent;
+  outline: none;
+  cursor: pointer;
+  font-family: $font-family-sans;
+  font-size: $font-size-base;
+  border-radius: $radius-sm;
+  transition: all 0.15s ease;
+}
+
+@mixin glass-panel {
+  background: var(--bg-panel);
+  backdrop-filter: $blur-backdrop;
+  border: 1px solid var(--border-subtle);
+}

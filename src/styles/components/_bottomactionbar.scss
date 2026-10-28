@@ -1,0 +1,54 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.bottom-action-bar {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: $size-space-xs;
+  padding: $size-space-xs $size-space-sm;
+  background: var(--bg-panel-header);
+  border-top: 1px solid $color-border-subtle;
+  height: $size-bottom-action-height;
+
+  .fn-button {
+    @include button-base;
+    @include flex-center;
+    gap: $size-space-xs;
+    padding: $size-space-xs 2px;
+    border-radius: $radius-sm;
+    background: var(--bg-fn-btn);
+    border: 1px solid $color-border-subtle;
+    color: $color-text-main;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      background: var(--bg-fn-btn-hover);
+      border-color: $color-accent-blue;
+      color: var(--text-main);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .fn-key {
+      font-family: $font-family-mono;
+      font-size: $font-size-2xs;
+      font-weight: $font-weight-bold;
+      color: $color-accent-cyan;
+      background: var(--bg-fn-key);
+      padding: 1px $size-space-xs;
+      border-radius: $radius-xs;
+      border: 1px solid var(--border-fn-key);
+    }
+  }
+}

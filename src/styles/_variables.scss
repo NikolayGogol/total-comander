@@ -1,0 +1,234 @@
+// ==========================================
+// SCSS DESIGN SYSTEM VARIABLES & TOKENS
+// ==========================================
+
+// --- Dark Theme Tokens ---
+$dark-bg-app: #0c0f16;
+$dark-bg-card: #121722;
+$dark-bg-panel: #131824;
+$dark-bg-panel-header: #182030;
+$dark-bg-subtle: #1c2436;
+$dark-bg-active-tab: #182030;
+$dark-bg-inactive-tab: rgba(255, 255, 255, 0.03);
+$dark-bg-table-header: #171d2b;
+$dark-bg-input: #0f131c;
+$dark-bg-viewer: #0b0e14;
+$dark-border-subtle: #222b3d;
+$dark-border-hover: #323e57;
+$dark-border-active: #3b82f6;
+$dark-text-main: #f8fafc;
+$dark-text-secondary: #cbd5e1;
+$dark-text-muted: #94a3b8;
+$dark-text-dim: #64748b;
+$dark-accent-blue: #3b82f6;
+$dark-accent-cyan: #06b6d4;
+$dark-accent-emerald: #10b981;
+$dark-accent-amber: #f59e0b;
+$dark-accent-rose: #f43f5e;
+$dark-accent-purple: #a855f7;
+
+// --- Light Theme Tokens (Refined macOS style) ---
+$light-bg-app: #f1f5f9;
+$light-bg-card: #ffffff;
+$light-bg-panel: #ffffff;
+$light-bg-panel-header: #f8fafc;
+$light-bg-subtle: #e2e8f0;
+$light-bg-active-tab: #ffffff;
+$light-bg-inactive-tab: #f1f5f9;
+$light-bg-table-header: #f8fafc;
+$light-bg-input: #ffffff;
+$light-bg-viewer: #f8fafc;
+$light-border-subtle: #e2e8f0;
+$light-border-hover: #cbd5e1;
+$light-border-active: #2563eb;
+$light-text-main: #0f172a;
+$light-text-secondary: #334155;
+$light-text-muted: #64748b;
+$light-text-dim: #94a3b8;
+$light-accent-blue: #2563eb;
+$light-accent-cyan: #0891b2;
+$light-accent-emerald: #059669;
+$light-accent-amber: #d97706;
+$light-accent-rose: #e11d48;
+$light-accent-purple: #7c3aed;
+
+// --- Typography Tokens ---
+$font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-family-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+// --- Font Sizes Tokens ---
+$font-size-2xs: 10px;
+$font-size-xs: 11px;
+$font-size-sm: 11.5px;
+$font-size-base: 12px;
+$font-size-md: 13px;
+$font-size-lg: 14px;
+$font-size-xl: 16px;
+$font-size-2xl: 18px;
+
+// --- Font Weights ---
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+$font-weight-extrabold: 800;
+
+// --- Spacing Tokens ---
+$size-space-2xs: 2px;
+$size-space-xs: 4px;
+$size-space-sm: 6px;
+$size-space-md: 8px;
+$size-space-lg: 12px;
+$size-space-xl: 16px;
+$size-space-2xl: 20px;
+$size-space-3xl: 24px;
+
+// --- Component Sizes ---
+$size-titlebar-height: 42px;
+$size-titlebar-traffic-lights-padding: 80px;
+$size-drivebar-height: 38px;
+$size-btn-icon: 28px;
+$size-btn-nav: 26px;
+$size-pane-footer-height: 28px;
+$size-bottom-action-height: 44px;
+$size-tab-max-width: 180px;
+$size-tab-close-btn: 14px;
+$size-filter-box-width: 130px;
+
+// --- Radii Tokens ---
+$radius-xs: 4px;
+$radius-sm: 6px;
+$radius-md: 8px;
+$radius-lg: 10px;
+$radius-xl: 14px;
+$radius-full: 9999px;
+
+// --- Shadows & Blurs ---
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
+$shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+$shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.35);
+$blur-backdrop: blur(12px);
+$blur-modal: blur(8px);
+
+// --- CSS Variables per Theme ---
+:root,
+[data-theme='dark'] {
+  --bg-app: #{$dark-bg-app};
+  --bg-app-gradient: radial-gradient(circle at 50% 0%, #151c2c 0%, #{$dark-bg-app} 75%);
+  --bg-card: #{$dark-bg-card};
+  --bg-panel: #{$dark-bg-panel};
+  --bg-panel-header: #{$dark-bg-panel-header};
+  --bg-subtle: #{$dark-bg-subtle};
+  --bg-active-tab: #{$dark-bg-active-tab};
+  --bg-inactive-tab: #{$dark-bg-inactive-tab};
+  --bg-table-header: #{$dark-bg-table-header};
+  --bg-input: #{$dark-bg-input};
+  --bg-viewer: #{$dark-bg-viewer};
+  --bg-pill: rgba(255, 255, 255, 0.04);
+  --border-pill: rgba(255, 255, 255, 0.06);
+  --bg-fn-btn: #181e2b;
+  --bg-fn-btn-hover: #232b3d;
+  --bg-fn-key: rgba(6, 182, 212, 0.12);
+  --border-fn-key: rgba(6, 182, 212, 0.25);
+  --border-subtle: #{$dark-border-subtle};
+  --border-hover: #{$dark-border-hover};
+  --border-active: #{$dark-border-active};
+  --text-main: #{$dark-text-main};
+  --text-secondary: #{$dark-text-secondary};
+  --text-muted: #{$dark-text-muted};
+  --text-dim: #{$dark-text-dim};
+  --accent-blue: #{$dark-accent-blue};
+  --accent-cyan: #{$dark-accent-cyan};
+  --accent-emerald: #{$dark-accent-emerald};
+  --accent-amber: #{$dark-accent-amber};
+  --accent-rose: #{$dark-accent-rose};
+  --accent-purple: #{$dark-accent-purple};
+  --row-hover: rgba(59, 130, 246, 0.08);
+  --row-selected: rgba(59, 130, 246, 0.22);
+  --row-selected-text: #bfdbfe;
+  --row-cursor: rgba(255, 255, 255, 0.06);
+  --row-cursor-border: rgba(59, 130, 246, 0.6);
+  --row-border: rgba(255, 255, 255, 0.02);
+  --shadow-glow-active: 0 0 0 1px #{$dark-accent-blue}, 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.7);
+  --bg-modal-overlay: rgba(0, 0, 0, 0.7);
+  --bg-loading: rgba(18, 22, 32, 0.65);
+  --bg-toast: #1c2333;
+}
+
+[data-theme='light'] {
+  --bg-app: #{$light-bg-app};
+  --bg-app-gradient: radial-gradient(circle at 50% 0%, #e2e8f0 0%, #{$light-bg-app} 75%);
+  --bg-card: #{$light-bg-card};
+  --bg-panel: #{$light-bg-panel};
+  --bg-panel-header: #{$light-bg-panel-header};
+  --bg-subtle: #{$light-bg-subtle};
+  --bg-active-tab: #{$light-bg-active-tab};
+  --bg-inactive-tab: #f1f5f9;
+  --bg-table-header: #f8fafc;
+  --bg-input: #ffffff;
+  --bg-viewer: #f8fafc;
+  --bg-pill: rgba(0, 0, 0, 0.04);
+  --border-pill: rgba(0, 0, 0, 0.08);
+  --bg-fn-btn: #f1f5f9;
+  --bg-fn-btn-hover: #e2e8f0;
+  --bg-fn-key: rgba(2, 132, 199, 0.12);
+  --border-fn-key: rgba(2, 132, 199, 0.25);
+  --border-subtle: #{$light-border-subtle};
+  --border-hover: #{$light-border-hover};
+  --border-active: #{$light-border-active};
+  --text-main: #{$light-text-main};
+  --text-secondary: #{$light-text-secondary};
+  --text-muted: #{$light-text-muted};
+  --text-dim: #{$light-text-dim};
+  --accent-blue: #{$light-accent-blue};
+  --accent-cyan: #{$light-accent-cyan};
+  --accent-emerald: #{$light-accent-emerald};
+  --accent-amber: #{$light-accent-amber};
+  --accent-rose: #{$light-accent-rose};
+  --accent-purple: #{$light-accent-purple};
+  --row-hover: rgba(37, 99, 235, 0.06);
+  --row-selected: rgba(37, 99, 235, 0.15);
+  --row-selected-text: #1d4ed8;
+  --row-cursor: rgba(0, 0, 0, 0.04);
+  --row-cursor-border: rgba(37, 99, 235, 0.6);
+  --row-border: rgba(0, 0, 0, 0.04);
+  --shadow-glow-active: 0 0 0 1px #{$light-accent-blue}, 0 4px 16px rgba(37, 99, 235, 0.15);
+  --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.15);
+  --bg-modal-overlay: rgba(15, 23, 42, 0.45);
+  --bg-loading: rgba(248, 250, 252, 0.75);
+  --bg-toast: #ffffff;
+}
+
+// --- Dynamic SCSS Aliases (binds SCSS $color-* variables to CSS theme custom properties) ---
+$color-bg-app: var(--bg-app);
+$color-bg-card: var(--bg-card);
+$color-bg-panel: var(--bg-panel);
+$color-bg-panel-header: var(--bg-panel-header);
+$color-bg-subtle: var(--bg-subtle);
+$color-bg-active-tab: var(--bg-active-tab);
+$color-bg-inactive-tab: var(--bg-inactive-tab);
+$color-bg-table-header: var(--bg-table-header);
+$color-bg-input: var(--bg-input);
+$color-bg-viewer: var(--bg-viewer);
+$color-border-subtle: var(--border-subtle);
+$color-border-hover: var(--border-hover);
+$color-border-active: var(--border-active);
+$color-text-main: var(--text-main);
+$color-text-secondary: var(--text-secondary);
+$color-text-muted: var(--text-muted);
+$color-text-dim: var(--text-dim);
+$color-accent-blue: var(--accent-blue);
+$color-accent-cyan: var(--accent-cyan);
+$color-accent-emerald: var(--accent-emerald);
+$color-accent-amber: var(--accent-amber);
+$color-accent-rose: var(--accent-rose);
+$color-accent-purple: var(--accent-purple);
+$color-accent-blue-hover: var(--accent-blue);
+$color-accent-blue-glow: rgba(59, 130, 246, 0.2);
+$color-row-hover: var(--row-hover);
+$color-row-selected: var(--row-selected);
+$color-row-cursor: var(--row-cursor);
+$color-row-cursor-border: var(--row-cursor-border);
+$shadow-glow-active: var(--shadow-glow-active);
+$shadow-modal: var(--shadow-modal);

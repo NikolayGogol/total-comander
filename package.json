@@ -1,0 +1,123 @@
+{
+  "name": "total-commander-macos",
+  "productName": "Total Commander",
+  "version": "1.0.0",
+  "description": "Total Commander for macOS built with Node.js, Electron, Vue 3, and SCSS",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "start": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
+    "dev": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
+    "app": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
+    "build": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build",
+    "build:dmg": "vite build && electron-builder --mac dmg",
+    "build:dmg:arm64": "vite build && electron-builder --mac dmg --arm64",
+    "build:win": "vite build && electron-builder --win",
+    "build:win:x64": "vite build && electron-builder --win --x64",
+    "build:win:arm64": "vite build && electron-builder --win --arm64",
+    "build:win:portable": "vite build && electron-builder --win portable --x64",
+    "build:all": "vite build && electron-builder --mac dmg --win nsis",
+    "run:prod": "vite build && electron .",
+    "postinstall": "cp build/icon.icns node_modules/electron/dist/Electron.app/Contents/Resources/electron.icns 2>/dev/null || true; /usr/libexec/PlistBuddy -c \"Set :CFBundleDisplayName 'Total Commander'\" node_modules/electron/dist/Electron.app/Contents/Info.plist 2>/dev/null || true; /usr/libexec/PlistBuddy -c \"Set :CFBundleName 'Total Commander'\" node_modules/electron/dist/Electron.app/Contents/Info.plist 2>/dev/null || true"
+  },
+  "keywords": [
+    "total-commander",
+    "file-manager",
+    "macos",
+    "vue",
+    "electron",
+    "scss"
+  ],
+  "author": "Mikola Gogol",
+  "license": "MIT",
+  "build": {
+    "appId": "com.totalcommander.macos",
+    "productName": "Total Commander",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Total Commander"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 200
+        },
+        {
+          "x": 410,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    }
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.62.0",
+    "dayjs": "^1.11.23",
+    "lucide-vue-next": "^1.0.0",
+    "numeral": "^2.0.6",
+    "vue": "^3.5.44"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/numeral": "^2.0.5",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.0.12",
+    "sass": "^1.106.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-plugin-electron": "^1.1.2",
+    "vite-plugin-electron-renderer": "^1.0.0"
+  }
+}
