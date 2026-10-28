@@ -18,6 +18,7 @@ export interface DriveItem {
   path: string
   icon: string
   type: 'home' | 'root' | 'volume' | 'bookmark' | 'folder' | 'usb' | 'cdrom'
+  label?: string
   freeSpace?: number
   totalSpace?: number
   isRemovable?: boolean

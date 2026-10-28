@@ -83,10 +83,16 @@ function isDriveActive(drivePath: string): boolean {
 }
 
 function getDriveTooltip(drive: DriveItem): string {
-  const parts = [drive.name, `(${drive.path})`]
+  const parts = [drive.name]
   if (drive.type === 'usb') {
     parts.unshift('[USB Накопичувач]')
+  } else if (drive.type === 'cdrom') {
+    parts.unshift('[CD/DVD/ISO Образ]')
   }
+  if (drive.label) {
+    parts.push(`«${drive.label}»`)
+  }
+  parts.push(`(${drive.path})`)
   if (drive.freeSpace !== undefined && drive.totalSpace !== undefined) {
     parts.push(`• ${formatBytes(drive.freeSpace)} вільно з ${formatBytes(drive.totalSpace)}`)
   }

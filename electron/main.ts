@@ -53,6 +53,8 @@ const driveInfoCache = new Map<string, { type: string; label: string }>()
 
 async function refreshDriveTypes(): Promise<void> {
   const script = `
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 [System.IO.DriveInfo]::GetDrives() | ForEach-Object {
     $t = $_.DriveType.ToString()
     $n = $_.Name.TrimEnd('\\')
@@ -69,9 +71,11 @@ async function refreshDriveTypes(): Promise<void> {
       if (parts.length >= 2) {
         const letter = parts[0].replace(/[:\\/]/g, '').toUpperCase()
         if (letter) {
+          const rawLabel = parts[2] || ''
+          const cleanLabel = rawLabel.replace(/[\uFFFD\0]/g, '').trim()
           driveInfoCache.set(letter, {
             type: parts[1] || 'Fixed',
-            label: parts[2] || '',
+            label: cleanLabel,
           })
         }
       }
@@ -327,14 +331,14 @@ function setupIpcHandlers() {
             icon = 'Disc'
           }
 
-          const labelPart = info?.label ? ` (${info.label})` : ''
-          const driveName = `Диск (${letter}:)${labelPart}`
+          const driveName = `Диск (${letter}:)`
 
           drives.push({
             name: driveName,
             path: drivePath,
             icon,
             type,
+            label: info?.label || undefined,
             isRemovable,
           })
         }
@@ -371,7 +375,7 @@ function setupIpcHandlers() {
     }
   })
 
-  // Eject USB / External Volume
+  // Eject USB / External Volume / Virtual Disk
   ipcMain.handle('fs:ejectVolume', async (_, volumePath: string) => {
     try {
       const match = volumePath.match(/^([A-Za-z]):/)
@@ -392,54 +396,83 @@ function setupIpcHandlers() {
       }
 
       const ejectScript = `
-$targetLetter = '${letter}:'
-$sh = New-Object -ComObject Shell.Application
-$drives = $sh.Namespace(17)
-$driveItem = $null
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+$letter = '${letter}'
+$drivePath = "$letter\`:\\"
 
-if ($drives) {
-    foreach ($item in $drives.Items()) {
-        $p = $item.Path
-        $n = $item.Name
-        if ($p -eq ($targetLetter + '\\') -or $p -eq $targetLetter -or $n -like "*($targetLetter)*" -or $n -like "*$targetLetter*") {
-            $driveItem = $item
-            break
+# 1. Dismount mounted ISO / Disk Image if applicable
+try {
+    $vol = Get-Volume -DriveLetter $letter -ErrorAction SilentlyContinue
+    if ($vol) {
+        $img = Get-DiskImage -DevicePath $vol.Path -ErrorAction SilentlyContinue
+        if ($img) {
+            Dismount-DiskImage -DevicePath $vol.Path -ErrorAction SilentlyContinue
         }
     }
-}
+} catch {}
 
-if (-not $driveItem -and $drives) {
-    $driveItem = $drives.ParseName($targetLetter)
-}
-
-if ($driveItem) {
-    $executed = $false
-    foreach ($v in $driveItem.Verbs()) {
-        $vName = $v.Name.Replace('&', '').Trim()
-        if ($vName -match '^(Eject|Вилучити|Извлечь|Wysuń|Auswerfen|Éjecter)') {
-            $v.DoIt()
-            $executed = $true
-            break
+# 2. Shell COM: Direct folder item
+try {
+    $sh = New-Object -ComObject Shell.Application
+    $driveFolder = $sh.NameSpace($drivePath)
+    if ($driveFolder -and $driveFolder.Self) {
+        $item = $driveFolder.Self
+        $executed = $false
+        foreach ($verb in $item.Verbs()) {
+            $vName = $verb.Name.Replace('&', '').Trim()
+            if ($vName -match '^(Eject|Вилучити|Витягнути|Извлечь|Wysuń|Auswerfen|Éjecter)') {
+                $verb.DoIt()
+                $executed = $true
+                break
+            }
+        }
+        if (-not $executed) {
+            $item.InvokeVerb('Eject')
         }
     }
-    if (-not $executed) {
-        $driveItem.InvokeVerb('Eject')
+} catch {}
+
+# 3. Shell COM: Search in 'This PC' (Namespace 17)
+try {
+    $sh = New-Object -ComObject Shell.Application
+    $pc = $sh.Namespace(17)
+    if ($pc) {
+        foreach ($item in $pc.Items()) {
+            if ($item.Path -eq $drivePath -or $item.Path -eq "$letter\`:" -or $item.Name -like "*($letter`:)*" -or $item.Name -like "*$letter\`:*") {
+                foreach ($verb in $item.Verbs()) {
+                    $vName = $verb.Name.Replace('&', '').Trim()
+                    if ($vName -match '^(Eject|Вилучити|Витягнути|Извлечь|Wysuń|Auswerfen|Éjecter)') {
+                        $verb.DoIt()
+                        break
+                    }
+                }
+                $item.InvokeVerb('Eject')
+                break
+            }
+        }
     }
-    Write-Output "INVOKED"
-} else {
-    Write-Output "NOT_FOUND"
-}
+} catch {}
+
+# 4. Fallback mountvol dismount
+try {
+    & mountvol.exe "$letter\`:" /p 2>$null
+} catch {}
+
+# Allow Windows Explorer time to process asynchronous COM verb
+Start-Sleep -Milliseconds 800
+Write-Output "DONE"
 `
       await runPowerShell(ejectScript)
 
-      // Poll up to 3 seconds to confirm the drive is actually dismounted
+      // Poll up to 3.5 seconds to confirm the drive is actually dismounted
       let dismounted = false
-      for (let i = 0; i < 6; i++) {
-        await new Promise((r) => setTimeout(r, 500))
+      for (let i = 0; i < 7; i++) {
         if (!fs.existsSync(drivePath)) {
           dismounted = true
           break
         }
+        await new Promise((r) => setTimeout(r, 500))
       }
 
       if (dismounted) {

@@ -1341,6 +1341,19 @@ async function ejectDrive(path: string) {
       navigated = true
     }
 
+    for (const tab of leftPane.tabs) {
+      if (tab.path.toUpperCase().startsWith(driveRoot.toUpperCase())) {
+        tab.path = home
+        tab.title = 'C:'
+      }
+    }
+    for (const tab of rightPane.tabs) {
+      if (tab.path.toUpperCase().startsWith(driveRoot.toUpperCase())) {
+        tab.path = home
+        tab.title = 'C:'
+      }
+    }
+
     if (navigated) {
       await new Promise((r) => setTimeout(r, 250))
     }
