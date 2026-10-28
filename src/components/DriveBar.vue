@@ -6,8 +6,7 @@
       class="drive-pill"
       :class="{ 
         active: isDriveActive(drive.path),
-        'is-usb': drive.type === 'usb',
-        'is-dmg': drive.type === 'dmg'
+        'is-usb': drive.type === 'usb'
       }"
       :data-tooltip="getDriveTooltip(drive)"
       data-tooltip-pos="bottom"
@@ -22,16 +21,19 @@
       <button 
         v-if="drive.isRemovable"
         class="drive-eject-btn"
-        title="Витягти носій (Eject)"
-        @click.stop="$emit('eject-drive', drive.path)"
+        :disabled="ejectingPath === drive.path"
+        :title="ejectingPath === drive.path ? 'Вилучення...' : 'Вилучити носій (Eject)'"
+        @click.stop="handleEject(drive.path)"
       >
-        <CircleArrowUp :size="11" title="Витягти носій" />
+        <Loader2 v-if="ejectingPath === drive.path" :size="11" class="spin" />
+        <CircleArrowUp v-else :size="11" title="Вилучити носій" />
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { DriveItem } from '../types'
 import { formatBytes } from '../utils/formatters'
 import { 
@@ -44,7 +46,8 @@ import {
   Disc,
   Folder,
   Usb,
-  CircleArrowUp
+  CircleArrowUp,
+  Loader2
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -52,24 +55,37 @@ const props = defineProps<{
   currentPath: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'select-drive', path: string): void
   (e: 'eject-drive', path: string): void
 }>()
 
-function isDriveActive(drivePath: string): boolean {
-  if (drivePath === '/') {
-    return props.currentPath === '/'
+const ejectingPath = ref<string | null>(null)
+
+function handleEject(path: string) {
+  if (ejectingPath.value) return
+  ejectingPath.value = path
+  try {
+    emit('eject-drive', path)
+  } finally {
+    setTimeout(() => {
+      if (ejectingPath.value === path) {
+        ejectingPath.value = null
+      }
+    }, 2500)
   }
-  return props.currentPath === drivePath || props.currentPath.startsWith(drivePath + '/')
+}
+
+function isDriveActive(drivePath: string): boolean {
+  const cur = props.currentPath.replace(/[/\\]+$/, '').toLowerCase()
+  const drv = drivePath.replace(/[/\\]+$/, '').toLowerCase()
+  return cur === drv || cur.startsWith(drv + '\\') || cur.startsWith(drv + '/')
 }
 
 function getDriveTooltip(drive: DriveItem): string {
   const parts = [drive.name, `(${drive.path})`]
   if (drive.type === 'usb') {
-    parts.unshift('[USB Носій]')
-  } else if (drive.type === 'dmg') {
-    parts.unshift('[Образ диску]')
+    parts.unshift('[USB Накопичувач]')
   }
   if (drive.freeSpace !== undefined && drive.totalSpace !== undefined) {
     parts.push(`• ${formatBytes(drive.freeSpace)} вільно з ${formatBytes(drive.totalSpace)}`)

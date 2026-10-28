@@ -3,7 +3,6 @@ import numeral from 'numeral'
 
 export function formatBytes(bytes?: number | null): string {
   if (bytes === undefined || bytes === null || isNaN(bytes) || bytes <= 0) return '0 B'
-  // numeral '0.0 b' formats: 100 B, 1.2 KB, 45.6 MB, 1.8 GB
   return numeral(bytes).format('0.0 b').toUpperCase()
 }
 
@@ -19,55 +18,86 @@ export function formatDate(timestamp?: number | null, format = 'YYYY-MM-DD HH:mm
   return d.format(format)
 }
 
-export function getFileCategory(ext?: string | null, isDir?: boolean): {
+export type FileCategory = 
+  | 'folder' 
+  | 'exe' 
+  | 'archive' 
+  | 'image' 
+  | 'video' 
+  | 'audio' 
+  | 'code' 
+  | 'doc' 
+  | 'system' 
+  | 'default'
+
+export interface CategoryInfo {
+  category: FileCategory
   icon: string
   classModifier: string
-} {
+}
+
+export function getFileCategory(nameOrExt?: string | null, isDir?: boolean): CategoryInfo {
   if (isDir) {
-    return { icon: 'Folder', classModifier: 'icon-folder' }
+    return { category: 'folder', icon: 'Folder', classModifier: 'icon-folder' }
   }
 
-  const cleanExt = (typeof ext === 'string' ? ext : '').toLowerCase().replace('.', '').trim()
+  const str = (typeof nameOrExt === 'string' ? nameOrExt : '').toLowerCase()
+  const cleanExt = str.includes('.') ? str.split('.').filter(Boolean).pop()! : str.replace('.', '').trim()
+
+  // Executables / Binaries / Scripts for Windows
+  if (['exe', 'msi', 'bat', 'cmd', 'ps1', 'com', 'scr', 'vbs', 'wsf'].includes(cleanExt)) {
+    return { category: 'exe', icon: 'Code', classModifier: 'icon-exe' }
+  }
+
+  // System / Drivers / Config / Logs
+  if (['sys', 'dll', 'drv', 'tmp', 'log', 'ini', 'dat', 'blf', 'reg', 'bin', 'bak', 'swp'].includes(cleanExt)) {
+    return { category: 'system', icon: 'File', classModifier: 'icon-system' }
+  }
 
   // Images
-  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif', 'ico', 'bmp'].includes(cleanExt)) {
-    return { icon: 'Image', classModifier: 'icon-image' }
+  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif', 'ico', 'bmp', 'tiff'].includes(cleanExt)) {
+    return { category: 'image', icon: 'Image', classModifier: 'icon-image' }
   }
 
   // Videos
-  if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'].includes(cleanExt)) {
-    return { icon: 'Film', classModifier: 'icon-video' }
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', 'm4v'].includes(cleanExt)) {
+    return { category: 'video', icon: 'Film', classModifier: 'icon-video' }
   }
 
   // Audio
-  if (['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(cleanExt)) {
-    return { icon: 'Music', classModifier: 'icon-audio' }
+  if (['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'mid'].includes(cleanExt)) {
+    return { category: 'audio', icon: 'Music', classModifier: 'icon-audio' }
   }
 
-  // Code / Web
-  if (['js', 'ts', 'vue', 'jsx', 'tsx', 'html', 'css', 'scss', 'json', 'py', 'go', 'rs', 'c', 'cpp', 'java', 'php', 'rb', 'sh', 'zsh', 'yaml', 'yml', 'toml'].includes(cleanExt)) {
-    return { icon: 'Code', classModifier: 'icon-code' }
+  // Code / Web / Config
+  if (['js', 'ts', 'vue', 'jsx', 'tsx', 'html', 'css', 'scss', 'json', 'py', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'rb', 'sh', 'yaml', 'yml', 'toml', 'sql', 'xml'].includes(cleanExt)) {
+    return { category: 'code', icon: 'Code', classModifier: 'icon-code' }
   }
 
   // Documents
-  if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'rtf'].includes(cleanExt)) {
-    return { icon: 'FileText', classModifier: 'icon-doc' }
+  if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx', 'txt', 'md', 'rtf'].includes(cleanExt)) {
+    return { category: 'doc', icon: 'FileText', classModifier: 'icon-doc' }
   }
 
   // Archives
-  if (['zip', 'tar', 'gz', 'bz2', '7z', 'rar', 'xz', 'dmg', 'iso', 'blockmap'].includes(cleanExt)) {
-    return { icon: 'Archive', classModifier: 'icon-archive' }
+  if (['zip', 'tar', 'gz', 'bz2', '7z', 'rar', 'xz', 'iso', 'cab', 'tgz', 'dmg'].includes(cleanExt)) {
+    return { category: 'archive', icon: 'Archive', classModifier: 'icon-archive' }
   }
 
-  return { icon: 'File', classModifier: 'icon-default' }
+  return { category: 'default', icon: 'File', classModifier: 'icon-default' }
 }
 
-export function getFileTypeDescription(ext?: string | null, isDir?: boolean): string {
+export function getFileTypeDescription(nameOrExt?: string | null, isDir?: boolean): string {
   if (isDir) return 'Папка'
-  const cleanExt = (typeof ext === 'string' ? ext : '').toLowerCase().replace('.', '').trim()
-  if (cleanExt === 'dmg') return 'Образ диска Apple macOS (.dmg)'
+  const str = (typeof nameOrExt === 'string' ? nameOrExt : '').toLowerCase()
+  const cleanExt = str.includes('.') ? str.split('.').filter(Boolean).pop()! : str.replace('.', '').trim()
+
   if (cleanExt === 'exe') return 'Виконуваний файл Windows (.exe)'
-  if (cleanExt === 'app') return 'Програма macOS (.app)'
+  if (cleanExt === 'msi') return 'Інсталятор Windows (.msi)'
+  if (cleanExt === 'bat' || cleanExt === 'cmd') return 'Пакетний файл Windows'
+  if (cleanExt === 'ps1') return 'Скрипт PowerShell'
+  if (cleanExt === 'sys') return 'Системний драйвер Windows (.sys)'
+  if (cleanExt === 'dll') return 'Динамічна бібліотека (.dll)'
   if (['zip', 'tar', 'gz', '7z', 'rar', 'xz'].includes(cleanExt)) return 'Стиснений архів'
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'].includes(cleanExt)) return 'Графічне зображення'
   if (['mp4', 'mov', 'avi', 'mkv'].includes(cleanExt)) return 'Відеофайл'

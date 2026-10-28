@@ -93,10 +93,15 @@
           </div>
         </div>
 
-        <!-- Delete (F8) -->
+        <!-- Delete (F8 / Shift+Delete) -->
         <div v-else-if="opType === 'delete'">
           <p class="delete-warning">
-            Are you sure you want to move <strong>{{ sourceItems.length }} item(s)</strong> to macOS Trash?
+            <span v-if="targetDir === 'PERMANENT'">
+              УВАГА! Ви дійсно бажаєте <strong>БЕЗПОВОРОТНО ВИДАЛИТИ {{ sourceItems.length }} елемент(ів)</strong> без можливості відновлення з Кошика?
+            </span>
+            <span v-else>
+              Ви впевнені, що хочете перемістити <strong>{{ sourceItems.length }} елемент(ів)</strong> у Кошик Windows?
+            </span>
           </p>
           <div class="items-preview-list">
             <div v-for="item in sourceItems.slice(0, 6)" :key="item" class="item-preview">
@@ -117,7 +122,7 @@
           :disabled="isProcessing"
           @click="submit"
         >
-          {{ isProcessing ? 'Deleting...' : 'Move to Trash' }}
+          {{ isProcessing ? 'Видалення...' : (targetDir === 'PERMANENT' ? 'Безповоротно видалити (Shift+Del)' : 'У Кошик (Delete)') }}
         </button>
         <button 
           v-else 
@@ -153,11 +158,11 @@ const isProcessing = ref(false)
 
 const modalTitle = computed(() => {
   switch (props.opType) {
-    case 'mkdir': return 'Create Directory'
-    case 'newfile': return 'Create File'
+    case 'mkdir': return 'Create Directory (F7)'
+    case 'newfile': return 'Create File (Shift+F4)'
     case 'copy': return 'Copy Files (F5)'
     case 'move': return 'Move / Rename (F6)'
-    case 'delete': return 'Delete Files (F8)'
+    case 'delete': return props.targetDir === 'PERMANENT' ? 'Permanent Delete (Shift+Del)' : 'Delete Files (F8)'
     case 'rename': return 'Rename (F2)'
   }
 })
@@ -201,7 +206,7 @@ onMounted(() => {
   } else if (props.opType === 'copy' || props.opType === 'move') {
     inputText.value = props.targetDir
   } else if (props.opType === 'rename' && props.sourceItems[0]) {
-    inputText.value = props.sourceItems[0].split('/').pop() || ''
+    inputText.value = props.sourceItems[0].split(/[/\\]/).filter(Boolean).pop() || ''
   }
 
   nextTick(() => {

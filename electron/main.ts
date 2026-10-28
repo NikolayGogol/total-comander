@@ -32,14 +32,55 @@ function formatPermissions(mode: number, isDirectory: boolean): string {
   return type + perms
 }
 
-function createWindow() {
-  const iconPath = process.platform === 'win32'
-    ? path.join(__dirname, '../build/icon.ico')
-    : path.join(__dirname, '../build/icon.png')
+function runPowerShell(script: string): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    const defaultPs = path.join(
+      process.env.SystemRoot || 'C:\\Windows',
+      'System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+    )
+    const psExe = fs.existsSync(defaultPs) ? `"${defaultPs}"` : 'powershell.exe'
+    const buffer = Buffer.from(script, 'utf16le')
+    const base64Script = buffer.toString('base64')
+    const cmd = `${psExe} -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${base64Script}`
 
-  if (process.platform === 'darwin' && app.dock && fs.existsSync(iconPath)) {
-    app.dock.setIcon(iconPath)
+    exec(cmd, { windowsHide: true, timeout: 8000 }, (error, stdout, stderr) => {
+      resolve({ stdout: stdout || '', stderr: stderr || (error ? error.message : '') })
+    })
+  })
+}
+
+const driveInfoCache = new Map<string, { type: string; label: string }>()
+
+async function refreshDriveTypes(): Promise<void> {
+  const script = `
+[System.IO.DriveInfo]::GetDrives() | ForEach-Object {
+    $t = $_.DriveType.ToString()
+    $n = $_.Name.TrimEnd('\\')
+    $lbl = ''
+    try { if ($_.IsReady) { $lbl = $_.VolumeLabel } } catch {}
+    Write-Output "$n|$t|$lbl"
+}
+`
+  const { stdout } = await runPowerShell(script)
+  if (stdout) {
+    const lines = stdout.split(/\r?\n/)
+    for (const line of lines) {
+      const parts = line.trim().split('|')
+      if (parts.length >= 2) {
+        const letter = parts[0].replace(/[:\\/]/g, '').toUpperCase()
+        if (letter) {
+          driveInfoCache.set(letter, {
+            type: parts[1] || 'Fixed',
+            label: parts[2] || '',
+          })
+        }
+      }
+    }
   }
+}
+
+function createWindow() {
+  const iconPath = path.join(__dirname, '../build/icon.ico')
 
   win = new BrowserWindow({
     width: 1280,
@@ -48,9 +89,9 @@ function createWindow() {
     minHeight: 600,
     title: 'Total Commander',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: process.platform === 'darwin' ? { x: 14, y: 14 } : undefined,
-    backgroundColor: '#121418',
+    titleBarStyle: 'default',
+    autoHideMenuBar: true,
+    backgroundColor: '#0c0f16',
     show: false,
     webPreferences: {
       preload,
@@ -70,70 +111,77 @@ function createWindow() {
 
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL)
-    // Optional: win.webContents.openDevTools()
   } else {
     win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
 }
 
 function setupAppMenu() {
-  if (process.platform === 'darwin') {
-    const template: Electron.MenuItemConstructorOptions[] = [
-      {
-        label: app.name,
-        submenu: [
-          { role: 'about', label: 'About Total Commander' },
-          { type: 'separator' },
-          { role: 'hide', label: 'Hide Total Commander' },
-          { role: 'hideOthers', label: 'Hide Others' },
-          { role: 'unhide', label: 'Show All' },
-          { type: 'separator' },
-          { role: 'quit', label: 'Quit Total Commander' },
-        ],
-      },
-      { role: 'fileMenu' },
-      {
-        label: 'Edit',
-        submenu: [
-          { role: 'undo' },
-          { role: 'redo' },
-          { type: 'separator' },
-          {
-            label: 'Copy',
-            accelerator: 'CmdOrCtrl+C',
-            click: (_, focusedWindow) => {
-              focusedWindow?.webContents.send('app:command', 'copy')
-            },
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'Файл',
+      submenu: [
+        {
+          label: 'Оновити',
+          accelerator: 'Ctrl+R',
+          click: (_, focusedWindow) => {
+            focusedWindow?.webContents.send('app:command', 'refresh')
           },
-          {
-            label: 'Cut',
-            accelerator: 'CmdOrCtrl+X',
-            click: (_, focusedWindow) => {
-              focusedWindow?.webContents.send('app:command', 'cut')
-            },
+        },
+        { type: 'separator' },
+        { role: 'quit', label: 'Вихід' },
+      ],
+    },
+    {
+      label: 'Правка',
+      submenu: [
+        {
+          label: 'Копіювати',
+          accelerator: 'Ctrl+C',
+          click: (_, focusedWindow) => {
+            focusedWindow?.webContents.send('app:command', 'copy')
           },
-          {
-            label: 'Paste',
-            accelerator: 'CmdOrCtrl+V',
-            click: (_, focusedWindow) => {
-              focusedWindow?.webContents.send('app:command', 'paste')
-            },
+        },
+        {
+          label: 'Вирізати',
+          accelerator: 'Ctrl+X',
+          click: (_, focusedWindow) => {
+            focusedWindow?.webContents.send('app:command', 'cut')
           },
-          {
-            label: 'Select All',
-            accelerator: 'CmdOrCtrl+A',
-            click: (_, focusedWindow) => {
-              focusedWindow?.webContents.send('app:command', 'selectAll')
-            },
+        },
+        {
+          label: 'Вставити',
+          accelerator: 'Ctrl+V',
+          click: (_, focusedWindow) => {
+            focusedWindow?.webContents.send('app:command', 'paste')
           },
-        ],
-      },
-      { role: 'viewMenu' },
-      { role: 'windowMenu' },
-    ]
-    const menu = Menu.buildFromTemplate(template)
-    Menu.setApplicationMenu(menu)
-  }
+        },
+        {
+          label: 'Виділити все',
+          accelerator: 'Ctrl+A',
+          click: (_, focusedWindow) => {
+            focusedWindow?.webContents.send('app:command', 'selectAll')
+          },
+        },
+      ],
+    },
+    {
+      label: 'Вигляд',
+      submenu: [
+        { role: 'reload', label: 'Перезавантажити' },
+        { role: 'forceReload', label: 'Примусове перезавантаження' },
+        { role: 'toggleDevTools', label: 'Інструменти розробника' },
+        { type: 'separator' },
+        { role: 'resetZoom', label: 'Скинути масштаб' },
+        { role: 'zoomIn', label: 'Збільшити' },
+        { role: 'zoomOut', label: 'Зменшити' },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: 'Повноекранний режим' },
+      ],
+    },
+  ]
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
 }
 
 app.whenReady().then(() => {
@@ -141,6 +189,7 @@ app.whenReady().then(() => {
   setupIpcHandlers()
   setupVolumeWatcher()
   createWindow()
+  refreshDriveTypes().catch(() => {})
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -150,52 +199,24 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  app.quit()
 })
 
 function setupVolumeWatcher() {
-  if (process.platform !== 'darwin') return
-  try {
-    let debounceTimer: NodeJS.Timeout | null = null
-    fs.watch('/Volumes', () => {
-      if (debounceTimer) clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(() => {
+  let knownDrives = ''
+  setInterval(async () => {
+    try {
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+      const current = letters.filter((l) => fs.existsSync(`${l}:\\`)).join(',')
+      if (knownDrives && current !== knownDrives) {
+        await refreshDriveTypes()
         if (win && !win.isDestroyed()) {
           win.webContents.send('drives:changed')
         }
-      }, 500)
-    })
-  } catch (err) {
-    console.warn('Could not watch /Volumes:', err)
-  }
-}
-
-async function getVolumeInfo(volPath: string): Promise<{ type: 'usb' | 'dmg' | 'volume'; isRemovable: boolean }> {
-  return new Promise((resolve) => {
-    exec(`diskutil info -plist "${volPath}"`, (err, stdout) => {
-      if (err || !stdout) {
-        return resolve({ type: 'volume', isRemovable: false })
       }
-      const busMatch = stdout.match(/<key>BusProtocol<\/key>\s*<string>([^<]+)<\/string>/i)
-      const bus = busMatch ? busMatch[1].trim() : ''
-      const internalMatch = stdout.match(/<key>Internal<\/key>\s*<(true|false)\/>/i)
-      const isInternal = internalMatch ? internalMatch[1] === 'true' : false
-      const ejectableMatch = stdout.match(/<key>Ejectable<\/key>\s*<(true|false)\/>/i)
-      const isEjectable = ejectableMatch ? ejectableMatch[1] === 'true' : false
-
-      if (bus.toUpperCase() === 'USB') {
-        resolve({ type: 'usb', isRemovable: true })
-      } else if (bus === 'Disk Image') {
-        resolve({ type: 'dmg', isRemovable: true })
-      } else if (!isInternal || isEjectable) {
-        resolve({ type: 'usb', isRemovable: isEjectable })
-      } else {
-        resolve({ type: 'volume', isRemovable: isEjectable })
-      }
-    })
-  })
+      knownDrives = current
+    } catch {}
+  }, 2000)
 }
 
 function setupIpcHandlers() {
@@ -266,78 +287,71 @@ function setupIpcHandlers() {
     }
   })
 
-  // Quick Access / Drives & USB Media
+  // Quick Access / Drives
   ipcMain.handle('fs:getDrives', async () => {
     try {
-      const isWin = process.platform === 'win32'
-      const home = os.homedir()
-      const rootPath = isWin ? (process.env.SystemDrive ? process.env.SystemDrive + '\\' : 'C:\\') : '/'
-      const rootName = isWin ? `Локальний диск (${rootPath})` : 'Macintosh HD'
-
-      const drives: any[] = [
-        { name: rootName, path: rootPath, icon: 'HardDrive', type: 'root', isRemovable: false },
-        { name: 'Home (~)', path: home, icon: 'Home', type: 'home', isRemovable: false },
-        { name: 'Desktop', path: path.join(home, 'Desktop'), icon: 'Monitor', type: 'folder', isRemovable: false },
-        { name: 'Documents', path: path.join(home, 'Documents'), icon: 'FileText', type: 'folder', isRemovable: false },
-        { name: 'Downloads', path: path.join(home, 'Downloads'), icon: 'Download', type: 'folder', isRemovable: false },
-      ]
-
-      if (!isWin) {
-        drives.push({ name: 'Applications', path: '/Applications', icon: 'Grid', type: 'folder', isRemovable: false })
+      if (driveInfoCache.size === 0) {
+        await Promise.race([
+          refreshDriveTypes(),
+          new Promise((r) => setTimeout(r, 1500)),
+        ])
       }
 
-      // Check /Volumes on macOS or drive letters on Windows
-      if (process.platform === 'darwin') {
-        try {
-          const volumes = await fsPromises.readdir('/Volumes')
-          for (const vol of volumes) {
-            if (vol === 'Macintosh HD') continue
-            const volPath = path.join('/Volumes', vol)
-            const volInfo = await getVolumeInfo(volPath)
-            drives.push({
-              name: vol,
-              path: volPath,
-              icon: volInfo.type === 'usb' ? 'Usb' : volInfo.type === 'dmg' ? 'Disc' : 'HardDrive',
-              type: volInfo.type,
-              isRemovable: volInfo.isRemovable,
-            })
+      const systemDrive = process.env.SystemDrive ? process.env.SystemDrive.toUpperCase() + '\\' : 'C:\\'
+      const drives: any[] = []
+
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+      for (const letter of letters) {
+        const drivePath = `${letter}:\\`
+        if (fs.existsSync(drivePath)) {
+          const isSys = drivePath.toUpperCase() === systemDrive
+          const info = driveInfoCache.get(letter)
+
+          let dType = info?.type
+          if (!dType) {
+            dType = isSys || letter === 'D' ? 'Fixed' : 'Removable'
           }
-        } catch {
-          // Ignore volume read error if any
-        }
-      } else if (isWin) {
-        // Enumerate Windows drive letters (D:, E:, F:, G:, etc.)
-        const letters = 'DEFGHIJKLMNOPQRSTUVWXYZ'.split('')
-        for (const letter of letters) {
-          const driveLetterPath = `${letter}:\\`
-          if (fs.existsSync(driveLetterPath)) {
-            drives.push({
-              name: `Диск (${letter}:)`,
-              path: driveLetterPath,
-              icon: 'HardDrive',
-              type: 'volume',
-              isRemovable: true,
-            })
+
+          const isRemovable = dType === 'Removable' || dType === 'CDRom'
+
+          let icon = 'HardDrive'
+          let type = 'volume'
+          if (isSys) {
+            type = 'root'
+            icon = 'HardDrive'
+          } else if (dType === 'Removable') {
+            type = 'usb'
+            icon = 'Usb'
+          } else if (dType === 'CDRom') {
+            type = 'cdrom'
+            icon = 'Disc'
           }
+
+          const labelPart = info?.label ? ` (${info.label})` : ''
+          const driveName = `Диск (${letter}:)${labelPart}`
+
+          drives.push({
+            name: driveName,
+            path: drivePath,
+            icon,
+            type,
+            isRemovable,
+          })
         }
       }
 
-      // Filter only paths that actually exist and attach free/total disk space
-      const existingDrives = []
+      // Calculate disk space
       for (const d of drives) {
-        if (fs.existsSync(d.path)) {
-          try {
-            const stat = await fsPromises.statfs(d.path)
-            d.totalSpace = stat.bsize * stat.blocks
-            d.freeSpace = stat.bsize * stat.bavail
-          } catch {
-            // Virtual or unreadable filesystem
-          }
-          existingDrives.push(d)
+        try {
+          const stat = await fsPromises.statfs(d.path)
+          d.totalSpace = stat.bsize * stat.blocks
+          d.freeSpace = stat.bsize * stat.bavail
+        } catch {
+          // Virtual or unreadable filesystem
         }
       }
 
-      return { success: true, data: existingDrives }
+      return { success: true, data: drives }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
@@ -360,24 +374,88 @@ function setupIpcHandlers() {
   // Eject USB / External Volume
   ipcMain.handle('fs:ejectVolume', async (_, volumePath: string) => {
     try {
-      if (!volumePath.startsWith('/Volumes/')) {
-        return { success: false, error: 'Тільки зовнішні томи або USB можна вилучити' }
+      const match = volumePath.match(/^([A-Za-z]):/)
+      if (!match) {
+        return { success: false, error: 'Некоректний шлях до носія' }
       }
-      await new Promise<void>((resolve, reject) => {
-        exec(`diskutil eject "${volumePath}"`, (err, stdout, stderr) => {
-          if (err) {
-            exec(`diskutil unmount "${volumePath}"`, (err2, stdout2, stderr2) => {
-              if (err2) return reject(new Error(stderr2 || stderr || err2.message))
-              resolve()
-            })
-          } else {
-            resolve()
-          }
-        })
-      })
-      return { success: true }
+      const letter = match[1].toUpperCase()
+      const drivePath = `${letter}:\\`
+
+      const sysDriveLetter = (process.env.SystemDrive || 'C:').charAt(0).toUpperCase()
+      if (letter === sysDriveLetter) {
+        return { success: false, error: 'Неможливо вилучити системний диск' }
+      }
+
+      const cachedInfo = driveInfoCache.get(letter)
+      if (cachedInfo && cachedInfo.type === 'Fixed') {
+        return { success: false, error: 'Неможливо вилучити вбудований фіксований диск' }
+      }
+
+      const ejectScript = `
+$targetLetter = '${letter}:'
+$sh = New-Object -ComObject Shell.Application
+$drives = $sh.Namespace(17)
+$driveItem = $null
+
+if ($drives) {
+    foreach ($item in $drives.Items()) {
+        $p = $item.Path
+        $n = $item.Name
+        if ($p -eq ($targetLetter + '\\') -or $p -eq $targetLetter -or $n -like "*($targetLetter)*" -or $n -like "*$targetLetter*") {
+            $driveItem = $item
+            break
+        }
+    }
+}
+
+if (-not $driveItem -and $drives) {
+    $driveItem = $drives.ParseName($targetLetter)
+}
+
+if ($driveItem) {
+    $executed = $false
+    foreach ($v in $driveItem.Verbs()) {
+        $vName = $v.Name.Replace('&', '').Trim()
+        if ($vName -match '^(Eject|Вилучити|Извлечь|Wysuń|Auswerfen|Éjecter)') {
+            $v.DoIt()
+            $executed = $true
+            break
+        }
+    }
+    if (-not $executed) {
+        $driveItem.InvokeVerb('Eject')
+    }
+    Write-Output "INVOKED"
+} else {
+    Write-Output "NOT_FOUND"
+}
+`
+      await runPowerShell(ejectScript)
+
+      // Poll up to 3 seconds to confirm the drive is actually dismounted
+      let dismounted = false
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 500))
+        if (!fs.existsSync(drivePath)) {
+          dismounted = true
+          break
+        }
+      }
+
+      if (dismounted) {
+        driveInfoCache.delete(letter)
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('drives:changed')
+        }
+        return { success: true }
+      } else {
+        return {
+          success: false,
+          error: `Диск (${letter}:) зайнятий іншою програмою або системою Windows. Будь ласка, закрийте відкриті файли і спробуйте знову.`,
+        }
+      }
     } catch (err: any) {
-      return { success: false, error: err.message }
+      return { success: false, error: err.message || 'Помилка при вилученні носія' }
     }
   })
 
@@ -401,15 +479,14 @@ function setupIpcHandlers() {
     }
   })
 
-  // Delete Paths (Move to Trash by default, or permanent with fallback)
+  // Delete Paths (Move to Windows Recycle Bin by default)
   ipcMain.handle('fs:deletePaths', async (_, paths: string[], moveToTrash = true) => {
     try {
       for (const itemPath of paths) {
         if (moveToTrash) {
           try {
             await shell.trashItem(itemPath)
-          } catch (trashErr) {
-            // Fallback to permanent removal if macOS Trash rejects path (e.g. external volumes or protected temp)
+          } catch {
             await fsPromises.rm(itemPath, { recursive: true, force: true })
           }
         } else {
@@ -428,11 +505,10 @@ function setupIpcHandlers() {
       for (const src of sources) {
         const baseName = path.basename(src)
         const dest = path.join(destinationDir, baseName)
-        if (src === dest) {
-          // If copying to same directory, create copy name: filename - Copy.ext
+        if (src.toLowerCase() === dest.toLowerCase()) {
           const ext = path.extname(baseName)
           const nameWithoutExt = path.basename(baseName, ext)
-          const copyDest = path.join(destinationDir, `${nameWithoutExt} - Copy${ext}`)
+          const copyDest = path.join(destinationDir, `${nameWithoutExt} - Копія${ext}`)
           await fsPromises.cp(src, copyDest, { recursive: true })
         } else {
           await fsPromises.cp(src, dest, { recursive: true })
@@ -450,7 +526,7 @@ function setupIpcHandlers() {
       for (const src of sources) {
         const baseName = path.basename(src)
         const dest = path.join(destinationDir, baseName)
-        if (src === dest) continue
+        if (src.toLowerCase() === dest.toLowerCase()) continue
 
         try {
           await fsPromises.rename(src, dest)
@@ -480,19 +556,18 @@ function setupIpcHandlers() {
     }
   })
 
-  // Read File Content (for F3 Viewer and F4 Editor)
+  // Read File Content (for Viewer and Editor)
   ipcMain.handle('fs:readFile', async (_, filePath: string, maxBytes = 2 * 1024 * 1024) => {
     try {
       const stats = await fsPromises.stat(filePath)
       if (stats.size > maxBytes) {
         return {
           success: false,
-          error: `File is too large to display directly (${(stats.size / (1024 * 1024)).toFixed(1)} MB). Limit is 2 MB.`,
+          error: `Файл занадто великий для відображення (${(stats.size / (1024 * 1024)).toFixed(1)} МБ). Ліміт 2 МБ.`,
         }
       }
 
       const buffer = await fsPromises.readFile(filePath)
-      // Check if binary (null bytes test)
       let isBinary = false
       const checkLength = Math.min(buffer.length, 1024)
       for (let i = 0; i < checkLength; i++) {
@@ -520,7 +595,7 @@ function setupIpcHandlers() {
     }
   })
 
-  // Write File Content (for F4 Editor)
+  // Write File Content
   ipcMain.handle('fs:writeFile', async (_, filePath: string, content: string) => {
     try {
       await fsPromises.writeFile(filePath, content, 'utf-8')
@@ -530,7 +605,7 @@ function setupIpcHandlers() {
     }
   })
 
-  // Open with macOS default app
+  // Open with Windows default app
   ipcMain.handle('fs:openPath', async (_, filePath: string) => {
     try {
       const result = await shell.openPath(filePath)
@@ -543,28 +618,38 @@ function setupIpcHandlers() {
     }
   })
 
-  // Open Directory in System Terminal (macOS Terminal / Windows cmd or PowerShell)
-  ipcMain.handle('fs:openInTerminal', async (_, dirPath: string) => {
+  // Show in Windows Explorer
+  ipcMain.handle('fs:showInFolder', async (_, filePath: string) => {
     try {
-      if (process.platform === 'win32') {
-        exec(`start cmd /K cd /D "${dirPath}"`, (err) => {
-          if (err) console.error('Failed to open CMD:', err)
-        })
-      } else {
-        exec(`open -a Terminal "${dirPath}"`, (err) => {
-          if (err) console.error('Failed to open Terminal:', err)
-        })
-      }
+      shell.showItemInFolder(filePath)
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
   })
 
-  // macOS QuickLook (`qlmanage -p`)
+  // Open Directory in Windows Terminal / PowerShell / CMD
+  ipcMain.handle('fs:openInTerminal', async (_, dirPath: string) => {
+    try {
+      exec(`start wt.exe -d "${dirPath}"`, (err) => {
+        if (err) {
+          exec(`start powershell.exe -NoExit -Command "Set-Location -LiteralPath '${dirPath}'"`, (err2) => {
+            if (err2) {
+              exec(`start cmd.exe /K cd /D "${dirPath}"`)
+            }
+          })
+        }
+      })
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // QuickLook substitute: Open default system app
   ipcMain.handle('fs:quickLook', async (_, filePath: string) => {
     try {
-      exec(`qlmanage -p "${filePath}" >/dev/null 2>&1 &`)
+      await shell.openPath(filePath)
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -627,12 +712,12 @@ function setupIpcHandlers() {
           if (contentSearch && entry.isFile()) {
             try {
               const fileContent = await fsPromises.readFile(fullPath, 'utf8')
-              const lines = fileContent.split('\n')
+              const lines = fileContent.split(/\r?\n/)
               const foundLine = lines.find((l) => l.toLowerCase().includes(contentSearch.toLowerCase()))
               if (foundLine) {
                 contentMatchLine = foundLine.trim().slice(0, 100)
               } else {
-                continue // Doesn't match content search
+                continue
               }
             } catch {
               continue
@@ -672,7 +757,7 @@ function setupIpcHandlers() {
 
   let appClipboard: { paths: string[]; action: 'copy' | 'cut' } = { paths: [], action: 'copy' }
 
-  // Copy Files to System Clipboard & In-App Store
+  // Copy Files to Clipboard
   ipcMain.handle('clipboard:copyFiles', async (_, paths: string[], action: 'copy' | 'cut' = 'copy') => {
     try {
       if (!paths || paths.length === 0) {
@@ -685,19 +770,7 @@ function setupIpcHandlers() {
       }
 
       appClipboard = { paths: validPaths, action }
-
-      // 1. Text format (for pasting in terminal, notes, editors, web)
-      clipboard.writeText(validPaths.join('\n'))
-
-      // 2. Native macOS NSFilenamesPboardType (standard Apple pasteboard for files)
-      const plist = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<array>
-${validPaths.map((p) => `  <string>${p}</string>`).join('\n')}
-</array>
-</plist>`
-      clipboard.writeBuffer('NSFilenamesPboardType', Buffer.from(plist, 'utf-8'))
+      clipboard.writeText(validPaths.join('\r\n'))
 
       return { success: true, count: validPaths.length, action }
     } catch (err: any) {
@@ -708,7 +781,6 @@ ${validPaths.map((p) => `  <string>${p}</string>`).join('\n')}
   // Read Files from Clipboard
   ipcMain.handle('clipboard:getFiles', async () => {
     try {
-      // 1. Check in-app clipboard first
       if (appClipboard.paths.length > 0) {
         const existing = appClipboard.paths.filter((p) => fs.existsSync(p))
         if (existing.length > 0) {
@@ -716,28 +788,19 @@ ${validPaths.map((p) => `  <string>${p}</string>`).join('\n')}
         }
       }
 
-      // 2. Check native NSFilenamesPboardType
-      const buffer = clipboard.readBuffer('NSFilenamesPboardType')
-      if (buffer && buffer.length > 0) {
-        const xml = buffer.toString('utf-8')
-        const matches = xml.match(/<string>(.*?)<\/string>/g)
-        if (matches) {
-          const paths = matches
-            .map((m) => m.replace(/<\/?string>/g, '').trim())
-            .filter((p) => fs.existsSync(p))
-          if (paths.length > 0) {
-            return { success: true, paths, action: 'copy' }
-          }
-        }
-      }
-
-      // 3. Fallback: check text clipboard lines
       const text = clipboard.readText().trim()
       if (text) {
-        const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
         const valid = lines
-          .map((l) => l.replace(/^file:\/\//, ''))
-          .filter((l) => l.startsWith('/') && fs.existsSync(l))
+          .map((l) => {
+            let p = l.replace(/^file:\/\/\/?/, '')
+            try {
+              p = decodeURI(p)
+            } catch {}
+            return p
+          })
+          .filter((l) => fs.existsSync(l))
+
         if (valid.length > 0) {
           return { success: true, paths: valid, action: 'copy' }
         }
@@ -749,7 +812,7 @@ ${validPaths.map((p) => `  <string>${p}</string>`).join('\n')}
     }
   })
 
-  // Clear In-App Clipboard
+  // Clear Clipboard
   ipcMain.handle('clipboard:clear', async () => {
     appClipboard = { paths: [], action: 'copy' }
     return { success: true }

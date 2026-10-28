@@ -46,6 +46,7 @@
       @select-range="(from, to) => $emit('select-range', from, to)"
       @sort="(field) => $emit('sort', field)"
       @drop-items="(sources, target) => $emit('drag-drop-items', sources, target)"
+      @context-menu="(payload) => $emit('context-menu', { ...payload, paneKey: props.paneId })"
     />
 
     <!-- Pane Footer / Stats -->
@@ -72,6 +73,7 @@ import PaneFooter from './PaneFooter.vue'
 
 const props = defineProps<{
   pane: PaneState
+  paneId: 'left' | 'right'
   isActive: boolean
   canGoBack: boolean
   canGoForward: boolean
@@ -93,6 +95,7 @@ const emit = defineEmits<{
   (e: 'sort', field: SortField): void
   (e: 'open-native', item: FileItem): void
   (e: 'drag-drop-items', sourcePaths: string[], targetDir: string): void
+  (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null; paneKey: 'left' | 'right' }): void
 }>()
 
 const filterText = ref('')

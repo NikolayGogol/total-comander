@@ -93,9 +93,9 @@
     <button 
       class="fn-button" 
       :disabled="selectedCount === 0 && !hasCursorItem"
-      data-tooltip="Видалити у Смітник (F8 / Delete)"
+      data-tooltip="Видалити у Кошик (F8 / Delete)"
       data-tooltip-pos="top"
-      title="Перемістити вибрані файли у macOS Смітник (F8 або Delete)"
+      title="Перемістити вибрані файли у Кошик Windows (F8 або Delete)"
       @click="$emit('action', 'delete')"
     >
       <span class="fn-key">F8</span>

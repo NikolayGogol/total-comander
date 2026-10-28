@@ -27,6 +27,7 @@
   padding: $size-space-xs $size-space-sm 0 $size-space-sm;
   gap: $size-space-xs;
   overflow-x: auto;
+  @include custom-scrollbar;
 
   .pane-tab {
     display: flex;

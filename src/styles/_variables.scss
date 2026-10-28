@@ -27,7 +27,7 @@ $dark-accent-amber: #f59e0b;
 $dark-accent-rose: #f43f5e;
 $dark-accent-purple: #a855f7;
 
-// --- Light Theme Tokens (Refined macOS style) ---
+// --- Light Theme Tokens ---
 $light-bg-app: #f1f5f9;
 $light-bg-card: #ffffff;
 $light-bg-panel: #ffffff;
@@ -85,7 +85,7 @@ $size-space-3xl: 24px;
 
 // --- Component Sizes ---
 $size-titlebar-height: 42px;
-$size-titlebar-traffic-lights-padding: 80px;
+$size-titlebar-traffic-lights-padding: 16px;
 $size-drivebar-height: 38px;
 $size-btn-icon: 28px;
 $size-btn-nav: 26px;
@@ -148,24 +148,41 @@ $blur-modal: blur(8px);
   --row-selected-text: #bfdbfe;
   --row-cursor: rgba(255, 255, 255, 0.06);
   --row-cursor-border: rgba(59, 130, 246, 0.6);
-  --row-border: rgba(255, 255, 255, 0.02);
+  --row-border: rgba(255, 255, 255, 0.03);
   --shadow-glow-active: 0 0 0 1px #{$dark-accent-blue}, 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.7);
   --bg-modal-overlay: rgba(0, 0, 0, 0.7);
   --bg-loading: rgba(18, 22, 32, 0.65);
   --bg-toast: #1c2333;
+  --scrollbar-track: rgba(255, 255, 255, 0.015);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.25);
+  --scrollbar-thumb-hover: rgba(148, 163, 184, 0.55);
+  --scrollbar-thumb-active: #{$dark-accent-blue};
+
+  // Semantic File & Item Colors
+  --color-dir: #f59e0b;
+  --color-dir-name: #fcd34d;
+  --color-exe: #10b981;
+  --color-archive: #c084fc;
+  --color-code: #38bdf8;
+  --color-doc: #60a5fa;
+  --color-image: #34d399;
+  --color-video: #f43f5e;
+  --color-audio: #f472b6;
+  --color-system: #64748b;
+  --row-alt-bg: rgba(255, 255, 255, 0.015);
 }
 
 [data-theme='light'] {
-  --bg-app: #{$light-bg-app};
-  --bg-app-gradient: radial-gradient(circle at 50% 0%, #e2e8f0 0%, #{$light-bg-app} 75%);
-  --bg-card: #{$light-bg-card};
-  --bg-panel: #{$light-bg-panel};
-  --bg-panel-header: #{$light-bg-panel-header};
-  --bg-subtle: #{$light-bg-subtle};
-  --bg-active-tab: #{$light-bg-active-tab};
+  --bg-app: #f1f5f9;
+  --bg-app-gradient: radial-gradient(circle at 50% 0%, #e2e8f0 0%, #f1f5f9 75%);
+  --bg-card: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-panel-header: #f8fafc;
+  --bg-subtle: #e2e8f0;
+  --bg-active-tab: #ffffff;
   --bg-inactive-tab: #f1f5f9;
-  --bg-table-header: #f8fafc;
+  --bg-table-header: #f1f5f9;
   --bg-input: #ffffff;
   --bg-viewer: #f8fafc;
   --bg-pill: rgba(0, 0, 0, 0.04);
@@ -174,30 +191,47 @@ $blur-modal: blur(8px);
   --bg-fn-btn-hover: #e2e8f0;
   --bg-fn-key: rgba(2, 132, 199, 0.12);
   --border-fn-key: rgba(2, 132, 199, 0.25);
-  --border-subtle: #{$light-border-subtle};
-  --border-hover: #{$light-border-hover};
-  --border-active: #{$light-border-active};
-  --text-main: #{$light-text-main};
-  --text-secondary: #{$light-text-secondary};
-  --text-muted: #{$light-text-muted};
-  --text-dim: #{$light-text-dim};
-  --accent-blue: #{$light-accent-blue};
-  --accent-cyan: #{$light-accent-cyan};
-  --accent-emerald: #{$light-accent-emerald};
-  --accent-amber: #{$light-accent-amber};
-  --accent-rose: #{$light-accent-rose};
-  --accent-purple: #{$light-accent-purple};
-  --row-hover: rgba(37, 99, 235, 0.06);
-  --row-selected: rgba(37, 99, 235, 0.15);
+  --border-subtle: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --border-active: #2563eb;
+  --text-main: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --accent-blue: #2563eb;
+  --accent-cyan: #0891b2;
+  --accent-emerald: #059669;
+  --accent-amber: #d97706;
+  --accent-rose: #e11d48;
+  --accent-purple: #7c3aed;
+  --row-hover: rgba(37, 99, 235, 0.07);
+  --row-selected: rgba(37, 99, 235, 0.16);
   --row-selected-text: #1d4ed8;
-  --row-cursor: rgba(0, 0, 0, 0.04);
-  --row-cursor-border: rgba(37, 99, 235, 0.6);
-  --row-border: rgba(0, 0, 0, 0.04);
+  --row-cursor: rgba(0, 0, 0, 0.05);
+  --row-cursor-border: rgba(37, 99, 235, 0.7);
+  --row-border: rgba(0, 0, 0, 0.05);
   --shadow-glow-active: 0 0 0 1px #{$light-accent-blue}, 0 4px 16px rgba(37, 99, 235, 0.15);
   --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.15);
   --bg-modal-overlay: rgba(15, 23, 42, 0.45);
   --bg-loading: rgba(248, 250, 252, 0.75);
   --bg-toast: #ffffff;
+  --scrollbar-track: rgba(0, 0, 0, 0.015);
+  --scrollbar-thumb: rgba(100, 116, 139, 0.32);
+  --scrollbar-thumb-hover: rgba(100, 116, 139, 0.65);
+  --scrollbar-thumb-active: #{$light-accent-blue};
+
+  // Semantic File & Item Colors (High-Contrast for Light Theme)
+  --color-dir: #d97706;
+  --color-dir-name: #b45309;
+  --color-exe: #059669;
+  --color-archive: #7c3aed;
+  --color-code: #0284c7;
+  --color-doc: #2563eb;
+  --color-image: #0d9488;
+  --color-video: #e11d48;
+  --color-audio: #db2777;
+  --color-system: #64748b;
+  --row-alt-bg: rgba(0, 0, 0, 0.022);
 }
 
 // --- Dynamic SCSS Aliases (binds SCSS $color-* variables to CSS theme custom properties) ---

@@ -10,6 +10,7 @@
   border-bottom: 1px solid $color-border-subtle;
   overflow-x: auto;
   white-space: nowrap;
+  @include custom-scrollbar;
 
   .drive-pill {
     display: inline-flex;
@@ -56,16 +57,6 @@
       }
     }
 
-    &.is-dmg {
-      border-color: rgba(245, 158, 11, 0.35);
-      color: #fbbf24;
-
-      &:hover {
-        background: rgba(245, 158, 11, 0.15);
-        border-color: rgba(245, 158, 11, 0.6);
-      }
-    }
-
     .drive-space-badge {
       display: inline-block;
       font-size: $font-size-2xs;
@@ -91,9 +82,14 @@
       cursor: pointer;
       transition: all 0.12s ease;
 
-      &:hover {
+      &:hover:not(:disabled) {
         background: rgba(239, 68, 68, 0.2);
         color: #f87171;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
     }
   }

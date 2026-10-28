@@ -24,7 +24,7 @@
 
     <button 
       class="nav-btn" 
-      :disabled="currentPath === '/'" 
+      :disabled="isRootPath" 
       data-tooltip="Батьківська папка (..)"
       data-tooltip-pos="bottom"
       title="Перейти у батьківську директорію (Backspace або ..)"
@@ -41,26 +41,21 @@
         v-model="editPath" 
         type="text" 
         class="path-input"
-        placeholder="/шлях/до/папки"
+        placeholder="C:\шлях\до\папки"
         title="Натисніть Enter для переходу, Esc для скасування"
         @keydown.enter="submitEdit"
         @keydown.esc="cancelEdit"
         @blur="cancelEdit"
       />
       <div v-else class="breadcrumbs">
-        <span 
-          class="crumb" 
-          title="Кореневий розділ (/)"
-          @click.stop="$emit('navigate', '/')"
-        >/</span>
         <template v-for="(segment, idx) in pathSegments" :key="idx">
-          <span class="crumb-sep">/</span>
+          <span v-if="idx > 0" class="crumb-sep">\</span>
           <span 
             class="crumb" 
-            :title="'Перейти до: ' + getSegmentFullPath(idx)"
-            @click.stop="$emit('navigate', getSegmentFullPath(idx))"
+            :title="'Перейти до: ' + segment.fullPath"
+            @click.stop="$emit('navigate', segment.fullPath)"
           >
-            {{ segment }}
+            {{ segment.label }}
           </span>
         </template>
       </div>
@@ -68,9 +63,9 @@
 
     <button 
       class="nav-btn" 
-      data-tooltip="Оновити папку (Cmd+R)"
+      data-tooltip="Оновити папку (Ctrl+R)"
       data-tooltip-pos="bottom"
-      title="Оновити вміст директорії (Cmd+R)" 
+      title="Оновити вміст директорії (Ctrl+R)" 
       @click.stop="$emit('refresh')"
     >
       <RotateCw :size="13" />
@@ -132,14 +127,48 @@ const isEditing = ref(false)
 const editPath = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 
-const pathSegments = computed(() => {
-  return props.currentPath.split('/').filter(Boolean)
+const isRootPath = computed(() => {
+  const p = props.currentPath.trim()
+  return !p || /^[a-zA-Z]:\\?$/.test(p) || p === '/' || p === '\\'
 })
 
-function getSegmentFullPath(idx: number): string {
-  const parts = pathSegments.value.slice(0, idx + 1)
-  return '/' + parts.join('/')
+interface PathSegment {
+  label: string
+  fullPath: string
 }
+
+const pathSegments = computed<PathSegment[]>(() => {
+  const p = props.currentPath.trim()
+  if (!p) return []
+
+  // Check if Windows drive path (e.g. C:\... or C:)
+  const driveMatch = p.match(/^([a-zA-Z]:)[/\\]?(.*)$/)
+  if (driveMatch) {
+    const driveLetter = driveMatch[1].toUpperCase()
+    const rest = driveMatch[2]
+    const list: PathSegment[] = [
+      { label: driveLetter, fullPath: `${driveLetter}\\` }
+    ]
+
+    const subParts = rest.split(/[/\\]/).filter(Boolean)
+    let current = `${driveLetter}\\`
+    for (const part of subParts) {
+      current = current.endsWith('\\') ? `${current}${part}` : `${current}\\${part}`
+      list.push({ label: part, fullPath: current })
+    }
+    return list
+  }
+
+  // Fallback
+  const parts = p.split(/[/\\]/).filter(Boolean)
+  const list: PathSegment[] = []
+  let current = ''
+  for (const part of parts) {
+    current += '\\' + part
+    list.push({ label: part, fullPath: current })
+  }
+  return list
+})
 
 function startEditing() {
   editPath.value = props.currentPath

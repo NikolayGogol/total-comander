@@ -9,9 +9,9 @@
         </div>
         <div class="viewer-actions">
           <!-- macOS Quick Look trigger -->
-          <button class="btn-secondary quicklook-btn" title="Open with macOS QuickLook system viewer" @click="openQuickLook">
+          <button class="btn-secondary quicklook-btn" title="Відкрити у програмі за замовчуванням" @click="openSystemApp">
             <ExternalLink :size="13" title="QuickLook" />
-            <span>macOS QuickLook</span>
+            <span>Відкрити в системі</span>
           </button>
 
           <!-- Viewer Modes -->
@@ -141,8 +141,8 @@ const hexRepresentation = computed(() => {
   return lines.join('\n')
 })
 
-async function openQuickLook() {
-  await window.electronAPI.quickLook(props.filePath)
+async function openSystemApp() {
+  await window.electronAPI.openPath(props.filePath)
 }
 
 onMounted(async () => {

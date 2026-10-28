@@ -1,0 +1,106 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+.context-menu {
+  position: fixed;
+  left: var(--pos-x, 0px);
+  top: var(--pos-y, 0px);
+  z-index: 1000;
+  min-width: 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  box-shadow: $shadow-lg;
+  padding: $size-space-xs 0;
+  user-select: none;
+  animation: contextMenuFadeIn 0.12s ease-out;
+
+  .context-menu-header {
+    padding: $size-space-xs $size-space-lg;
+    font-size: $font-size-2xs;
+    font-weight: $font-weight-semibold;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: $size-space-2xs;
+    @include truncate-text;
+  }
+
+  .context-menu-item {
+    @include button-base;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: $size-space-sm $size-space-lg;
+    gap: $size-space-md;
+    color: var(--text-main);
+    font-size: $font-size-xs;
+    border-radius: 0;
+    text-align: left;
+
+    &:hover:not(:disabled) {
+      background: var(--row-hover);
+      color: var(--accent-blue);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &.is-danger:hover:not(:disabled) {
+      color: var(--accent-rose);
+      background: rgba(244, 63, 94, 0.1);
+    }
+
+    .item-icon {
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+
+    &:hover:not(:disabled) .item-icon {
+      color: inherit;
+    }
+
+    .item-label {
+      flex: 1;
+      @include truncate-text;
+    }
+
+    .item-shortcut {
+      font-size: $font-size-2xs;
+      color: var(--text-dim);
+      font-family: $font-family-mono;
+      background: var(--bg-fn-key);
+      padding: 1px $size-space-xs;
+      border-radius: $radius-xs;
+      border: 1px solid var(--border-fn-key);
+    }
+  }
+
+  .context-menu-separator {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: $size-space-2xs 0;
+  }
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+

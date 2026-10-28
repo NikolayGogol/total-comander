@@ -1,6 +1,6 @@
 <template>
   <div class="app-container" :data-theme="currentTheme" @keydown="handleGlobalShortcuts">
-    <!-- Title Bar with macOS Traffic Lights Space -->
+    <!-- Title Bar with Windows TC Brand and Actions -->
     <TitleBar 
       :show-hidden="showHidden"
       :current-theme="currentTheme"
@@ -12,7 +12,7 @@
       @toggle-theme="toggleTheme"
     />
 
-    <!-- Quick Drive / Location Bar -->
+    <!-- Quick Drive Bar (Physical & Logical Drives C:, D:, etc.) -->
     <DriveBar 
       :drives="drives" 
       :current-path="activePaneState.currentPath"
@@ -25,6 +25,7 @@
       <!-- Left Pane -->
       <PaneView 
         :pane="leftPane"
+        pane-id="left"
         :is-active="activePaneId === 'left'"
         :can-go-back="canGoBack('left')"
         :can-go-forward="canGoForward('left')"
@@ -43,11 +44,13 @@
         @sort="(field) => setSort('left', field)"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
+        @context-menu="openContextMenu"
       />
 
       <!-- Right Pane -->
       <PaneView 
         :pane="rightPane"
+        pane-id="right"
         :is-active="activePaneId === 'right'"
         :can-go-back="canGoBack('right')"
         :can-go-forward="canGoForward('right')"
@@ -66,6 +69,7 @@
         @sort="(field) => setSort('right', field)"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
+        @context-menu="openContextMenu"
       />
     </main>
 
@@ -112,6 +116,17 @@
       @jump-to="jumpToSearchFile"
     />
 
+    <!-- Right-Click Context Menu -->
+    <ContextMenu 
+      v-if="contextMenu.open"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      :item="contextMenu.item"
+      :can-paste="canPaste"
+      @close="contextMenu.open = false"
+      @action="handleContextMenuAction"
+    />
+
     <!-- Toast Notifications -->
     <div class="toast-container">
       <div 
@@ -142,6 +157,7 @@ import ViewerModal from './components/ViewerModal.vue'
 import EditorModal from './components/EditorModal.vue'
 import OperationModal from './components/OperationModal.vue'
 import SearchModal from './components/SearchModal.vue'
+import ContextMenu from './components/ContextMenu.vue'
 
 const activePaneId = ref<'left' | 'right'>('left')
 const showHidden = ref(false)
@@ -154,7 +170,7 @@ function toggleTheme() {
   currentTheme.value = currentTheme.value === 'dark' ? 'light' : 'dark'
   localStorage.setItem('tc-theme', currentTheme.value)
   document.documentElement.setAttribute('data-theme', currentTheme.value)
-  showShortcutToast('Cmd + Shift + T', `Тема змінена на: ${currentTheme.value === 'dark' ? '🌙 Темна' : '☀️ Світла'}`)
+  showShortcutToast('Ctrl + Shift + T', `Тема змінена на: ${currentTheme.value === 'dark' ? '🌙 Темна' : '☀️ Світла'}`)
 }
 
 function createDefaultPaneState(initialPath: string): PaneState {
@@ -164,7 +180,7 @@ function createDefaultPaneState(initialPath: string): PaneState {
     tabs: [
       {
         id: tabId,
-        title: initialPath.split('/').filter(Boolean).pop() || 'Root',
+        title: initialPath.split(/[/\\]/).filter(Boolean).pop() || initialPath,
         path: initialPath,
         history: [initialPath],
         historyIndex: 0,
@@ -183,8 +199,8 @@ function createDefaultPaneState(initialPath: string): PaneState {
   }
 }
 
-const leftPane = reactive<PaneState>(createDefaultPaneState('/'))
-const rightPane = reactive<PaneState>(createDefaultPaneState('/'))
+const leftPane = reactive<PaneState>(createDefaultPaneState('C:\\'))
+const rightPane = reactive<PaneState>(createDefaultPaneState('C:\\'))
 
 const activePaneState = computed(() => {
   return activePaneId.value === 'left' ? leftPane : rightPane
@@ -224,6 +240,154 @@ const searchModal = reactive({
   open: false,
   initialDir: '',
 })
+
+const contextMenu = reactive<{
+  open: boolean
+  x: number
+  y: number
+  item: FileItem | null
+  paneKey: 'left' | 'right'
+}>({
+  open: false,
+  x: 0,
+  y: 0,
+  item: null,
+  paneKey: 'left',
+})
+
+const canPaste = ref(false)
+
+async function openContextMenu(payload: { x: number; y: number; item: FileItem | null; paneKey: 'left' | 'right' }) {
+  activePaneId.value = payload.paneKey
+  contextMenu.x = payload.x
+  contextMenu.y = payload.y
+  contextMenu.item = payload.item
+  contextMenu.paneKey = payload.paneKey
+  contextMenu.open = true
+
+  try {
+    const res = await window.electronAPI.getClipboardFiles()
+    canPaste.value = !!(res.success && res.paths && res.paths.length > 0)
+  } catch {
+    canPaste.value = false
+  }
+}
+
+function openViewer(item: FileItem) {
+  viewerModal.filePath = item.path
+  viewerModal.fileName = item.name
+  viewerModal.fileSize = item.size
+  viewerModal.open = true
+}
+
+function openEditor(item: FileItem) {
+  editorModal.filePath = item.path
+  editorModal.fileName = item.name
+  editorModal.open = true
+}
+
+async function handleContextMenuAction(action: string) {
+  const item = contextMenu.item
+  const paneKey = contextMenu.paneKey
+
+  switch (action) {
+    case 'open':
+      if (item) {
+        if (item.isDirectory) {
+          navigatePane(paneKey, item.path)
+        } else {
+          openFileNative(item)
+        }
+      }
+      break
+
+    case 'view':
+      if (item) {
+        openViewer(item)
+      } else {
+        handleBottomAction('view')
+      }
+      break
+
+    case 'edit':
+      if (item && !item.isDirectory) {
+        openEditor(item)
+      } else {
+        handleBottomAction('edit')
+      }
+      break
+
+    case 'copy':
+      handleBottomAction('copy')
+      break
+
+    case 'move':
+      handleBottomAction('move')
+      break
+
+    case 'rename':
+      handleBottomAction('rename')
+      break
+
+    case 'delete':
+      handleBottomAction('delete')
+      break
+
+    case 'mkdir':
+      handleBottomAction('mkdir')
+      break
+
+    case 'newfile':
+      handleBottomAction('newfile')
+      break
+
+    case 'terminal':
+      if (item && item.isDirectory) {
+        window.electronAPI.openInTerminal(item.path)
+      } else {
+        openActiveTerminal()
+      }
+      break
+
+    case 'refresh':
+      refreshPane(paneKey)
+      break
+
+    case 'select-all':
+      selectAllInActivePane()
+      break
+
+    case 'clipboard-copy':
+      copySelectedToClipboard('copy')
+      break
+
+    case 'clipboard-cut':
+      copySelectedToClipboard('cut')
+      break
+
+    case 'clipboard-paste':
+      pasteFromClipboard()
+      break
+
+    case 'copy-path':
+      if (item) {
+        try {
+          await navigator.clipboard.writeText(item.path)
+          showShortcutToast('Ctrl + C', `Шлях скопійовано: ${item.name}`)
+        } catch {
+          window.electronAPI.copyFilesToClipboard([item.path], 'copy')
+          showShortcutToast('Ctrl + C', `Шлях скопійовано: ${item.name}`)
+        }
+      }
+      break
+
+    case 'show-in-folder':
+      if (item) {
+        window.electronAPI.showInFolder(item.path)
+      }
+      break
+  }
+}
 
 // Toast notification stack
 interface ToastItem {
@@ -286,7 +450,7 @@ async function loadDirectory(pane: PaneState, dirPath: string) {
       const currentTab = pane.tabs.find((t) => t.id === pane.activeTabId)
       if (currentTab) {
         currentTab.path = dirPath
-        currentTab.title = dirPath.split('/').filter(Boolean).pop() || 'Root'
+        currentTab.title = dirPath.split(/[/\\]/).filter(Boolean).pop() || dirPath
       }
 
       sortItems(res.data, pane.sortField, pane.sortOrder)
@@ -362,10 +526,20 @@ function navigatePane(paneKey: 'left' | 'right', targetPath: string) {
 
 function goUp(paneKey: 'left' | 'right') {
   const p = paneKey === 'left' ? leftPane : rightPane
-  if (p.currentPath === '/') return
-  const parts = p.currentPath.split('/').filter(Boolean)
+  const current = p.currentPath.trim()
+  if (!current || /^[a-zA-Z]:\\?$/.test(current) || current === '/' || current === '\\') return
+  const driveMatch = current.match(/^([a-zA-Z]:)[/\\]?(.*)$/)
+  if (driveMatch) {
+    const drive = driveMatch[1].toUpperCase()
+    const subParts = driveMatch[2].split(/[/\\]/).filter(Boolean)
+    subParts.pop()
+    const parentPath = subParts.length === 0 ? `${drive}\\` : `${drive}\\${subParts.join('\\')}`
+    navigatePane(paneKey, parentPath)
+    return
+  }
+  const parts = current.split(/[/\\]/).filter(Boolean)
   parts.pop()
-  const parentPath = '/' + parts.join('/')
+  const parentPath = parts.length === 0 ? '\\' : '\\' + parts.join('\\')
   navigatePane(paneKey, parentPath)
 }
 
@@ -419,12 +593,23 @@ function switchTab(paneKey: 'left' | 'right', tabId: string) {
   }
 }
 
+function switchNextTab(paneKey: 'left' | 'right', direction: 1 | -1 = 1) {
+  const p = paneKey === 'left' ? leftPane : rightPane
+  if (p.tabs.length <= 1) return
+  const curIdx = p.tabs.findIndex((t) => t.id === p.activeTabId)
+  if (curIdx === -1) return
+  let nextIdx = (curIdx + direction) % p.tabs.length
+  if (nextIdx < 0) nextIdx += p.tabs.length
+  switchTab(paneKey, p.tabs[nextIdx].id)
+  showShortcutToast('Ctrl + Tab', `Вкладка: ${p.tabs[nextIdx].title}`)
+}
+
 function newTab(paneKey: 'left' | 'right') {
   const p = paneKey === 'left' ? leftPane : rightPane
   const newId = 'tab-' + Math.random().toString(36).substring(2, 9)
   p.tabs.push({
     id: newId,
-    title: p.currentPath.split('/').filter(Boolean).pop() || 'Root',
+    title: p.currentPath.split(/[/\\]/).filter(Boolean).pop() || p.currentPath,
     path: p.currentPath,
     history: [p.currentPath],
     historyIndex: 0,
@@ -456,7 +641,7 @@ function toggleSelect(paneKey: 'left' | 'right', path: string) {
   const p = paneKey === 'left' ? leftPane : rightPane
   if (p.selectedPaths.has(path)) {
     p.selectedPaths.delete(path)
-    showShortcutToast('Space / Ins', 'Знято виділення з елемента')
+    showShortcutToast('Space / Ins', 'Знято виділення')
   } else {
     p.selectedPaths.add(path)
     showShortcutToast('Space / Ins', 'Виділено елемент')
@@ -476,11 +661,35 @@ function selectRange(paneKey: 'left' | 'right', from: number, to: number) {
   showShortcutToast('Shift + Click', `Виділено діапазон (${p.selectedPaths.size} елементів)`)
 }
 
+function selectAllInActivePane() {
+  const p = activePaneState.value
+  p.items.forEach((item) => p.selectedPaths.add(item.path))
+  showShortcutToast('Ctrl + A', `Виділено всі файли (${p.items.length})`)
+}
+
+function invertSelectionInActivePane() {
+  const p = activePaneState.value
+  const newSet = new Set<string>()
+  for (const item of p.items) {
+    if (!p.selectedPaths.has(item.path)) {
+      newSet.add(item.path)
+    }
+  }
+  p.selectedPaths = newSet
+  showShortcutToast('*', `Інвертовано виділення (${p.selectedPaths.size} вибрано)`)
+}
+
+function deselectAllInActivePane() {
+  const p = activePaneState.value
+  p.selectedPaths.clear()
+  showShortcutToast('-', 'Знято виділення з усіх файлів')
+}
+
 // Global Actions
 function toggleHiddenFiles() {
   showHidden.value = !showHidden.value
   refreshAllPanes()
-  showShortcutToast('Cmd + Shift + .', showHidden.value ? 'Показано приховані файли (.dotfiles)' : 'Сховано приховані файли')
+  showShortcutToast('Ctrl + Shift + .', showHidden.value ? 'Показано приховані файли' : 'Сховано приховані файли')
 }
 
 function swapPanes() {
@@ -498,7 +707,7 @@ async function openActiveTerminal() {
   await window.electronAPI.openInTerminal(activePaneState.value.currentPath)
 }
 
-// Native open (macOS Finder style on double-click!)
+// Native open (Windows Explorer association on double-click)
 async function openFileNative(item: FileItem) {
   const res = await window.electronAPI.openPath(item.path)
   if (!res.success) {
@@ -547,6 +756,15 @@ function handleBottomAction(type: string) {
       }
       break
 
+    case 'clone':
+      if (cursorItem) {
+        operationModal.opType = 'copy'
+        operationModal.sourceItems = [cursorItem.path]
+        operationModal.targetDir = activePaneState.value.currentPath
+        operationModal.open = true
+      }
+      break
+
     case 'move':
       if (selectedPaths.length > 0) {
         operationModal.opType = 'move'
@@ -579,6 +797,15 @@ function handleBottomAction(type: string) {
       }
       break
 
+    case 'permanent-delete':
+      if (selectedPaths.length > 0) {
+        operationModal.opType = 'delete'
+        operationModal.sourceItems = selectedPaths
+        operationModal.targetDir = 'PERMANENT'
+        operationModal.open = true
+      }
+      break
+
     case 'terminal':
       openActiveTerminal()
       break
@@ -596,9 +823,8 @@ function openSearchModal() {
 
 function jumpToSearchFile(filePath: string) {
   searchModal.open = false
-  const parts = filePath.split('/')
-  parts.pop()
-  const dir = parts.join('/') || '/'
+  const lastSlashIdx = Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/'))
+  const dir = lastSlashIdx !== -1 ? filePath.slice(0, lastSlashIdx) : filePath
   navigatePane(activePaneId.value, dir)
 }
 
@@ -609,7 +835,9 @@ async function onOperationConfirm(payload: { opType: string; target: string }) {
 
   try {
     if (opType === 'mkdir') {
-      const fullPath = `${activePaneState.value.currentPath}/${target}`
+      const cur = activePaneState.value.currentPath
+      const sep = cur.endsWith('\\') || cur.endsWith('/') ? '' : (cur.includes('\\') ? '\\' : '/')
+      const fullPath = `${cur}${sep}${target}`
       const res = await window.electronAPI.createFolder(fullPath)
       if (res.success) {
         showToast(`Created directory "${target}"`, 'success')
@@ -618,7 +846,9 @@ async function onOperationConfirm(payload: { opType: string; target: string }) {
         showToast(`Error creating folder: ${res.error}`, 'error')
       }
     } else if (opType === 'newfile') {
-      const fullPath = `${activePaneState.value.currentPath}/${target}`
+      const cur = activePaneState.value.currentPath
+      const sep = cur.endsWith('\\') || cur.endsWith('/') ? '' : (cur.includes('\\') ? '\\' : '/')
+      const fullPath = `${cur}${sep}${target}`
       const res = await window.electronAPI.createFile(fullPath)
       if (res.success) {
         showToast(`Created file "${target}"`, 'success')
@@ -628,9 +858,11 @@ async function onOperationConfirm(payload: { opType: string; target: string }) {
       }
     } else if (opType === 'rename') {
       const oldPath = rawSources[0]
-      const dirParts = oldPath.split('/')
-      dirParts.pop()
-      const newPath = `${dirParts.join('/')}/${target}`
+      const lastSlashIdx = Math.max(oldPath.lastIndexOf('\\'), oldPath.lastIndexOf('/'))
+      const parentDir = lastSlashIdx !== -1 ? oldPath.slice(0, lastSlashIdx) : ''
+      const sep = oldPath.includes('\\') ? '\\' : '/'
+
+      const newPath = parentDir ? `${parentDir}${sep}${target}` : target
       const res = await window.electronAPI.renamePath(oldPath, newPath)
       if (res.success) {
         showToast(`Renamed to "${target}"`, 'success')
@@ -655,9 +887,15 @@ async function onOperationConfirm(payload: { opType: string; target: string }) {
         showToast(`Move error: ${res.error}`, 'error')
       }
     } else if (opType === 'delete') {
-      const res = await window.electronAPI.deletePaths(rawSources, true)
+      const isPermanent = operationModal.targetDir === 'PERMANENT'
+      const res = await window.electronAPI.deletePaths(rawSources, !isPermanent)
       if (res.success) {
-        showToast(`Moved ${rawSources.length} item(s) to Trash`, 'success')
+        showToast(
+          isPermanent
+            ? `Безповоротно видалено ${rawSources.length} елемент(ів)`
+            : `Переміщено ${rawSources.length} елемент(ів) у Кошик`,
+          'success'
+        )
         refreshAllPanes()
       } else {
         showToast(`Delete error: ${res.error}`, 'error')
@@ -679,7 +917,7 @@ async function handleDragDrop(sourcePaths: string[], targetDir: string) {
     const rawPaths: string[] = JSON.parse(JSON.stringify(sourcePaths))
     const res = await window.electronAPI.copyPaths(rawPaths, targetDir)
     if (res.success) {
-      showToast(`Copied ${rawPaths.length} item(s) to ${targetDir.split('/').pop() || 'target'}`, 'success')
+      showToast(`Copied ${rawPaths.length} item(s) to ${targetDir.split(/[/\\]/).filter(Boolean).pop() || 'target'}`, 'success')
       refreshAllPanes()
     } else {
       showToast(`Drag & drop error: ${res.error}`, 'error')
@@ -691,6 +929,13 @@ async function handleDragDrop(sourcePaths: string[], targetDir: string) {
 
 // Global Keyboard Shortcuts
 function handleGlobalShortcuts(e: KeyboardEvent) {
+  if (contextMenu.open) {
+    if (e.key === 'Escape') {
+      contextMenu.open = false
+      return
+    }
+  }
+
   if (viewerModal.open || editorModal.open || operationModal.open || searchModal.open) {
     if (e.key === 'Escape') {
       viewerModal.open = false
@@ -702,15 +947,25 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
     return
   }
 
+  const activeEl = document.activeElement as HTMLElement
+  const isInputActive = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')
+
+  // Switch tabs in active pane with Ctrl+Tab / Ctrl+Shift+Tab
+  if (e.ctrlKey && e.key === 'Tab') {
+    e.preventDefault()
+    switchNextTab(activePaneId.value, e.shiftKey ? -1 : 1)
+    return
+  }
+
   // Switch Active Pane with Tab
-  if (e.key === 'Tab') {
+  if (e.key === 'Tab' && !e.ctrlKey && !e.altKey) {
     e.preventDefault()
     activePaneId.value = activePaneId.value === 'left' ? 'right' : 'left'
     showShortcutToast('Tab', `Активна панель: ${activePaneId.value === 'left' ? 'Ліва' : 'Права'}`)
     return
   }
 
-  // Swap Left & Right Panes with Ctrl+U or Cmd+U
+  // Swap Left & Right Panes with Ctrl+U
   if ((e.metaKey || e.ctrlKey) && (e.key === 'u' || e.key === 'U')) {
     e.preventDefault()
     swapPanes()
@@ -720,14 +975,14 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   // Help / Shortcut Cheat Sheet (F1)
   if (e.key === 'F1') {
     e.preventDefault()
-    showShortcutToast('F1', 'Довідка: Tab, F2-F10, Space, Backspace, Cmd+A, Cmd+R, Cmd+T')
+    showShortcutToast('F1', 'Довідка: Tab, F2-F10, Shift+F4..F8, Alt+F7, Ctrl+A/C/X/V/R/T/W/U, Alt+Enter/←/→/↑, Space, Ins, *')
     return
   }
 
-  // F2 - Rename
-  if (e.key === 'F2') {
+  // F2 or Shift+F6 - Rename
+  if (e.key === 'F2' || (e.shiftKey && e.key === 'F6')) {
     e.preventDefault()
-    showShortcutToast('F2', 'Перейменування файлу або папки')
+    showShortcutToast(e.key === 'F2' ? 'F2' : 'Shift + F6', 'Перейменування файлу або папки')
     handleBottomAction('rename')
     return
   }
@@ -754,11 +1009,16 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
     return
   }
 
-  // F5 - Copy
+  // F5 - Copy (Shift+F5: Duplicate/Clone in same directory)
   if (e.key === 'F5') {
     e.preventDefault()
-    showShortcutToast('F5', 'Копіювання у цільову панель')
-    handleBottomAction('copy')
+    if (e.shiftKey) {
+      showShortcutToast('Shift + F5', 'Копіювання у поточну папку (Clone)')
+      handleBottomAction('clone')
+    } else {
+      showShortcutToast('F5', 'Копіювання у цільову панель')
+      handleBottomAction('copy')
+    }
     return
   }
 
@@ -770,7 +1030,7 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
     return
   }
 
-  // F7 - New Folder
+  // F7 - New Folder / Alt+F7 Search / Shift+F7 New File
   if (e.key === 'F7') {
     if (e.altKey) {
       e.preventDefault()
@@ -788,11 +1048,20 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
     return
   }
 
-  // F8 or Delete or Cmd+Backspace - Move to Trash
-  if (e.key === 'F8' || e.key === 'Delete' || ((e.metaKey || e.ctrlKey) && e.key === 'Backspace')) {
+  // Permanent Delete (Shift+Delete or Shift+F8)
+  if (e.shiftKey && (e.key === 'Delete' || e.key === 'F8')) {
     e.preventDefault()
-    const badge = e.key === 'F8' ? 'F8' : (e.key === 'Delete' ? 'Delete' : 'Cmd + ⌫')
-    showShortcutToast(badge, 'Переміщення у macOS Смітник')
+    showShortcutToast('Shift + Del', 'Безповоротне видалення файлів (без Кошика)')
+    handleBottomAction('permanent-delete')
+    return
+  }
+
+  // F8 or Delete or Ctrl+Backspace - Move to Recycle Bin
+  if (e.key === 'F8' || e.key === 'Delete' || ((e.metaKey || e.ctrlKey) && e.key === 'Backspace')) {
+    if (isInputActive && e.key !== 'F8') return
+    e.preventDefault()
+    const badge = e.key === 'F8' ? 'F8' : (e.key === 'Delete' ? 'Delete' : 'Ctrl + ⌫')
+    showShortcutToast(badge, 'Переміщення у Кошик Windows')
     handleBottomAction('delete')
     return
   }
@@ -800,7 +1069,7 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   // F9 - Terminal
   if (e.key === 'F9') {
     e.preventDefault()
-    showShortcutToast('F9', 'Відкриття термінала macOS у поточній папці')
+    showShortcutToast('F9', 'Відкриття Термінала Windows у поточній папці')
     handleBottomAction('terminal')
     return
   }
@@ -813,88 +1082,144 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
     return
   }
 
-  // Cmd+R - Refresh
-  if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+  // Alt+Enter - Show in Windows Explorer
+  if (e.altKey && e.key === 'Enter') {
     e.preventDefault()
-    showShortcutToast('Cmd + R', 'Оновлення вмісту обох панелей')
+    const cursor = getActiveCursorItem()
+    if (cursor) {
+      window.electronAPI.showInFolder(cursor.path)
+      showShortcutToast('Alt + Enter', `Показано у Провіднику: ${cursor.name}`)
+    }
+    return
+  }
+
+  // Alt+ArrowLeft - Directory history back
+  if (e.altKey && e.key === 'ArrowLeft') {
+    e.preventDefault()
+    if (canGoBack(activePaneId.value)) {
+      goBack(activePaneId.value)
+      showShortcutToast('Alt + ←', 'Назад по історії')
+    }
+    return
+  }
+
+  // Alt+ArrowRight - Directory history forward
+  if (e.altKey && e.key === 'ArrowRight') {
+    e.preventDefault()
+    if (canGoForward(activePaneId.value)) {
+      goForward(activePaneId.value)
+      showShortcutToast('Alt + →', 'Вперед по історії')
+    }
+    return
+  }
+
+  // Alt+ArrowUp - Parent directory
+  if (e.altKey && e.key === 'ArrowUp') {
+    e.preventDefault()
+    goUp(activePaneId.value)
+    showShortcutToast('Alt + ↑', 'Батьківська директорія')
+    return
+  }
+
+  // Ctrl+R - Refresh
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'r' || e.key === 'R')) {
+    e.preventDefault()
+    showShortcutToast('Ctrl + R', 'Оновлення вмісту обох панелей')
     refreshAllPanes()
     return
   }
 
-  // Cmd+Shift+. - Toggle Hidden Files
-  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '.') {
+  // Ctrl+Shift+. or Ctrl+H - Toggle Hidden Files
+  if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '.') || (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'h' || e.key === 'H'))) {
     e.preventDefault()
     toggleHiddenFiles()
     return
   }
 
-  // Cmd+T - New Tab
-  if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+  // Ctrl+D - Quick drives info
+  if (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
+    e.preventDefault()
+    const driveList = drives.value.map(d => d.name).join(', ')
+    showShortcutToast('Ctrl + D', `Диски: ${driveList || 'C:\\'}`)
+    return
+  }
+
+  // Ctrl+T - New Tab
+  if ((e.metaKey || e.ctrlKey) && (e.key === 't' || e.key === 'T')) {
     e.preventDefault()
     newTab(activePaneId.value)
-    showShortcutToast('Cmd + T', 'Відкрито нову вкладку')
+    showShortcutToast('Ctrl + T', 'Відкрито нову вкладку')
     return
   }
 
-  // Cmd+W - Close Tab
-  if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+  // Ctrl+W - Close Tab
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'w' || e.key === 'W')) {
     e.preventDefault()
     closeTab(activePaneId.value, activePaneState.value.activeTabId)
-    showShortcutToast('Cmd + W', 'Закрито поточну вкладку')
+    showShortcutToast('Ctrl + W', 'Закрито поточну вкладку')
     return
   }
 
-  // Cmd+A - Select All
+  // Ctrl+A - Select All
   if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
-    const activeEl = document.activeElement as HTMLElement
-    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-      return
-    }
+    if (isInputActive) return
     e.preventDefault()
     selectAllInActivePane()
     return
   }
 
-  // Cmd+C / Ctrl+C - Copy selected files to clipboard
+  // Numeric * or * - Invert selection (TC standard)
+  if (!isInputActive && (e.key === '*' || e.code === 'NumpadMultiply')) {
+    e.preventDefault()
+    invertSelectionInActivePane()
+    return
+  }
+
+  // Numeric + or + - Select all
+  if (!isInputActive && (e.key === '+' || e.code === 'NumpadAdd')) {
+    e.preventDefault()
+    selectAllInActivePane()
+    return
+  }
+
+  // Numeric - or - Deselect all
+  if (!isInputActive && (e.key === '-' || e.code === 'NumpadSubtract')) {
+    e.preventDefault()
+    deselectAllInActivePane()
+    return
+  }
+
+  // Ctrl+C - Copy selected files to clipboard
   if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
-    const activeEl = document.activeElement as HTMLElement
-    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+    if (isInputActive) {
       const input = activeEl as HTMLInputElement | HTMLTextAreaElement
-      if (input.selectionStart !== input.selectionEnd) {
-        return
-      }
+      if (input.selectionStart !== input.selectionEnd) return
     }
     e.preventDefault()
     copySelectedToClipboard('copy')
     return
   }
 
-  // Cmd+X / Ctrl+X - Cut selected files to clipboard
+  // Ctrl+X - Cut selected files to clipboard
   if ((e.metaKey || e.ctrlKey) && (e.key === 'x' || e.key === 'X')) {
-    const activeEl = document.activeElement as HTMLElement
-    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+    if (isInputActive) {
       const input = activeEl as HTMLInputElement | HTMLTextAreaElement
-      if (input.selectionStart !== input.selectionEnd) {
-        return
-      }
+      if (input.selectionStart !== input.selectionEnd) return
     }
     e.preventDefault()
     copySelectedToClipboard('cut')
     return
   }
 
-  // Cmd+V / Ctrl+V - Paste files from clipboard
+  // Ctrl+V - Paste files from clipboard
   if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'V')) {
-    const activeEl = document.activeElement as HTMLElement
-    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-      return
-    }
+    if (isInputActive) return
     e.preventDefault()
     pasteFromClipboard()
     return
   }
 
-  // Cmd+Shift+T - Toggle Light/Dark Theme
+  // Ctrl+Shift+T - Toggle Light/Dark Theme
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'T' || e.key === 't')) {
     e.preventDefault()
     toggleTheme()
@@ -903,10 +1228,7 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
 
   // Backspace - Parent directory
   if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
-    const target = e.target as HTMLElement
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-      return
-    }
+    if (isInputActive) return
     e.preventDefault()
     goUp(activePaneId.value)
     showShortcutToast('Backspace', 'Перехід у батьківську директорію (..)')
@@ -914,14 +1236,8 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 }
 
-const homeDir = ref('/')
+const homeDir = ref('C:\\')
 let lastCopyTime = 0
-
-function selectAllInActivePane() {
-  const p = activePaneState.value
-  p.items.forEach((item) => p.selectedPaths.add(item.path))
-  showShortcutToast('Cmd + A', `Виділено всі файли (${p.items.length})`)
-}
 
 async function copySelectedToClipboard(action: 'copy' | 'cut' = 'copy') {
   const now = Date.now()
@@ -938,9 +1254,9 @@ async function copySelectedToClipboard(action: 'copy' | 'cut' = 'copy') {
     const res = await window.electronAPI.copyFilesToClipboard(paths, action)
     if (res.success) {
       const count = paths.length
-      const badge = action === 'copy' ? 'Cmd + C' : 'Cmd + X'
+      const badge = action === 'copy' ? 'Ctrl + C' : 'Ctrl + X'
       if (count === 1) {
-        const fileName = paths[0].split('/').filter(Boolean).pop() || paths[0]
+        const fileName = paths[0].split(/[/\\]/).filter(Boolean).pop() || paths[0]
         const text = action === 'copy'
           ? `Файл скопійовано у буфер: ${fileName}`
           : `Файл вирізано у буфер: ${fileName}`
@@ -984,10 +1300,10 @@ async function pasteFromClipboard() {
         loadDirectory(leftPane, leftPane.currentPath),
         loadDirectory(rightPane, rightPane.currentPath),
       ])
-      const dirName = targetDir.split('/').filter(Boolean).pop() || 'директорію'
+      const dirName = targetDir.split(/[/\\]/).filter(Boolean).pop() || targetDir
       const verb = action === 'cut' ? 'Переміщено' : 'Вставлено'
       const itemsWord = count === 1 ? 'елемент' : (count < 5 ? 'елементи' : 'елементів')
-      showShortcutToast('Cmd + V', `${verb} ${count} ${itemsWord} у ${dirName}`)
+      showShortcutToast('Ctrl + V', `${verb} ${count} ${itemsWord} у ${dirName}`)
     } else {
       showToast(opRes.error || 'Помилка вставки файлів', 'error')
     }
@@ -1009,17 +1325,35 @@ async function loadDrivesList() {
 
 async function ejectDrive(path: string) {
   try {
+    const match = path.match(/^([A-Za-z]):/)
+    const letter = match ? match[1].toUpperCase() : ''
+    const driveRoot = letter ? `${letter}:\\` : path
+
+    // 1. Release active file locks: navigate away from this drive if currently open in either pane
+    const home = homeDir.value || 'C:\\'
+    let navigated = false
+    if (leftPane.currentPath.toUpperCase().startsWith(driveRoot.toUpperCase())) {
+      await navigatePane('left', home)
+      navigated = true
+    }
+    if (rightPane.currentPath.toUpperCase().startsWith(driveRoot.toUpperCase())) {
+      await navigatePane('right', home)
+      navigated = true
+    }
+
+    if (navigated) {
+      await new Promise((r) => setTimeout(r, 250))
+    }
+
+    // 2. Perform safe ejection via Windows Shell COM
     const res = await window.electronAPI.ejectVolume(path)
     if (res.success) {
+      // Immediately remove from UI reactive state
+      drives.value = drives.value.filter(
+        (d) => !d.path.toUpperCase().startsWith(driveRoot.toUpperCase())
+      )
       showToast('Носій безпечно вилучено', 'success')
       await loadDrivesList()
-      const home = homeDir.value || '/'
-      if (leftPane.currentPath.startsWith(path)) {
-        await navigatePane('left', home)
-      }
-      if (rightPane.currentPath.startsWith(path)) {
-        await navigatePane('right', home)
-      }
     } else {
       showToast(res.error || 'Не вдалося вилучити носій', 'error')
     }
@@ -1032,17 +1366,17 @@ onMounted(async () => {
   try {
     document.documentElement.setAttribute('data-theme', currentTheme.value)
     const sys = await window.electronAPI.getSystemInfo()
-    homeDir.value = sys.homeDir || '/'
+    homeDir.value = sys.homeDir || 'C:\\'
     await Promise.all([
       loadDirectory(leftPane, homeDir.value),
-      loadDirectory(rightPane, '/'),
+      loadDirectory(rightPane, 'C:\\'),
       loadDrivesList(),
     ])
 
-    // Global keyboard listener to catch Cmd+C, Cmd+V, etc. across the window
+    // Global keyboard listener to catch TC hotkeys across the window
     window.addEventListener('keydown', handleGlobalShortcuts)
 
-    // Listen to native macOS Edit Menu commands
+    // Listen to native Edit Menu commands
     window.electronAPI.onAppCommand((cmd) => {
       const activeEl = document.activeElement as HTMLElement
       const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')

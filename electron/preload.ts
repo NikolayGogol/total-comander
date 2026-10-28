@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (filePath: string, maxBytes?: number) => ipcRenderer.invoke('fs:readFile', filePath, maxBytes),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),
   openPath: (filePath: string) => ipcRenderer.invoke('fs:openPath', filePath),
+  showInFolder: (filePath: string) => ipcRenderer.invoke('fs:showInFolder', filePath),
   openInTerminal: (dirPath: string) => ipcRenderer.invoke('fs:openInTerminal', dirPath),
   quickLook: (filePath: string) => ipcRenderer.invoke('fs:quickLook', filePath),
   getDirSize: (dirPath: string) => ipcRenderer.invoke('fs:getDirSize', dirPath),
