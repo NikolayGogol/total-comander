@@ -32,7 +32,8 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "bin/**/*"
     ],
     "mac": {
       "icon": "build/icon.icns",

@@ -21,6 +21,8 @@ export interface DriveItem {
   icon: string
   type: 'home' | 'root' | 'volume' | 'bookmark' | 'folder' | 'usb' | 'dmg'
   freeSpace?: number
+  availableSpace?: number
+  purgeableSpace?: number
   totalSpace?: number
   isRemovable?: boolean
 }
@@ -50,6 +52,8 @@ export interface PaneState {
   loading: boolean
   error: string | null
   freeSpace?: number
+  availableSpace?: number
+  purgeableSpace?: number
   totalSpace?: number
 }
 
@@ -71,7 +75,7 @@ export interface SystemInfo {
 export interface ElectronAPI {
   readDir: (dirPath: string, showHidden?: boolean) => Promise<{ success: boolean; data?: FileItem[]; error?: string }>
   getDrives: () => Promise<{ success: boolean; data?: DriveItem[]; error?: string }>
-  getDiskSpace: (dirPath: string) => Promise<{ success: boolean; free?: number; total?: number; error?: string }>
+  getDiskSpace: (dirPath: string) => Promise<{ success: boolean; free?: number; available?: number; purgeable?: number; total?: number; error?: string }>
   ejectVolume: (volumePath: string) => Promise<{ success: boolean; error?: string }>
   onDrivesChanged: (callback: () => void) => () => void
   createFolder: (targetPath: string) => Promise<{ success: boolean; error?: string }>

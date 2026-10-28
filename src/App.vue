@@ -329,8 +329,10 @@ async function loadDirectory(pane: PaneState, dirPath: string) {
       // Fetch free and total disk space for current path
       try {
         const spaceRes = await window.electronAPI.getDiskSpace(dirPath)
-        if (spaceRes.success && spaceRes.free !== undefined && spaceRes.total !== undefined) {
+        if (spaceRes.success && spaceRes.total !== undefined) {
           pane.freeSpace = spaceRes.free
+          pane.availableSpace = spaceRes.available
+          pane.purgeableSpace = spaceRes.purgeable
           pane.totalSpace = spaceRes.total
         }
       } catch {

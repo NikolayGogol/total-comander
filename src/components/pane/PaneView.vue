@@ -58,6 +58,8 @@
       :total-file-size="totalFileSize"
       :item-count="filteredItems.length"
       :free-space="pane.freeSpace"
+      :available-space="pane.availableSpace"
+      :purgeable-space="pane.purgeableSpace"
       :total-space="pane.totalSpace"
     />
   </div>

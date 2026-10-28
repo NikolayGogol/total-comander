@@ -9,15 +9,17 @@
         'is-usb': drive.type === 'usb',
         'is-dmg': drive.type === 'dmg'
       }"
-      :data-tooltip="getDriveTooltip(drive)"
-      data-tooltip-pos="bottom"
       :title="getDriveTooltip(drive)"
       @click="$emit('select-drive', drive.path)"
     >
       <component :is="getIcon(drive.icon)" :size="13" :title="drive.name" class="drive-icon" />
       <span class="drive-name">{{ drive.name }}</span>
-      <span v-if="drive.freeSpace !== undefined" class="drive-space-badge" :title="'Вільно: ' + formatBytes(drive.freeSpace)">
-        {{ formatBytes(drive.freeSpace) }}
+      <span 
+        v-if="drive.availableSpace !== undefined || drive.freeSpace !== undefined" 
+        class="drive-space-badge"
+        :title="getDriveTooltip(drive)"
+      >
+        {{ formatDriveBadge(drive) }}
       </span>
       <button 
         v-if="drive.isRemovable"
@@ -64,17 +66,33 @@ function isDriveActive(drivePath: string): boolean {
   return props.currentPath === drivePath || props.currentPath.startsWith(drivePath + '/')
 }
 
+function formatDriveBadge(drive: DriveItem): string {
+  const avail = drive.availableSpace ?? drive.freeSpace
+  return avail !== undefined ? formatBytes(avail) : ''
+}
+
 function getDriveTooltip(drive: DriveItem): string {
-  const parts = [drive.name, `(${drive.path})`]
-  if (drive.type === 'usb') {
-    parts.unshift('[USB Носій]')
-  } else if (drive.type === 'dmg') {
-    parts.unshift('[Образ диску]')
+  const lines: string[] = []
+  const titlePrefix = drive.type === 'usb' ? '🔌 USB-носій: ' : (drive.type === 'dmg' ? '💿 Образ диска: ' : '💾 Диск / Папка: ')
+  lines.push(`${titlePrefix}${drive.name}`)
+  lines.push(`Шлях: ${drive.path}`)
+
+  const avail = drive.availableSpace ?? drive.freeSpace
+  if (avail !== undefined) {
+    lines.push(`• Доступно для запису (Finder): ${formatBytes(avail)}`)
   }
-  if (drive.freeSpace !== undefined && drive.totalSpace !== undefined) {
-    parts.push(`• ${formatBytes(drive.freeSpace)} вільно з ${formatBytes(drive.totalSpace)}`)
+  if (drive.freeSpace !== undefined) {
+    lines.push(`• Фізично вільні блоки SSD: ${formatBytes(drive.freeSpace)}`)
   }
-  return parts.join(' ')
+  if (drive.purgeableSpace && drive.purgeableSpace > 50 * 1024 * 1024) {
+    lines.push(`• Очищуваний кеш macOS (Purgeable): ${formatBytes(drive.purgeableSpace)}`)
+    lines.push(`💡 macOS APFS автоматично вивільнить цей кеш, якщо вам знадобиться місце`)
+  }
+  if (drive.totalSpace !== undefined) {
+    lines.push(`• Загальний обсяг: ${formatBytes(drive.totalSpace)}`)
+  }
+
+  return lines.join('\n')
 }
 
 function getIcon(name: string) {

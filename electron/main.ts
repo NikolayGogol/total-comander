@@ -208,6 +208,55 @@ async function getAppIcon(appPath: string): Promise<string | undefined> {
   }
 }
 
+function getHelperBinaryPath(): string {
+  const devPath = path.join(__dirname, '../bin/mac-diskspace')
+  if (fs.existsSync(devPath)) return devPath
+  const appPath = path.join(app.getAppPath(), 'bin/mac-diskspace')
+  if (fs.existsSync(appPath)) return appPath
+  const resPath = path.join(process.resourcesPath, 'bin/mac-diskspace')
+  if (fs.existsSync(resPath)) return resPath
+  return devPath
+}
+
+async function getDiskSpaceStats(targetPath: string): Promise<{
+  total: number
+  free: number
+  available: number
+  purgeable: number
+}> {
+  const binary = getHelperBinaryPath()
+  if (fs.existsSync(binary)) {
+    try {
+      const output = await new Promise<string>((resolve, reject) => {
+        exec(`"${binary}" "${targetPath}"`, { timeout: 1500 }, (err, stdout) => {
+          if (err || !stdout) return reject(err || new Error('No output'))
+          resolve(stdout.trim())
+        })
+      })
+      const data = JSON.parse(output)
+      if (data && typeof data.total === 'number') {
+        return {
+          total: data.total,
+          free: data.free,
+          available: data.available || data.free,
+          purgeable: data.purgeable || 0,
+        }
+      }
+    } catch {
+      // Fallback to statfs below
+    }
+  }
+
+  try {
+    const stat = await fsPromises.statfs(targetPath)
+    const total = stat.bsize * stat.blocks
+    const free = stat.bsize * stat.bavail
+    return { total, free, available: free, purgeable: 0 }
+  } catch {
+    return { total: 0, free: 0, available: 0, purgeable: 0 }
+  }
+}
+
 function setupIpcHandlers() {
   // System Info
   ipcMain.handle('app:getSystemInfo', async () => {
@@ -337,17 +386,15 @@ function setupIpcHandlers() {
         // Ignore volume read error if any
       }
 
-      // Filter only paths that actually exist and attach free/total disk space
+      // Filter only paths that actually exist and attach free/available/purgeable/total disk space
       const existingDrives = []
       for (const d of drives) {
         if (fs.existsSync(d.path)) {
-          try {
-            const stat = await fsPromises.statfs(d.path)
-            d.totalSpace = stat.bsize * stat.blocks
-            d.freeSpace = stat.bsize * stat.bavail
-          } catch {
-            // Virtual or unreadable filesystem
-          }
+          const space = await getDiskSpaceStats(d.path)
+          d.totalSpace = space.total
+          d.freeSpace = space.free
+          d.availableSpace = space.available
+          d.purgeableSpace = space.purgeable
           existingDrives.push(d)
         }
       }
@@ -358,14 +405,16 @@ function setupIpcHandlers() {
     }
   })
 
-  // Get Disk Space for any path
+  // Get Disk Space for any path (returns exact Finder available, raw free, purgeable and total)
   ipcMain.handle('fs:getDiskSpace', async (_, dirPath: string) => {
     try {
-      const stats = await fsPromises.statfs(dirPath)
+      const space = await getDiskSpaceStats(dirPath)
       return {
         success: true,
-        total: stats.bsize * stats.blocks,
-        free: stats.bsize * stats.bavail,
+        total: space.total,
+        free: space.free,
+        available: space.available,
+        purgeable: space.purgeable,
       }
     } catch (err: any) {
       return { success: false, error: err.message }
