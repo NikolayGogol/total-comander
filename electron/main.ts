@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
 import os from 'os'
-import { exec } from 'child_process'
+import { exec, execFile, execSync } from 'child_process'
 
 app.setName('Total Commander')
 app.name = 'Total Commander'
@@ -96,6 +96,56 @@ function getAppIcon(): string | undefined {
     if (fs.existsSync(p)) return p
   }
   return undefined
+}
+
+function get7zPath(): string | null {
+  const possiblePaths = [
+    path.join(__dirname, '../bin/7za.exe'),
+    path.join(process.resourcesPath || '', 'bin/7za.exe'),
+    path.join(process.resourcesPath || '', '7za.exe'),
+    path.join(__dirname, '7za.exe'),
+    path.join(process.cwd(), 'bin/7za.exe'),
+    'C:\\Program Files\\7-Zip\\7z.exe',
+    'C:\\Program Files (x86)\\7-Zip\\7z.exe',
+  ]
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p
+  }
+  return null
+}
+
+function getRarPath(): string | null {
+  const possiblePaths = [
+    path.join(__dirname, '../bin/rar.exe'),
+    path.join(process.resourcesPath || '', 'bin/rar.exe'),
+    path.join(process.resourcesPath || '', 'rar.exe'),
+    path.join(process.cwd(), 'bin/rar.exe'),
+    'C:\\Program Files\\WinRAR\\rar.exe',
+    'C:\\Program Files (x86)\\WinRAR\\rar.exe',
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'WinRAR', 'rar.exe'),
+    path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'WinRAR', 'rar.exe'),
+  ]
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p
+  }
+  return null
+}
+
+function getUnrarPath(): string | null {
+  const possiblePaths = [
+    path.join(__dirname, '../bin/unrar.exe'),
+    path.join(process.resourcesPath || '', 'bin/unrar.exe'),
+    path.join(process.resourcesPath || '', 'unrar.exe'),
+    path.join(process.cwd(), 'bin/unrar.exe'),
+    'C:\\Program Files\\WinRAR\\UnRAR.exe',
+    'C:\\Program Files (x86)\\WinRAR\\UnRAR.exe',
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'WinRAR', 'UnRAR.exe'),
+    path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'WinRAR', 'UnRAR.exe'),
+  ]
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p
+  }
+  return null
 }
 
 function createWindow() {
@@ -266,7 +316,7 @@ function setupIpcHandlers() {
           const stats = await fsPromises.lstat(itemPath)
           const isDir = entry.isDirectory() || (entry.isSymbolicLink() && stats.isDirectory())
           const isFile = entry.isFile() || (entry.isSymbolicLink() && stats.isFile())
-          const ext = isDir ? '' : path.extname(entry.name).toLowerCase()
+          const ext = isDir ? '' : path.extname(entry.name).replace(/^\./, '').toLowerCase()
 
           items.push({
             name: entry.name,
@@ -553,6 +603,7 @@ Write-Output "DONE"
   // Copy Paths
   ipcMain.handle('fs:copyPaths', async (_, sources: string[], destinationDir: string) => {
     try {
+      await safeEnsureDir(destinationDir)
       for (const src of sources) {
         const baseName = path.basename(src)
         const dest = path.join(destinationDir, baseName)
@@ -574,6 +625,7 @@ Write-Output "DONE"
   // Move Paths
   ipcMain.handle('fs:movePaths', async (_, sources: string[], destinationDir: string) => {
     try {
+      await safeEnsureDir(destinationDir)
       for (const src of sources) {
         const baseName = path.basename(src)
         const dest = path.join(destinationDir, baseName)
@@ -785,6 +837,19 @@ Write-Output "DONE"
     }
   })
 
+  async function safeEnsureDir(dirPath: string) {
+    if (!dirPath) return
+    const clean = dirPath.trim()
+    if (/^[a-zA-Z]:[/\\]?$/.test(clean) || clean === '/' || clean === '\\') return
+    if (!fs.existsSync(clean)) {
+      try {
+        await fsPromises.mkdir(clean, { recursive: true })
+      } catch (e: any) {
+        if (e.code !== 'EEXIST') throw e
+      }
+    }
+  }
+
   // Extract ZIP Archive
   ipcMain.handle('fs:extractZip', async (_, zipPath: string, targetDir: string) => {
     try {
@@ -792,7 +857,7 @@ Write-Output "DONE"
         return { success: false, error: 'Файл архіву не знайдено' }
       }
 
-      await fsPromises.mkdir(targetDir, { recursive: true })
+      await safeEnsureDir(targetDir)
       const sysRoot = process.env.SystemRoot || 'C:\\Windows'
       const sysTar = path.join(sysRoot, 'System32', 'tar.exe')
       const tarExe = fs.existsSync(sysTar) ? sysTar : null
@@ -817,6 +882,257 @@ Write-Output "DONE"
     }
   })
 
+  // Create Archive (7Z, ZIP, RAR with optional password & compression level)
+  ipcMain.handle('fs:createArchive', async (_, options: {
+    sources: string[]
+    targetPath: string
+    format: 'zip' | '7z' | 'rar'
+    password?: string
+    level?: number
+    encryptHeader?: boolean
+  }) => {
+    try {
+      const { sources, targetPath, format, password, level = 5, encryptHeader } = options
+      if (!sources || sources.length === 0) {
+        return { success: false, error: 'Не вибрано файли для архівування' }
+      }
+
+      await safeEnsureDir(path.dirname(targetPath))
+      const parentDir = path.dirname(sources[0])
+      const basenames = sources.map((s) => path.basename(s))
+      const sevenZip = get7zPath()
+      const rarPath = getRarPath()
+
+      if (format === 'rar') {
+        if (!rarPath) {
+          return { success: false, error: 'Архіватор RAR не знайдено на системі.' }
+        }
+        const rarLevel = level >= 9 ? '5' : (level <= 1 ? '1' : '3')
+        const args: string[] = ['a', '-ep1', '-y', `-m${rarLevel}`]
+        if (password) {
+          args.push(`-p${password}`)
+          if (encryptHeader) {
+            args.push(`-hp${password}`)
+          }
+        }
+        args.push(targetPath)
+        args.push(...basenames)
+
+        await new Promise<void>((resolve, reject) => {
+          execFile(rarPath, args, { cwd: parentDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true, targetPath }
+      }
+
+      if (sevenZip) {
+        const typeArg = format === '7z' ? '-t7z' : '-tzip'
+        const args: string[] = ['a', typeArg, '-y', `-mx${level}`]
+        if (password) {
+          args.push(`-p${password}`)
+        }
+        if (format === '7z' && password && encryptHeader) {
+          args.push('-mhe=on')
+        }
+        args.push(targetPath)
+        args.push(...basenames)
+
+        await new Promise<void>((resolve, reject) => {
+          execFile(sevenZip, args, { cwd: parentDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true, targetPath }
+      }
+
+      // Fallback for zip
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+      const tarExe = path.join(sysRoot, 'System32', 'tar.exe')
+      if (fs.existsSync(tarExe) && !password && format === 'zip') {
+        const args: string[] = ['-a', '-c', '-f', targetPath, '-C', parentDir, ...basenames]
+        await new Promise<void>((resolve, reject) => {
+          execFile(tarExe, args, { cwd: parentDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true, targetPath }
+      }
+
+      return { success: false, error: 'Архіватор не знайдено' }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Помилка архівування' }
+    }
+  })
+
+  // List files inside archive (7Z, ZIP, RAR, TAR, GZ)
+  ipcMain.handle('fs:listArchive', async (_, archivePath: string, password?: string) => {
+    try {
+      if (!fs.existsSync(archivePath)) {
+        return { success: false, error: 'Архів не знайдено' }
+      }
+
+      const sevenZip = get7zPath()
+      const ext = path.extname(archivePath).toLowerCase()
+
+      if (sevenZip) {
+        const passArg = password ? `-p"${password.replace(/"/g, '\\"')}"` : '-p-'
+        const cmd = `"${sevenZip}" l -slt -ba ${passArg} "${archivePath}"`
+
+        const output = await new Promise<string>((resolve, reject) => {
+          exec(cmd, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+            if (stdout) return resolve(stdout)
+            if (err) {
+              const str = (stderr || err.message || '').toLowerCase()
+              if (str.includes('wrong password') || str.includes('password') || str.includes('can not open encrypted')) {
+                return reject(new Error('WRONG_PASSWORD'))
+              }
+              return reject(new Error(stderr || err.message))
+            }
+            resolve('')
+          })
+        }).catch((err) => {
+          if (err.message === 'WRONG_PASSWORD') throw err
+          return ''
+        })
+
+        if (output) {
+          const entries: any[] = []
+          const blocks = output.split(/\r?\n\r?\n/)
+
+          for (const block of blocks) {
+            const lines = block.split(/\r?\n/)
+            let itemPath = ''
+            let isFolder = false
+            let size = 0
+            let packedSize = 0
+            let modified = ''
+            let encrypted = false
+
+            for (const line of lines) {
+              const eq = line.indexOf('=')
+              if (eq === -1) continue
+              const key = line.slice(0, eq).trim()
+              const val = line.slice(eq + 1).trim()
+
+              if (key === 'Path') itemPath = val
+              else if (key === 'Folder') isFolder = val === '+'
+              else if (key === 'Size') size = parseInt(val, 10) || 0
+              else if (key === 'Packed Size') packedSize = parseInt(val, 10) || 0
+              else if (key === 'Modified') modified = val
+              else if (key === 'Encrypted') encrypted = val === '+'
+            }
+
+            if (itemPath && itemPath !== path.basename(archivePath)) {
+              entries.push({
+                path: itemPath,
+                name: itemPath.split(/[/\\]/).filter(Boolean).pop() || itemPath,
+                isDirectory: isFolder,
+                size,
+                packedSize,
+                modified,
+                encrypted,
+              })
+            }
+          }
+
+          if (entries.length > 0) {
+            return { success: true, entries }
+          }
+        }
+      }
+
+      // If RAR and 7za couldn't read (e.g. RAR5), try bundled unrar/rar
+      const rarTool = getUnrarPath() || getRarPath()
+      if (ext === '.rar' && rarTool) {
+        const passArg = password ? `-p"${password.replace(/"/g, '\\"')}"` : '-p-'
+        const cmd = `"${rarTool}" vb -c- ${passArg} "${archivePath}"`
+        const out = await new Promise<string>((resolve, reject) => {
+          exec(cmd, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve(stdout || '')
+          })
+        }).catch(() => '')
+
+        if (out) {
+          const lines = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+          const entries = lines.map((l) => ({
+            path: l,
+            name: l.split(/[/\\]/).filter(Boolean).pop() || l,
+            isDirectory: l.endsWith('/') || l.endsWith('\\'),
+            size: 0,
+          }))
+          return { success: true, entries }
+        }
+      }
+
+      return { success: false, error: 'Не вдалося прочитати вміст архіву' }
+    } catch (err: any) {
+      if (err.message === 'WRONG_PASSWORD') {
+        return { success: false, error: 'Потрібен пароль або пароль некоректний', isEncrypted: true }
+      }
+      return { success: false, error: err.message || 'Помилка відкриття архіву' }
+    }
+  })
+
+  // Extract Archive
+  ipcMain.handle('fs:extractArchive', async (_, archivePath: string, targetDir: string, password?: string) => {
+    try {
+      if (!fs.existsSync(archivePath)) {
+        return { success: false, error: 'Файл архіву не знайдено' }
+      }
+
+      await safeEnsureDir(targetDir)
+      const ext = path.extname(archivePath).toLowerCase()
+      const sevenZip = get7zPath()
+      const rarTool = getUnrarPath() || getRarPath()
+
+      if (ext === '.rar' && rarTool) {
+        const passArg = password ? `-p"${password.replace(/"/g, '\\"')}"` : ''
+        const cmd = `"${rarTool}" x -y -ep1 ${passArg} "${archivePath}" "${targetDir}\\"`
+        await new Promise<void>((resolve, reject) => {
+          exec(cmd, { cwd: targetDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true }
+      }
+
+      if (sevenZip) {
+        const passArg = password ? `-p"${password.replace(/"/g, '\\"')}"` : ''
+        const cmd = `"${sevenZip}" x -y -aoa ${passArg} -o"${targetDir}" "${archivePath}"`
+        await new Promise<void>((resolve, reject) => {
+          exec(cmd, { cwd: targetDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true }
+      }
+
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+      const tarExe = path.join(sysRoot, 'System32', 'tar.exe')
+      if (fs.existsSync(tarExe)) {
+        const cmd = `"${tarExe}" -xf "${archivePath}" -C "${targetDir}"`
+        await new Promise<void>((resolve, reject) => {
+          exec(cmd, { cwd: targetDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true }
+      }
+
+      return { success: false, error: 'Утиліту для розпакування не знайдено' }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Помилка розархівування' }
+    }
+  })
+
   // Calculate Directory Size
   ipcMain.handle('fs:getDirSize', async (_, dirPath: string) => {
     try {
@@ -824,16 +1140,24 @@ Write-Output "DONE"
       let totalCount = 0
 
       async function scan(current: string, depth = 0) {
-        if (depth > 6) return
-        const entries = await fsPromises.readdir(current, { withFileTypes: true })
+        if (depth > 18) return
+        let entries
+        try {
+          entries = await fsPromises.readdir(current, { withFileTypes: true })
+        } catch {
+          return
+        }
         for (const e of entries) {
           const subPath = path.join(current, e.name)
           if (e.isDirectory()) {
+            if (e.isSymbolicLink()) continue
             await scan(subPath, depth + 1)
           } else {
-            const st = await fsPromises.lstat(subPath)
-            totalSize += st.size
-            totalCount++
+            try {
+              const st = await fsPromises.stat(subPath)
+              totalSize += st.size
+              totalCount++
+            } catch {}
           }
         }
       }
@@ -842,6 +1166,282 @@ Write-Output "DONE"
       return { success: true, size: totalSize, count: totalCount }
     } catch (err: any) {
       return { success: false, error: err.message }
+    }
+  })
+
+  // Analyze Folder & Subfolders Sizes (Folder Size Modal)
+  ipcMain.handle('fs:analyzeFolderSizes', async (_, targetPath: string) => {
+    try {
+      if (!fs.existsSync(targetPath)) {
+        return { success: false, error: 'Папка не існує' }
+      }
+
+      const stat = await fsPromises.stat(targetPath)
+      if (!stat.isDirectory()) {
+        return { success: false, error: 'Вказаний шлях не є папкою' }
+      }
+
+      const entries = await fsPromises.readdir(targetPath, { withFileTypes: true })
+      const subdirs = entries.filter((e) => e.isDirectory() && !e.isSymbolicLink())
+
+      const foldersToScan: { name: string; path: string }[] = []
+      for (const d of subdirs) {
+        foldersToScan.push({
+          name: d.name,
+          path: path.join(targetPath, d.name),
+        })
+      }
+
+      if (foldersToScan.length === 0) {
+        foldersToScan.push({
+          name: path.basename(targetPath) || targetPath,
+          path: targetPath,
+        })
+      }
+
+      const results: Array<{
+        name: string
+        path: string
+        size: number
+        fileCount: number
+        dirCount: number
+      }> = []
+
+      let grandTotalSize = 0
+      let grandTotalFiles = 0
+
+      for (const f of foldersToScan) {
+        let fSize = 0
+        let fFiles = 0
+        let fDirs = 0
+
+        async function walk(cur: string, depth = 0) {
+          if (depth > 18) return
+          let subEntries
+          try {
+            subEntries = await fsPromises.readdir(cur, { withFileTypes: true })
+          } catch {
+            return
+          }
+          for (const se of subEntries) {
+            if (se.isDirectory()) {
+              if (se.isSymbolicLink()) continue
+              fDirs++
+              await walk(path.join(cur, se.name), depth + 1)
+            } else if (se.isFile()) {
+              try {
+                const s = await fsPromises.stat(path.join(cur, se.name))
+                fSize += s.size
+                fFiles++
+              } catch {}
+            }
+          }
+        }
+
+        await walk(f.path)
+        results.push({
+          name: f.name,
+          path: f.path,
+          size: fSize,
+          fileCount: fFiles,
+          dirCount: fDirs,
+        })
+        grandTotalSize += fSize
+        grandTotalFiles += fFiles
+      }
+
+      if (/^[a-zA-Z]:[/\\]?$/.test(targetPath)) {
+        const locked = getWindowsLockedFiles(targetPath)
+        for (const lf of locked) {
+          results.push({
+            name: `${lf.name} (системний файл Windows)`,
+            path: lf.path,
+            size: lf.size,
+            fileCount: 1,
+            dirCount: 0,
+          })
+          grandTotalSize += lf.size
+          grandTotalFiles += 1
+        }
+      }
+
+      results.sort((a, b) => b.size - a.size)
+
+      return {
+        success: true,
+        parentPath: targetPath,
+        folders: results,
+        totalSize: grandTotalSize,
+        totalFiles: grandTotalFiles,
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Помилка аналізу розміру папок' }
+    }
+  })
+
+  function getWindowsLockedFiles(driveRoot: string): Array<{
+    path: string
+    name: string
+    size: number
+    mtime: number
+    extension: string
+    dir: string
+  }> {
+    const list: Array<{
+      path: string
+      name: string
+      size: number
+      mtime: number
+      extension: string
+      dir: string
+    }> = []
+    if (process.platform !== 'win32') return list
+
+    const cleanRoot = driveRoot.replace(/[/\\]+$/, '') + '\\'
+    const lockedCandidates = ['hiberfil.sys', 'pagefile.sys', 'swapfile.sys', 'MEMORY.DMP']
+
+    for (const fileName of lockedCandidates) {
+      const full = path.join(cleanRoot, fileName)
+      try {
+        const out = execSync(`cmd /c dir /-c /a "${full}"`, { encoding: 'utf8', timeout: 800 })
+        const match = out.match(/File\(s\)\s+(\d+)\s+bytes/i)
+        if (match) {
+          const sz = parseInt(match[1], 10)
+          if (sz > 0) {
+            list.push({
+              path: full,
+              name: fileName,
+              size: sz,
+              mtime: Date.now(),
+              extension: fileName.split('.').pop() || 'sys',
+              dir: cleanRoot,
+            })
+          }
+        }
+      } catch {}
+    }
+    return list
+  }
+
+  // Find Large Files (Disk Space Analyzer / Cleanup)
+  ipcMain.handle('fs:findLargeFiles', async (_, options: {
+    targetDir: string
+    minSizeBytes: number
+    limit?: number
+  }) => {
+    try {
+      const { targetDir, minSizeBytes = 50 * 1024 * 1024, limit = 200 } = options
+      if (!targetDir || !fs.existsSync(targetDir)) {
+        return { success: false, error: 'Директорія або диск не існує' }
+      }
+
+      const largeFiles: Array<{
+        path: string
+        name: string
+        size: number
+        mtime: number
+        extension: string
+        dir: string
+      }> = []
+
+      let scannedCount = 0
+      let totalSize = 0
+
+      // If scanning root of a drive, immediately grab locked system files (hiberfil.sys, pagefile.sys)
+      const isDriveRoot = /^[a-zA-Z]:[/\\]?$/.test(targetDir)
+      if (isDriveRoot) {
+        const locked = getWindowsLockedFiles(targetDir)
+        for (const lf of locked) {
+          if (lf.size >= minSizeBytes) {
+            totalSize += lf.size
+            largeFiles.push(lf)
+          }
+        }
+      }
+
+      // System / junk / looped folders to skip
+      const skipNames = new Set([
+        '$recycle.bin',
+        'system volume information',
+        'recovery',
+        'msocache',
+        'winsxs',
+        'assembly',
+        'node_modules',
+      ])
+
+      const queue: { dir: string; depth: number }[] = [{ dir: targetDir, depth: 0 }]
+
+      while (queue.length > 0 && scannedCount < 600000) {
+        const current = queue.shift()!
+        if (current.depth > 14) continue
+
+        let entries: fs.Dirent[]
+        try {
+          entries = await fsPromises.readdir(current.dir, { withFileTypes: true })
+        } catch {
+          continue
+        }
+
+        // If at root of a drive, prioritize user directories over Windows system internals
+        if (current.depth === 0) {
+          entries.sort((a, b) => {
+            const aName = a.name.toLowerCase()
+            const bName = b.name.toLowerCase()
+            if (aName === 'users') return -1
+            if (bName === 'users') return 1
+            if (aName.includes('program')) return -1
+            if (bName.includes('program')) return 1
+            if (aName.includes('games') || aName.includes('xbox')) return -1
+            if (bName.includes('games') || bName.includes('xbox')) return 1
+            if (aName === 'windows') return 1
+            if (bName === 'windows') return -1
+            return 0
+          })
+        }
+
+        for (const entry of entries) {
+          scannedCount++
+          const lowerName = entry.name.toLowerCase()
+
+          if (entry.isDirectory()) {
+            if (skipNames.has(lowerName)) continue
+            if (entry.isSymbolicLink()) continue
+            // Restrict depth inside Windows system internals
+            if (current.dir.toLowerCase().includes('\\windows') && current.depth >= 3) continue
+            queue.push({ dir: path.join(current.dir, entry.name), depth: current.depth + 1 })
+          } else if (entry.isFile()) {
+            try {
+              const fullPath = path.join(current.dir, entry.name)
+              const st = await fsPromises.stat(fullPath)
+              if (st.size >= minSizeBytes) {
+                totalSize += st.size
+                largeFiles.push({
+                  path: fullPath,
+                  name: entry.name,
+                  size: st.size,
+                  mtime: st.mtimeMs,
+                  extension: path.extname(entry.name).replace(/^\./, '').toLowerCase(),
+                  dir: current.dir,
+                })
+              }
+            } catch {}
+          }
+        }
+      }
+
+      // Sort descending by size (largest first)
+      largeFiles.sort((a, b) => b.size - a.size)
+
+      const resultFiles = limit > 0 ? largeFiles.slice(0, limit) : largeFiles
+      return {
+        success: true,
+        files: resultFiles,
+        totalSize,
+        scannedCount,
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Помилка сканування великих файлів' }
     }
   })
 

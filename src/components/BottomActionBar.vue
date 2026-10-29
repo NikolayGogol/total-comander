@@ -39,6 +39,18 @@
       <span>Move</span>
     </button>
 
+    <!-- F7 Folder (New Folder / Mkdir) -->
+    <button 
+      class="fn-button" 
+      data-tooltip="Створити нову папку (F7)"
+      data-tooltip-pos="top"
+      title="Створити нову папку (F7)"
+      @click="$emit('action', 'mkdir')"
+    >
+      <span class="fn-key">F7</span>
+      <span>Folder</span>
+    </button>
+
     <!-- Shift+F4 / New File -->
     <button 
       class="fn-button" 

@@ -47,6 +47,7 @@
       @select-all="$emit('select-all')"
       @clear-selection="$emit('clear-selection')"
       @sort="(field) => $emit('sort', field)"
+      @open-folder-size="(p) => $emit('open-folder-size', p)"
       @drop-items="(sources, target, isMove) => $emit('drag-drop-items', sources, target, isMove)"
       @context-menu="(payload) => $emit('context-menu', { ...payload, paneKey: props.paneId })"
     />
@@ -97,6 +98,7 @@ const emit = defineEmits<{
   (e: 'select-all'): void
   (e: 'clear-selection'): void
   (e: 'sort', field: SortField): void
+  (e: 'open-folder-size', path: string): void
   (e: 'open-native', item: FileItem): void
   (e: 'drag-drop-items', sourcePaths: string[], targetDir: string, isMove?: boolean): void
   (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null; paneKey: 'left' | 'right' }): void

@@ -1,7 +1,7 @@
 {
   "name": "total-commander-windows",
   "productName": "Total Commander",
-  "version": "1.0.1",
+  "version": "1.0.8",
   "description": "Total Commander orthodox two-pane file manager for Windows built with Node.js, Electron, Vue 3, and SCSS",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -37,8 +37,15 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "bin/**/*",
       "build/icon.ico",
       "build/icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin"
+      }
     ],
     "win": {
       "icon": "build/icon.ico",
@@ -81,6 +88,7 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.62.0",
+    "7zip-bin": "^5.2.0",
     "dayjs": "^1.11.23",
     "lucide-vue-next": "^1.0.0",
     "numeral": "^2.0.6",

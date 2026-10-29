@@ -11,20 +11,67 @@
     @drop.prevent="onTableDrop"
     @contextmenu.prevent="handleTableContextMenu($event)"
   >
-    <table class="file-table">
+    <table ref="tableRef" class="file-table">
       <thead>
         <tr>
           <th class="col-name" title="Сортувати за назвою (клік для перемикання A-Z / Z-A)" @click="$emit('sort', 'name')">
-            Name <span v-if="sortField === 'name'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            <div class="th-content">
+              <span>Name</span>
+              <span v-if="sortField === 'name'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            </div>
+            <div 
+              class="col-resizer" 
+              :class="{ 'is-active': activeResizingCol === 'name' }"
+              title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
+              @click.stop
+              @mousedown="startColResize('name', $event)"
+              @dblclick="resetColWidth('name')"
+            ></div>
           </th>
+
           <th class="col-ext" title="Сортувати за розширенням файлів" @click="$emit('sort', 'ext')">
-            Ext <span v-if="sortField === 'ext'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            <div class="th-content">
+              <span>Ext</span>
+              <span v-if="sortField === 'ext'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            </div>
+            <div 
+              class="col-resizer" 
+              :class="{ 'is-active': activeResizingCol === 'ext' }"
+              title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
+              @click.stop
+              @mousedown="startColResize('ext', $event)"
+              @dblclick="resetColWidth('ext')"
+            ></div>
           </th>
+
           <th class="col-size" title="Сортувати за розміром файлів" @click="$emit('sort', 'size')">
-            Size <span v-if="sortField === 'size'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            <div class="th-content">
+              <span>Size</span>
+              <span v-if="sortField === 'size'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            </div>
+            <div 
+              class="col-resizer" 
+              :class="{ 'is-active': activeResizingCol === 'size' }"
+              title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
+              @click.stop
+              @mousedown="startColResize('size', $event)"
+              @dblclick="resetColWidth('size')"
+            ></div>
           </th>
+
           <th class="col-date" title="Сортувати за датою останньої модифікації" @click="$emit('sort', 'mtime')">
-            Modified <span v-if="sortField === 'mtime'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            <div class="th-content">
+              <span>Modified</span>
+              <span v-if="sortField === 'mtime'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+            </div>
+            <div 
+              class="col-resizer" 
+              :class="{ 'is-active': activeResizingCol === 'date' }"
+              title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
+              @click.stop
+              @mousedown="startColResize('date', $event)"
+              @dblclick="resetColWidth('date')"
+            ></div>
           </th>
         </tr>
       </thead>
@@ -37,6 +84,9 @@
           title="⤴ Перейти у батьківську директорію (Backspace або подвійний клік)"
           @click="handleParentClick"
           @dblclick="$emit('go-up')"
+          @dragover.prevent="onTableDragOver"
+          @dragleave="onTableDragLeave"
+          @drop.prevent="onTableDrop"
           @contextmenu.prevent.stop="handleTableContextMenu($event)"
         >
           <td colspan="4">
@@ -62,9 +112,10 @@
           :draggable="true"
           :title="getItemTooltip(item)"
           @dragstart="onDragStart($event, item)"
-          @dragover.prevent.stop="onItemDragOver($event, item)"
-          @dragleave.stop="onItemDragLeave(item)"
-          @drop.prevent.stop="onItemDrop($event, item)"
+          @dragend="onDragEnd"
+          @dragover.prevent="onItemDragOver($event, item)"
+          @dragleave="onItemDragLeave(item)"
+          @drop.prevent="onItemDrop($event, item)"
           @click="handleRowClick($event, item, index)"
           @dblclick="handleRowDblClick(item)"
           @contextmenu.prevent.stop="handleRowContextMenu($event, item, index)"
@@ -93,8 +144,9 @@
               {{ item.extension }}
             </span>
           </td>
-          <td class="col-size" :title="item.isDirectory ? 'Папка' : formatNumber(item.size) + ' байт'">
-            <span v-if="item.isDirectory" class="dir-badge">&lt;DIR&gt;</span>
+          <td class="col-size" :title="item.isDirectory ? (item.size > 0 ? formatNumber(item.size) + ' байт' : 'Папка') : formatNumber(item.size) + ' байт'">
+            <span v-if="item.isDirectory && (!item.size || item.size === 0)" class="dir-badge">&lt;DIR&gt;</span>
+            <span v-else-if="item.isDirectory" class="file-size-text dir-calculated-size">{{ formatBytes(item.size) }}</span>
             <span v-else class="file-size-text">{{ formatBytes(item.size) }}</span>
           </td>
           <td class="col-date" :title="'Дата зміни: ' + formatDate(item.mtime)">{{ formatDate(item.mtime) }}</td>
@@ -118,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import type { FileItem, SortField } from '../../types'
 import { formatBytes, formatDate, formatNumber, getFileCategory, getFileTypeDescription } from '../../utils/formatters'
 import { 
@@ -154,13 +206,133 @@ const emit = defineEmits<{
   (e: 'select-all'): void
   (e: 'clear-selection'): void
   (e: 'sort', field: SortField): void
+  (e: 'open-folder-size', path: string): void
   (e: 'drop-items', sourcePaths: string[], targetDir: string, isMove?: boolean): void
   (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null }): void
 }>()
 
 const wrapperRef = ref<HTMLElement | null>(null)
+const tableRef = ref<HTMLTableElement | null>(null)
 const isDragOverTable = ref(false)
 const dragTargetItemPath = ref<string | null>(null)
+
+interface ColumnWidths {
+  name: number
+  ext: number
+  size: number
+  date: number
+}
+
+const DEFAULT_COL_WIDTHS: ColumnWidths = {
+  name: 260,
+  ext: 75,
+  size: 95,
+  date: 150,
+}
+
+const minWidths: Record<keyof ColumnWidths, number> = {
+  name: 90,
+  ext: 45,
+  size: 60,
+  date: 100,
+}
+
+function loadSavedColWidths(): ColumnWidths {
+  try {
+    const saved = localStorage.getItem('tc-col-widths')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      return {
+        name: typeof parsed.name === 'number' && parsed.name >= minWidths.name ? parsed.name : DEFAULT_COL_WIDTHS.name,
+        ext: typeof parsed.ext === 'number' && parsed.ext >= minWidths.ext ? parsed.ext : DEFAULT_COL_WIDTHS.ext,
+        size: typeof parsed.size === 'number' && parsed.size >= minWidths.size ? parsed.size : DEFAULT_COL_WIDTHS.size,
+        date: typeof parsed.date === 'number' && parsed.date >= minWidths.date ? parsed.date : DEFAULT_COL_WIDTHS.date,
+      }
+    }
+  } catch {}
+  return { ...DEFAULT_COL_WIDTHS }
+}
+
+const colWidths = reactive<ColumnWidths>(loadSavedColWidths())
+const activeResizingCol = ref<keyof ColumnWidths | null>(null)
+
+function applyColWidthsToDOM() {
+  if (!tableRef.value) return
+  tableRef.value.style.setProperty('--col-name-w', `${colWidths.name}px`)
+  tableRef.value.style.setProperty('--col-ext-w', `${colWidths.ext}px`)
+  tableRef.value.style.setProperty('--col-size-w', `${colWidths.size}px`)
+  tableRef.value.style.setProperty('--col-date-w', `${colWidths.date}px`)
+}
+
+function startColResize(colKey: keyof ColumnWidths, e: MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+
+  activeResizingCol.value = colKey
+  const startX = e.clientX
+  const startWidth = colWidths[colKey]
+
+  document.body.classList.add('is-resizing-columns')
+
+  function onMouseMove(moveEvent: MouseEvent) {
+    const deltaX = moveEvent.clientX - startX
+    const newWidth = Math.max(minWidths[colKey], Math.min(1200, startWidth + deltaX))
+    colWidths[colKey] = newWidth
+    applyColWidthsToDOM()
+  }
+
+  function onMouseUp() {
+    activeResizingCol.value = null
+    document.body.classList.remove('is-resizing-columns')
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+    try {
+      localStorage.setItem('tc-col-widths', JSON.stringify(colWidths))
+      window.dispatchEvent(new CustomEvent('tc-col-widths-updated', { detail: { ...colWidths } }))
+    } catch {}
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function resetColWidth(colKey: keyof ColumnWidths) {
+  colWidths[colKey] = DEFAULT_COL_WIDTHS[colKey]
+  applyColWidthsToDOM()
+  try {
+    localStorage.setItem('tc-col-widths', JSON.stringify(colWidths))
+    window.dispatchEvent(new CustomEvent('tc-col-widths-updated', { detail: { ...colWidths } }))
+  } catch {}
+}
+
+function onColWidthsUpdated(e: Event) {
+  const custom = e as CustomEvent<ColumnWidths>
+  if (custom.detail) {
+    Object.assign(colWidths, custom.detail)
+    applyColWidthsToDOM()
+  }
+}
+
+function onStorageChange(e: StorageEvent) {
+  if (e.key === 'tc-col-widths' && e.newValue) {
+    try {
+      const parsed = JSON.parse(e.newValue)
+      Object.assign(colWidths, parsed)
+      applyColWidthsToDOM()
+    } catch {}
+  }
+}
+
+onMounted(() => {
+  applyColWidthsToDOM()
+  window.addEventListener('tc-col-widths-updated', onColWidthsUpdated)
+  window.addEventListener('storage', onStorageChange)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('tc-col-widths-updated', onColWidthsUpdated)
+  window.removeEventListener('storage', onStorageChange)
+})
 
 const isRootPath = computed(() => {
   const p = props.currentPath.trim()
@@ -292,10 +464,14 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     if (props.cursorIndex >= 0 && props.cursorIndex < len) {
       const item = props.items[props.cursorIndex]
-      emit('toggle-select', item.path)
-      if (props.cursorIndex < len - 1) {
-        setCursor(props.cursorIndex + 1)
-        scrollToCursor()
+      if (e.key === ' ' && item.isDirectory) {
+        emit('open-folder-size', item.path)
+      } else {
+        emit('toggle-select', item.path)
+        if (props.cursorIndex < len - 1) {
+          setCursor(props.cursorIndex + 1)
+          scrollToCursor()
+        }
       }
     }
   } else if (e.key === 'Enter') {
@@ -330,32 +506,61 @@ function onDragStart(e: DragEvent, item: FileItem) {
     paths = Array.from(props.selectedPaths)
   } else {
     paths = [item.path]
+    const idx = props.items.findIndex((it) => it.path === item.path)
+    if (idx !== -1) {
+      setCursor(idx)
+    }
   }
 
-  e.dataTransfer.setData('application/json', JSON.stringify(paths))
-  e.dataTransfer.setData('text/plain', paths.join('\r\n'))
-  e.dataTransfer.effectAllowed = 'copyMove'
+  // 1. Shared in-app drag storage (guarantees 100% reliable data transfer between panes)
+  ;(window as any).__TC_ACTIVE_DRAG__ = {
+    sources: paths,
+    fromPath: props.currentPath,
+  }
+
+  // 2. DataTransfer payload
+  try {
+    e.dataTransfer.setData('application/json', JSON.stringify(paths))
+    e.dataTransfer.setData('text/plain', paths.join('\r\n'))
+    e.dataTransfer.effectAllowed = 'copyMove'
+
+    // 3. Create a clean ghost drag image badge
+    const badge = document.createElement('div')
+    badge.style.cssText = 'position: absolute; top: -1000px; left: -1000px; padding: 4px 10px; background: #131824; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; font-family: monospace; font-size: 12px; pointer-events: none; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-weight: bold;'
+    badge.textContent = paths.length === 1 ? `📄 ${item.name}` : `📁 ${paths.length} items`
+    document.body.appendChild(badge)
+    e.dataTransfer.setDragImage(badge, 12, 12)
+    setTimeout(() => {
+      if (badge.parentNode) badge.parentNode.removeChild(badge)
+    }, 0)
+  } catch {}
 }
 
-function isDragSupported(e: DragEvent): boolean {
-  if (!e.dataTransfer) return false
-  const types = Array.from(e.dataTransfer.types || [])
-  return types.includes('application/json') || types.includes('Files') || types.includes('text/plain')
+function onDragEnd() {
+  setTimeout(() => {
+    ;(window as any).__TC_ACTIVE_DRAG__ = null
+  }, 300)
 }
 
 function extractDroppedPaths(e: DragEvent): string[] {
+  // Check internal in-app drag payload first
+  const internalDrag = (window as any).__TC_ACTIVE_DRAG__
+  if (internalDrag && Array.isArray(internalDrag.sources) && internalDrag.sources.length > 0) {
+    return [...internalDrag.sources]
+  }
+
   if (!e.dataTransfer) return []
 
   // 1. Total Commander internal payload
-  const json = e.dataTransfer.getData('application/json')
-  if (json) {
-    try {
+  try {
+    const json = e.dataTransfer.getData('application/json')
+    if (json) {
       const parsed = JSON.parse(json)
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed
       }
-    } catch {}
-  }
+    }
+  } catch {}
 
   // 2. Windows Explorer / Native files
   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -379,48 +584,61 @@ function extractDroppedPaths(e: DragEvent): string[] {
   }
 
   // 3. Plain text paths fallback
-  const text = e.dataTransfer.getData('text/plain')
-  if (text) {
-    const lines = text
-      .split(/[\r\n]+/)
-      .map((l) => l.trim().replace(/^["']|["']$/g, ''))
-      .filter((l) => /^[a-zA-Z]:[/\\]/.test(l) || l.startsWith('\\\\'))
-    if (lines.length > 0) {
-      return lines
+  try {
+    const text = e.dataTransfer.getData('text/plain')
+    if (text) {
+      const lines = text
+        .split(/[\r\n]+/)
+        .map((l) => l.trim().replace(/^["']|["']$/g, ''))
+        .filter((l) => /^[a-zA-Z]:[/\\]/.test(l) || l.startsWith('\\\\'))
+      if (lines.length > 0) {
+        return lines
+      }
     }
-  }
+  } catch {}
 
   return []
 }
 
 function onTableDragOver(e: DragEvent) {
-  if (isDragSupported(e)) {
-    isDragOverTable.value = true
-    e.dataTransfer!.dropEffect = e.shiftKey ? 'move' : 'copy'
+  e.preventDefault()
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = e.shiftKey ? 'move' : 'copy'
   }
+  isDragOverTable.value = true
 }
 
 function onTableDragLeave(e: DragEvent) {
   const related = e.relatedTarget as HTMLElement | null
   if (!related || !wrapperRef.value?.contains(related)) {
     isDragOverTable.value = false
+    dragTargetItemPath.value = null
   }
 }
 
 function onTableDrop(e: DragEvent) {
+  e.preventDefault()
   isDragOverTable.value = false
+  const targetDir = dragTargetItemPath.value || props.currentPath
   dragTargetItemPath.value = null
   const sources = extractDroppedPaths(e)
+  ;(window as any).__TC_ACTIVE_DRAG__ = null
   if (sources.length > 0) {
     const isMove = e.shiftKey
-    emit('drop-items', sources, props.currentPath, isMove)
+    emit('drop-items', sources, targetDir, isMove)
   }
 }
 
 function onItemDragOver(e: DragEvent, item: FileItem) {
-  if (item.isDirectory && isDragSupported(e)) {
+  e.preventDefault()
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = e.shiftKey ? 'move' : 'copy'
+  }
+  isDragOverTable.value = true
+  if (item.isDirectory) {
     dragTargetItemPath.value = item.path
-    e.dataTransfer!.dropEffect = e.shiftKey ? 'move' : 'copy'
+  } else {
+    dragTargetItemPath.value = null
   }
 }
 
@@ -431,9 +649,12 @@ function onItemDragLeave(item: FileItem) {
 }
 
 function onItemDrop(e: DragEvent, item: FileItem) {
+  e.preventDefault()
+  e.stopPropagation()
   dragTargetItemPath.value = null
   isDragOverTable.value = false
   const sources = extractDroppedPaths(e)
+  ;(window as any).__TC_ACTIVE_DRAG__ = null
   if (sources.length > 0) {
     const target = item.isDirectory ? item.path : props.currentPath
     const isMove = e.shiftKey
@@ -478,4 +699,12 @@ function getItemTooltip(item: FileItem): string {
 function getShortItemTooltip(item: FileItem): string {
   return `${item.name} (${item.isDirectory ? 'Папка' : formatBytes(item.size)})`
 }
+
+function focus() {
+  wrapperRef.value?.focus()
+}
+
+defineExpose({
+  focus
+})
 </script>

@@ -5,6 +5,7 @@
       :show-hidden="showHidden"
       :current-theme="currentTheme"
       @open-search="openSearchModal"
+      @open-large-files="openLargeFilesModal"
       @toggle-hidden="toggleHiddenFiles"
       @swap-panes="swapPanes"
       @open-terminal="openActiveTerminal"
@@ -44,6 +45,7 @@
         @select-all="selectAllInActivePane"
         @clear-selection="() => clearSelection('left')"
         @sort="(field) => setSort('left', field)"
+        @open-folder-size="openFolderSizeModal"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
         @context-menu="openContextMenu"
@@ -71,6 +73,7 @@
         @select-all="selectAllInActivePane"
         @clear-selection="() => clearSelection('right')"
         @sort="(field) => setSort('right', field)"
+        @open-folder-size="openFolderSizeModal"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
         @context-menu="openContextMenu"
@@ -118,6 +121,48 @@
       :initial-dir="searchModal.initialDir"
       @close="searchModal.open = false"
       @jump-to="jumpToSearchFile"
+      @open-large-files="(dir) => { searchModal.open = false; openLargeFilesModal(dir); }"
+    />
+
+    <!-- Create Archive Modal (Alt+F5 / Context Menu) -->
+    <CreateArchiveModal 
+      v-if="createArchiveModal.open"
+      :sources="createArchiveModal.sources"
+      :current-dir="createArchiveModal.currentDir"
+      @close="createArchiveModal.open = false"
+      @created="onArchiveCreated"
+      @toast="showToast"
+    />
+
+    <!-- Archive Viewer Modal (Alt+F6 / Double-click on archive) -->
+    <ArchiveViewModal 
+      v-if="archiveViewModal.open"
+      :archive-path="archiveViewModal.archivePath"
+      :target-extract-dir="archiveViewModal.targetExtractDir"
+      :current-dir="archiveViewModal.currentDir"
+      @close="archiveViewModal.open = false"
+      @extracted="onArchiveExtracted"
+      @toast="showToast"
+    />
+
+    <!-- Large Files Finder / Disk Cleanup Modal -->
+    <LargeFilesModal 
+      v-if="largeFilesModal.open"
+      :initial-dir="largeFilesModal.initialDir"
+      :drives="drives"
+      @close="largeFilesModal.open = false"
+      @jump-to="jumpToSearchFile"
+      @open-folder-size="openFolderSizeModal"
+      @toast="showToast"
+    />
+
+    <!-- Folder Size Analysis Modal -->
+    <FolderSizeModal 
+      v-if="folderSizeModal.open"
+      :target-path="folderSizeModal.targetPath"
+      @close="folderSizeModal.open = false"
+      @jump-to="(dir) => navigatePane(activePaneId, dir)"
+      @toast="showToast"
     />
 
     <!-- Right-Click Context Menu -->
@@ -162,6 +207,11 @@ import EditorModal from './components/EditorModal.vue'
 import OperationModal from './components/OperationModal.vue'
 import SearchModal from './components/SearchModal.vue'
 import ContextMenu from './components/ContextMenu.vue'
+import CreateArchiveModal from './components/CreateArchiveModal.vue'
+import ArchiveViewModal from './components/ArchiveViewModal.vue'
+import LargeFilesModal from './components/LargeFilesModal.vue'
+import FolderSizeModal from './components/FolderSizeModal.vue'
+import { formatBytes, formatNumber } from './utils/formatters'
 
 const activePaneId = ref<'left' | 'right'>('left')
 const showHidden = ref(false)
@@ -243,6 +293,29 @@ const operationModal = reactive<{
 const searchModal = reactive({
   open: false,
   initialDir: '',
+})
+
+const createArchiveModal = reactive({
+  open: false,
+  sources: [] as string[],
+  currentDir: '',
+})
+
+const archiveViewModal = reactive({
+  open: false,
+  archivePath: '',
+  targetExtractDir: '',
+  currentDir: '',
+})
+
+const largeFilesModal = reactive({
+  open: false,
+  initialDir: '',
+})
+
+const folderSizeModal = reactive({
+  open: false,
+  targetPath: '',
 })
 
 const contextMenu = reactive<{
@@ -361,12 +434,23 @@ async function handleContextMenuAction(action: string) {
       selectAllInActivePane()
       break
 
+    case 'calculate-dir-size': {
+      const p = (item && item.isDirectory) ? item.path : activePaneState.value.currentPath
+      openFolderSizeModal(p)
+      break
+    }
+
+    case 'large-files': {
+      const p = (item && item.isDirectory) ? item.path : activePaneState.value.currentPath
+      openLargeFilesModal(p)
+      break
+    }
+
     case 'zip': {
       const paths = getSelectedOrCursorPaths()
-      if (paths.length === 0 && item) {
-        archivePathsToZip([item.path])
-      } else if (paths.length > 0) {
-        archivePathsToZip(paths)
+      const targets = paths.length > 0 ? paths : (item ? [item.path] : [])
+      if (targets.length > 0) {
+        openCreateArchiveModal(targets)
       } else {
         showToast('Не вибрано жодного файлу для архівування', 'error')
       }
@@ -376,7 +460,7 @@ async function handleContextMenuAction(action: string) {
     case 'unzip': {
       const targetItem = item || getActiveCursorItem()
       if (targetItem && !targetItem.isDirectory) {
-        extractZipFile(targetItem.path)
+        openArchiveViewer(targetItem.path)
       }
       break
     }
@@ -752,6 +836,11 @@ async function openActiveTerminal() {
 
 // Native open (Windows Explorer association on double-click)
 async function openFileNative(item: FileItem) {
+  const ext = (item.extension || item.name.split('.').pop() || '').toLowerCase().replace(/^\./, '')
+  if (['zip', '7z', 'rar', 'tar', 'gz', 'tgz', 'iso', 'bz2', 'xz'].includes(ext)) {
+    openArchiveViewer(item.path)
+    return
+  }
   const res = await window.electronAPI.openPath(item.path)
   if (!res.success) {
     showToast(`Could not open file: ${res.error}`, 'error')
@@ -864,6 +953,48 @@ function openSearchModal() {
   searchModal.open = true
 }
 
+function openLargeFilesModal(targetPath?: string) {
+  largeFilesModal.initialDir = (typeof targetPath === 'string' && targetPath.trim()) ? targetPath.trim() : activePaneState.value.currentPath
+  largeFilesModal.open = true
+}
+
+function openCreateArchiveModal(sources: string[]) {
+  createArchiveModal.sources = Array.isArray(sources) ? Array.from(sources).map((s) => String(s)) : []
+  createArchiveModal.currentDir = activePaneState.value.currentPath
+  createArchiveModal.open = true
+}
+
+function openArchiveViewer(archivePath: string) {
+  archiveViewModal.archivePath = archivePath
+  archiveViewModal.currentDir = activePaneState.value.currentPath
+  archiveViewModal.targetExtractDir = oppositePaneState.value.currentPath || activePaneState.value.currentPath
+  archiveViewModal.open = true
+}
+
+function onArchiveCreated(targetPath: string) {
+  const name = targetPath.split(/[/\\]/).filter(Boolean).pop() || targetPath
+  showToast(`Архів створено: ${name}`, 'success')
+  refreshAllPanes()
+}
+
+function onArchiveExtracted(targetPath?: string) {
+  if (targetPath) {
+    showToast(`Архів успішно розпаковано у: ${targetPath}`, 'success')
+  } else {
+    showToast('Архів успішно розархівовано', 'success')
+  }
+  refreshAllPanes()
+}
+
+function openFolderSizeModal(targetPath: string) {
+  folderSizeModal.targetPath = targetPath
+  folderSizeModal.open = true
+}
+
+function calculateFolderSize(item: FileItem) {
+  openFolderSizeModal(item.path)
+}
+
 function jumpToSearchFile(filePath: string) {
   searchModal.open = false
   const lastSlashIdx = Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/'))
@@ -961,9 +1092,11 @@ async function handleDragDrop(sourcePaths: string[], targetDir: string, isMove: 
     const rawPaths: string[] = JSON.parse(JSON.stringify(sourcePaths))
     const targetName = targetDir.split(/[/\\]/).filter(Boolean).pop() || targetDir
 
-    // Avoid dropping onto the exact same folder if single item is already in it
+    // Avoid dropping onto the exact same folder
     const firstParent = rawPaths[0].replace(/[/\\][^/\\]+$/, '')
-    if (rawPaths.length === 1 && firstParent.toLowerCase() === targetDir.toLowerCase().replace(/[/\\]$/, '')) {
+    const normParent = firstParent.toLowerCase().replace(/[/\\]+$/, '')
+    const normTarget = targetDir.toLowerCase().replace(/[/\\]+$/, '')
+    if (normParent === normTarget) {
       showToast('Цільова папка збігається з вихідною', 'error')
       return
     }
@@ -1122,10 +1255,17 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
     return
   }
 
-  // F5 - Copy (Shift+F5: Duplicate/Clone in same directory)
+  // F5 - Copy (Shift+F5: Duplicate/Clone; Alt+F5: Create Archive ZIP/7Z/RAR)
   if (e.key === 'F5') {
     e.preventDefault()
-    if (e.shiftKey) {
+    if (e.altKey) {
+      const paths = getSelectedOrCursorPaths()
+      if (paths.length > 0) {
+        openCreateArchiveModal(paths)
+      } else {
+        showToast('Не вибрано файли для архівування', 'error')
+      }
+    } else if (e.shiftKey) {
       showShortcutToast('Shift + F5', 'Копіювання у поточну папку (Clone)')
       handleBottomAction('clone')
     } else {
@@ -1135,11 +1275,20 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
     return
   }
 
-  // F6 - Move
+  // F6 - Move (Alt+F6: View / Unpack Archive)
   if (e.key === 'F6') {
     e.preventDefault()
-    showShortcutToast('F6', 'Переміщення у цільову панель')
-    handleBottomAction('move')
+    if (e.altKey) {
+      const cursor = getActiveCursorItem()
+      if (cursor && !cursor.isDirectory) {
+        openArchiveViewer(cursor.path)
+      } else {
+        showToast('Виберіть архів для перегляду та розпакування', 'error')
+      }
+    } else {
+      showShortcutToast('F6', 'Переміщення у цільову панель')
+      handleBottomAction('move')
+    }
     return
   }
 

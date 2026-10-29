@@ -46,9 +46,20 @@
           <span class="item-shortcut">F2</span>
         </button>
 
+        <button v-if="item.isDirectory" class="context-menu-item" @click="trigger('calculate-dir-size')">
+          <HardDrive :size="14" class="item-icon" />
+          <span class="item-label">Порахувати розмір папки</span>
+          <span class="item-shortcut">Space</span>
+        </button>
+
+        <button v-if="item.isDirectory" class="context-menu-item" @click="trigger('large-files')">
+          <PieChart :size="14" class="item-icon" />
+          <span class="item-label">Пошук великих файлів...</span>
+        </button>
+
         <button class="context-menu-item" @click="trigger('zip')">
           <Archive :size="14" class="item-icon" />
-          <span class="item-label">Архівувати у ZIP</span>
+          <span class="item-label">Архівувати (ZIP / 7Z / RAR)</span>
           <span class="item-shortcut">Alt+F5</span>
         </button>
 
@@ -127,6 +138,11 @@
           <span class="item-shortcut">F9</span>
         </button>
 
+        <button class="context-menu-item" @click="trigger('large-files')">
+          <PieChart :size="14" class="item-icon" />
+          <span class="item-label">Пошук великих файлів...</span>
+        </button>
+
         <button class="context-menu-item" @click="trigger('refresh')">
           <RotateCw :size="14" class="item-icon" />
           <span class="item-label">Оновити</span>
@@ -159,7 +175,9 @@ import {
   Terminal,
   RotateCw,
   Archive,
-  FolderArchive
+  FolderArchive,
+  HardDrive,
+  PieChart
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -178,8 +196,8 @@ const menuRef = ref<HTMLElement | null>(null)
 
 function isArchive(item: FileItem | null): boolean {
   if (!item || item.isDirectory) return false
-  const ext = (item.extension || '').toLowerCase()
-  return ext === 'zip' || ext === 'tar' || ext === 'gz' || ext === 'tgz' || ext === '7z'
+  const ext = (item.extension || item.name.split('.').pop() || '').toLowerCase().replace(/^\./, '')
+  return ['zip', '7z', 'rar', 'tar', 'gz', 'tgz', 'iso', 'bz2', 'xz'].includes(ext)
 }
 
 function trigger(action: string) {

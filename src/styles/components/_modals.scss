@@ -1,13 +1,14 @@
 @use '../variables' as *;
 @use '../mixins' as *;
 
-.modal-overlay {
+.modal-overlay,
+.modal-backdrop {
   position: fixed;
   inset: 0;
   background: var(--bg-modal-overlay);
   backdrop-filter: $blur-modal;
   @include flex-center;
-  z-index: 100;
+  z-index: 500;
 }
 
 .modal-card {
@@ -69,6 +70,30 @@
   }
 }
 
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
 .modal-body {
   padding: $size-space-xl;
   overflow-y: auto;
@@ -87,6 +112,30 @@
     align-items: center;
     gap: $size-space-md;
     margin-left: auto;
+  }
+}
+
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
@@ -111,6 +160,30 @@
   }
 }
 
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
 .btn-danger {
   @include button-base;
   @include flex-center;
@@ -130,6 +203,30 @@
   }
 }
 
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
 .btn-secondary {
   @include button-base;
   @include flex-center;
@@ -142,6 +239,30 @@
 
   &:hover {
     background: var(--row-hover);
+  }
+}
+
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
@@ -159,6 +280,30 @@
   &:focus {
     border-color: $color-accent-blue;
     box-shadow: 0 0 0 1px $color-accent-blue;
+  }
+}
+
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
@@ -288,6 +433,30 @@
   }
 }
 
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
 // Editor Modal
 .editor-card {
   width: 920px;
@@ -360,6 +529,30 @@
   }
 }
 
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
 // Operation Modal (Copy, Move, Mkdir, Delete, Rename)
 .op-card {
   width: 520px;
@@ -405,6 +598,30 @@
       font-style: italic;
       padding-top: $size-space-xs;
     }
+  }
+}
+
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
@@ -461,6 +678,12 @@
         font-size: $font-size-base;
         color: $color-text-muted;
         cursor: pointer;
+      }
+
+      .search-actions-group {
+        display: flex;
+        align-items: center;
+        gap: $size-space-sm;
       }
     }
   }
@@ -548,5 +771,29 @@
     font-family: $font-family-mono;
     font-size: $font-size-sm;
     color: $color-text-dim;
+  }
+}
+
+.modal-close-btn {
+  @include button-base;
+  @include flex-center;
+  width: $size-btn-icon;
+  height: $size-btn-icon;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }

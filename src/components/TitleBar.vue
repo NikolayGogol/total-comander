@@ -28,6 +28,17 @@
         <Search :size="15" />
       </button>
 
+      <!-- Large Files Finder / Disk Cleanup -->
+      <button 
+        class="btn-icon" 
+        data-tooltip="Пошук великих файлів (Звільнення місця на диску)"
+        data-tooltip-pos="bottom"
+        title="Аналізатор диска: Пошук великих файлів для звільнення місця на диску"
+        @click="$emit('open-large-files')"
+      >
+        <PieChart :size="15" />
+      </button>
+
       <!-- Toggle Hidden Files -->
       <button 
         class="btn-icon" 
@@ -100,6 +111,7 @@
 import { APP_VERSION, BUILD_NUMBER, BUILD_DATE } from '../buildInfo'
 import { 
   Search, 
+  PieChart,
   Eye, 
   EyeOff, 
   ArrowLeftRight, 
@@ -116,6 +128,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'open-search'): void
+  (e: 'open-large-files'): void
   (e: 'toggle-hidden'): void
   (e: 'swap-panes'): void
   (e: 'open-terminal'): void

@@ -60,6 +60,42 @@ export interface SearchResult {
   matchLine?: string
 }
 
+export interface ArchiveEntry {
+  path: string
+  name: string
+  isDirectory: boolean
+  size: number
+  packedSize?: number
+  modified?: string
+  encrypted?: boolean
+}
+
+export interface LargeFileItem {
+  path: string
+  name: string
+  size: number
+  mtime: number
+  extension: string
+  dir: string
+}
+
+export interface FolderSizeItem {
+  name: string
+  path: string
+  size: number
+  fileCount: number
+  dirCount: number
+}
+
+export interface CreateArchiveOptions {
+  sources: string[]
+  targetPath: string
+  format: 'zip' | '7z' | 'rar'
+  password?: string
+  level?: number
+  encryptHeader?: boolean
+}
+
 export interface SystemInfo {
   homeDir: string
   tmpDir: string
@@ -89,7 +125,12 @@ export interface ElectronAPI {
   quickLook: (filePath: string) => Promise<{ success: boolean; error?: string }>
   createZip: (sources: string[], targetZipPath: string) => Promise<{ success: boolean; error?: string }>
   extractZip: (zipPath: string, targetDir: string) => Promise<{ success: boolean; error?: string }>
+  createArchive: (options: CreateArchiveOptions) => Promise<{ success: boolean; targetPath?: string; error?: string }>
+  listArchive: (archivePath: string, password?: string) => Promise<{ success: boolean; entries?: ArchiveEntry[]; error?: string; isEncrypted?: boolean }>
+  extractArchive: (archivePath: string, targetDir: string, password?: string) => Promise<{ success: boolean; error?: string }>
   getDirSize: (dirPath: string) => Promise<{ success: boolean; size?: number; count?: number; error?: string }>
+  analyzeFolderSizes: (targetPath: string) => Promise<{ success: boolean; parentPath?: string; folders?: FolderSizeItem[]; totalSize?: number; totalFiles?: number; error?: string }>
+  findLargeFiles: (options: { targetDir: string; minSizeBytes: number; limit?: number }) => Promise<{ success: boolean; files?: LargeFileItem[]; totalSize?: number; scannedCount?: number; error?: string }>
   search: (dirPath: string, query: string, recursive: boolean, contentSearch?: string) => Promise<{ success: boolean; results?: SearchResult[]; error?: string }>
   copyFilesToClipboard: (paths: string[], action?: 'copy' | 'cut') => Promise<{ success: boolean; count?: number; error?: string }>
   getClipboardFiles: () => Promise<{ success: boolean; paths?: string[]; action?: 'copy' | 'cut'; error?: string }>
