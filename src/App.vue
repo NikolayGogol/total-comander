@@ -787,9 +787,13 @@ function clearSelection(paneKey: 'left' | 'right') {
 
 function selectAllInActivePane() {
   const p = activePaneState.value
-  p.selectedPaths = new Set(p.items.map((item) => item.path))
+  const newSet = new Set<string>()
+  for (const item of p.items) {
+    newSet.add(item.path)
+  }
+  p.selectedPaths = newSet
   window.getSelection()?.removeAllRanges()
-  showShortcutToast('Ctrl + A', `Виділено всі файли (${p.items.length})`)
+  showShortcutToast('Ctrl + A', `Виділено всі файли (${newSet.size})`)
 }
 
 function invertSelectionInActivePane() {
@@ -1160,7 +1164,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Swap Left & Right Panes with Ctrl+U
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'u' || e.key === 'U')) {
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyU' || e.key === 'u' || e.key === 'U' || e.key === 'г' || e.key === 'Г')
+  ) {
     e.preventDefault()
     swapPanes()
     return
@@ -1335,7 +1342,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+R - Refresh
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'r' || e.key === 'R')) {
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyR' || e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К')
+  ) {
     e.preventDefault()
     showShortcutToast('Ctrl + R', 'Оновлення вмісту обох панелей')
     refreshAllPanes()
@@ -1345,7 +1355,9 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   // Ctrl+Shift+. or Ctrl+H - Toggle Hidden Files
   if (
     ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '.') ||
-    (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'h' || e.key === 'H'))
+    (!isInputActive &&
+      (e.metaKey || e.ctrlKey) &&
+      (e.code === 'KeyH' || e.key === 'h' || e.key === 'H' || e.key === 'р' || e.key === 'Р'))
   ) {
     e.preventDefault()
     toggleHiddenFiles()
@@ -1353,7 +1365,11 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+D - Quick drives info
-  if (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
+  if (
+    !isInputActive &&
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyD' || e.key === 'd' || e.key === 'D' || e.key === 'в' || e.key === 'В')
+  ) {
     e.preventDefault()
     const driveList = drives.value.map((d) => d.name).join(', ')
     showShortcutToast('Ctrl + D', `Диски: ${driveList || 'C:\\'}`)
@@ -1361,7 +1377,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+T - New Tab
-  if ((e.metaKey || e.ctrlKey) && (e.key === 't' || e.key === 'T')) {
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyT' || e.key === 't' || e.key === 'T' || e.key === 'е' || e.key === 'Е')
+  ) {
     e.preventDefault()
     newTab(activePaneId.value)
     showShortcutToast('Ctrl + T', 'Відкрито нову вкладку')
@@ -1369,15 +1388,21 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+W - Close Tab
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'w' || e.key === 'W')) {
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyW' || e.key === 'w' || e.key === 'W' || e.key === 'ц' || e.key === 'Ц')
+  ) {
     e.preventDefault()
     closeTab(activePaneId.value, activePaneState.value.activeTabId)
     showShortcutToast('Ctrl + W', 'Закрито поточну вкладку')
     return
   }
 
-  // Ctrl+A - Select All
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
+  // Ctrl+A - Select All (supports any layout via e.code)
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyA' || e.key === 'a' || e.key === 'A' || e.key === 'ф' || e.key === 'Ф')
+  ) {
     if (isInputActive) return
     e.preventDefault()
     selectAllInActivePane()
@@ -1406,7 +1431,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+C - Copy selected files to clipboard
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyC' || e.key === 'c' || e.key === 'C' || e.key === 'с' || e.key === 'С')
+  ) {
     if (isInputActive) {
       const input = activeEl as HTMLInputElement | HTMLTextAreaElement
       if (input.selectionStart !== input.selectionEnd) return
@@ -1417,7 +1445,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+X - Cut selected files to clipboard
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'x' || e.key === 'X')) {
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyX' || e.key === 'x' || e.key === 'X' || e.key === 'ч' || e.key === 'Ч')
+  ) {
     if (isInputActive) {
       const input = activeEl as HTMLInputElement | HTMLTextAreaElement
       if (input.selectionStart !== input.selectionEnd) return
@@ -1428,7 +1459,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+V - Paste files from clipboard
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'V')) {
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    (e.code === 'KeyV' || e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М')
+  ) {
     if (isInputActive) return
     e.preventDefault()
     pasteFromClipboard()

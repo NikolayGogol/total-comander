@@ -190,7 +190,7 @@ function setupAppMenu() {
       submenu: [
         {
           label: 'Оновити',
-          accelerator: 'Ctrl+R',
+          accelerator: 'CmdOrCtrl+R',
           click: (_, focusedWindow) => {
             focusedWindow?.webContents.send('app:command', 'refresh')
           },
@@ -204,28 +204,28 @@ function setupAppMenu() {
       submenu: [
         {
           label: 'Копіювати',
-          accelerator: 'Ctrl+C',
+          accelerator: 'CmdOrCtrl+C',
           click: (_, focusedWindow) => {
             focusedWindow?.webContents.send('app:command', 'copy')
           },
         },
         {
           label: 'Вирізати',
-          accelerator: 'Ctrl+X',
+          accelerator: 'CmdOrCtrl+X',
           click: (_, focusedWindow) => {
             focusedWindow?.webContents.send('app:command', 'cut')
           },
         },
         {
           label: 'Вставити',
-          accelerator: 'Ctrl+V',
+          accelerator: 'CmdOrCtrl+V',
           click: (_, focusedWindow) => {
             focusedWindow?.webContents.send('app:command', 'paste')
           },
         },
         {
           label: 'Виділити все',
-          accelerator: 'Ctrl+A',
+          accelerator: 'CmdOrCtrl+A',
           click: (_, focusedWindow) => {
             focusedWindow?.webContents.send('app:command', 'selectAll')
           },

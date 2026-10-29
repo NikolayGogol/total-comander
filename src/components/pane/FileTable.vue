@@ -375,6 +375,7 @@ function handleWrapperClick(e: MouseEvent) {
 }
 
 function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
+  wrapperRef.value?.focus()
   if (e.shiftKey) {
     emit('select-range', props.cursorIndex >= 0 ? props.cursorIndex : 0, index)
   } else if (e.metaKey || e.ctrlKey) {
@@ -413,8 +414,13 @@ function handleTableContextMenu(e: MouseEvent) {
 function handleKeyDown(e: KeyboardEvent) {
   const len = props.items.length
 
-  // Ctrl+A - Select All
-  if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+  // Ctrl+A or Numpad+ - Select All (supports any layout via e.code)
+  if (
+    ((e.ctrlKey || e.metaKey) &&
+      (e.code === 'KeyA' || e.key === 'a' || e.key === 'A' || e.key === 'ф' || e.key === 'Ф')) ||
+    e.code === 'NumpadAdd' ||
+    e.key === '+'
+  ) {
     e.preventDefault()
     emit('select-all')
     return

@@ -3,7 +3,7 @@
 
 .toast-container {
   position: fixed;
-  bottom: 54px;
+  bottom: calc(#{$size-bottom-action-height} + #{$size-pane-footer-height} + #{$size-space-md});
   right: $size-space-xl;
   z-index: 200;
   display: flex;
