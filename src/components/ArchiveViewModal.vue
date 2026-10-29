@@ -19,10 +19,10 @@
         <div v-if="needPassword" class="archive-pass-banner">
           <Lock :size="15" class="icon-rose" />
           <span class="pass-msg">Для перегляду або видобування потрібен пароль:</span>
-          <input 
-            v-model="passwordInput" 
-            type="password" 
-            class="form-input pass-input" 
+          <input
+            v-model="passwordInput"
+            type="password"
+            class="form-input pass-input"
             placeholder="Введіть пароль..."
             @keydown.enter="reloadWithPassword"
           />
@@ -33,10 +33,10 @@
         <div class="archive-toolbar">
           <div class="archive-search">
             <Search :size="13" class="search-icon" />
-            <input 
-              v-model="filterQuery" 
-              type="text" 
-              class="form-input search-input" 
+            <input
+              v-model="filterQuery"
+              type="text"
+              class="form-input search-input"
               placeholder="Швидкий пошук файлів в архіві..."
             />
           </div>
@@ -49,9 +49,9 @@
 
         <!-- Virtual Breadcrumbs Path Bar -->
         <div class="archive-breadcrumb-bar">
-          <button 
-            class="archive-up-btn" 
-            :disabled="!currentSubDir || !!filterQuery" 
+          <button
+            class="archive-up-btn"
+            :disabled="!currentSubDir || !!filterQuery"
             title="⤴ Рівень вгору (Backspace або двічі клікніть '..')"
             @click="goUp"
           >
@@ -59,8 +59,8 @@
           </button>
 
           <div class="archive-crumbs">
-            <span 
-              class="crumb-item" 
+            <span
+              class="crumb-item"
               :class="{ 'is-active': !currentSubDir && !filterQuery }"
               title="Корінь архіву"
               @click="goToRoot"
@@ -76,8 +76,8 @@
             <template v-else>
               <template v-for="(crumb, idx) in breadcrumbs" :key="idx">
                 <span class="crumb-sep">/</span>
-                <span 
-                  class="crumb-item" 
+                <span
+                  class="crumb-item"
                   :class="{ 'is-active': idx === breadcrumbs.length - 1 }"
                   @click="goToCrumb(idx)"
                 >
@@ -90,7 +90,7 @@
 
         <!-- Archive files table -->
         <div class="archive-table-wrapper">
-          <table class="archive-table" v-if="visibleItems.length > 0 || currentSubDir">
+          <table v-if="visibleItems.length > 0 || currentSubDir" class="archive-table">
             <thead>
               <tr>
                 <th class="col-arc-name">Ім'я</th>
@@ -101,8 +101,8 @@
             </thead>
             <tbody>
               <!-- Parent Directory (..) Row -->
-              <tr 
-                v-if="currentSubDir && !filterQuery" 
+              <tr
+                v-if="currentSubDir && !filterQuery"
                 class="archive-row is-parent"
                 title="⤴ Перейти на рівень вгору (подвійний клік або Backspace)"
                 @dblclick="goUp"
@@ -116,12 +116,14 @@
               </tr>
 
               <!-- Items (Folders & Files) -->
-              <tr 
-                v-for="item in visibleItems" 
+              <tr
+                v-for="item in visibleItems"
                 :key="item.fullRelativePath"
                 class="archive-row"
                 :class="{ 'is-dir': item.isDirectory }"
-                :title="item.isDirectory ? 'Папка: ' + item.name + ' (двічі клікніть щоб відкрити)' : 'Файл: ' + item.name"
+                :title="
+                  item.isDirectory ? 'Папка: ' + item.name + ' (двічі клікніть щоб відкрити)' : 'Файл: ' + item.name
+                "
                 @dblclick="handleRowDblClick(item)"
               >
                 <td class="col-arc-name">
@@ -159,27 +161,28 @@
         <div class="archive-extract-bar">
           <div class="dest-input-row">
             <span class="dest-label">Шлях розпакування:</span>
-            <input 
-              v-model="customExtractDir" 
-              type="text" 
+            <input
+              v-model="customExtractDir"
+              type="text"
               class="form-input dest-input"
               placeholder="Папка куди видобути вміст..."
             />
             <div class="dest-buttons">
-              <button 
-                v-if="props.currentDir" 
-                type="button" 
-                class="btn-secondary btn-xs" 
-                title="Розпакувати у поточну папку"
-                @click="customExtractDir = props.currentDir"
+              <button
+                type="button"
+                class="btn-xs"
+                :class="isCurrentDirActive ? 'btn-primary' : 'btn-secondary'"
+                title="Розпакувати у поточну папку (де розташовано архів)"
+                @click="customExtractDir = archiveFileDir"
               >
                 Поточна папка
               </button>
-              <button 
-                v-if="props.targetExtractDir" 
-                type="button" 
-                class="btn-secondary btn-xs" 
-                title="Розпакувати у сусідню панель"
+              <button
+                v-if="props.targetExtractDir"
+                type="button"
+                class="btn-xs"
+                :class="isOppositeDirActive ? 'btn-primary' : 'btn-secondary'"
+                title="Розпакувати у протилежну панель"
                 @click="customExtractDir = props.targetExtractDir"
               >
                 Сусідня панель
@@ -189,7 +192,9 @@
           <div class="dest-subfolder-row">
             <label class="extract-checkbox-label">
               <input v-model="createSubfolder" type="checkbox" />
-              <span>Створити окрему підпапку: <strong>{{ archiveBaseName }}</strong></span>
+              <span
+                >Створити окрему підпапку: <strong>{{ archiveBaseName }}</strong></span
+              >
             </label>
             <div class="dest-target-preview" :title="finalExtractPath">
               Ціль: <code>{{ finalExtractPath }}</code>
@@ -200,11 +205,7 @@
 
       <div class="modal-footer archive-footer">
         <button class="btn-secondary" @click="$emit('close')">Закрити (Esc)</button>
-        <button 
-          class="btn-primary" 
-          :disabled="loading || entries.length === 0"
-          @click="extractAll"
-        >
+        <button class="btn-primary" :disabled="loading || entries.length === 0" @click="extractAll">
           <FolderArchive :size="14" />
           <span>Розархівувати все</span>
         </button>
@@ -258,12 +259,35 @@ const archiveBaseName = computed(() => {
   return archiveFileName.value.replace(/\.[^.]+$/, '')
 })
 
+const archiveFileDir = computed(() => {
+  if (props.currentDir) return props.currentDir
+  const parent = props.archivePath.replace(/[/\\][^/\\]+$/, '')
+  return parent || 'C:\\'
+})
+
+// Default to CURRENT directory where the archive is located
 const defaultExtractBase = computed(() => {
-  return props.targetExtractDir || props.currentDir || 'C:\\'
+  return archiveFileDir.value || props.targetExtractDir || 'C:\\'
 })
 
 const customExtractDir = ref(defaultExtractBase.value)
 const createSubfolder = ref(true)
+
+const isCurrentDirActive = computed(() => {
+  if (!customExtractDir.value) return false
+  return (
+    customExtractDir.value.toLowerCase().replace(/[/\\]+$/, '') ===
+    archiveFileDir.value.toLowerCase().replace(/[/\\]+$/, '')
+  )
+})
+
+const isOppositeDirActive = computed(() => {
+  if (!customExtractDir.value || !props.targetExtractDir) return false
+  return (
+    customExtractDir.value.toLowerCase().replace(/[/\\]+$/, '') ===
+    props.targetExtractDir.toLowerCase().replace(/[/\\]+$/, '')
+  )
+})
 
 const finalExtractPath = computed(() => {
   const base = (customExtractDir.value || '').trim().replace(/[/\\]+$/, '')
@@ -326,7 +350,7 @@ const visibleItems = computed<VirtualArchiveItem[]>(() => {
 
   const cur = currentSubDir.value ? currentSubDir.value.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') : ''
   const prefix = cur ? cur + '/' : ''
-  
+
   const foldersMap = new Map<string, VirtualArchiveItem>()
   const filesList: VirtualArchiveItem[] = []
 
@@ -378,14 +402,16 @@ const visibleItems = computed<VirtualArchiveItem[]>(() => {
           })
         } else {
           const existing = foldersMap.get(folderName)!
-          existing.size += (entry.size || 0)
+          existing.size += entry.size || 0
           if (entry.packedSize) existing.packedSize = (existing.packedSize || 0) + entry.packedSize
         }
       }
     }
   }
 
-  const sortedFolders = Array.from(foldersMap.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  const sortedFolders = Array.from(foldersMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  )
   const sortedFiles = filesList.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
 
   return [...sortedFolders, ...sortedFiles]

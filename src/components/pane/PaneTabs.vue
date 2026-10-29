@@ -1,7 +1,7 @@
 <template>
   <div class="pane-tabs-bar">
-    <div 
-      v-for="tab in tabs" 
+    <div
+      v-for="tab in tabs"
       :key="tab.id"
       class="pane-tab"
       :class="{ 'is-active': tab.id === activeTabId }"
@@ -10,9 +10,9 @@
     >
       <Folder :size="12" class="tab-icon" :title="'Папка: ' + tab.title" />
       <span class="tab-title">{{ tab.title }}</span>
-      <span 
+      <span
         v-if="tabs.length > 1"
-        class="tab-close" 
+        class="tab-close"
         title="Закрити вкладку (Cmd+W)"
         @click.stop="$emit('close-tab', tab.id)"
       >
@@ -20,11 +20,7 @@
       </span>
     </div>
 
-    <button 
-      class="tab-add-btn" 
-      title="Відкрити нову вкладку (Cmd+T)" 
-      @click.stop="$emit('new-tab')"
-    >
+    <button class="tab-add-btn" title="Відкрити нову вкладку (Cmd+T)" @click.stop="$emit('new-tab')">
       <Plus :size="13" title="Нова вкладка (Cmd+T)" />
     </button>
   </div>

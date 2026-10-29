@@ -16,44 +16,46 @@
         <div class="archive-field-group">
           <label class="archive-label">Ім'я та шлях архіву:</label>
           <div class="archive-input-wrapper">
-            <input 
+            <input
               ref="nameInputRef"
-              v-model="archiveName" 
-              type="text" 
-              class="form-input" 
+              v-model="archiveName"
+              type="text"
+              class="form-input"
               placeholder="archive_name"
               @keydown.enter="submit"
             />
             <span class="archive-ext-badge">.{{ selectedFormat }}</span>
           </div>
-          <span class="archive-subtext">Папка: <code>{{ currentDir }}</code></span>
+          <span class="archive-subtext"
+            >Папка: <code>{{ currentDir }}</code></span
+          >
         </div>
 
         <!-- Format Selector (7z, zip, rar) -->
         <div class="archive-field-group">
           <label class="archive-label">Формат архівування:</label>
           <div class="archive-format-grid">
-            <button 
-              type="button" 
-              class="format-btn" 
+            <button
+              type="button"
+              class="format-btn"
               :class="{ 'is-selected': selectedFormat === 'zip' }"
               @click="setFormat('zip')"
             >
               <span class="format-title">ZIP</span>
               <span class="format-desc">Вбудований / Швидкий</span>
             </button>
-            <button 
-              type="button" 
-              class="format-btn" 
+            <button
+              type="button"
+              class="format-btn"
               :class="{ 'is-selected': selectedFormat === '7z' }"
               @click="setFormat('7z')"
             >
               <span class="format-title">7Z</span>
               <span class="format-desc">Вбудований / Макс. стиск</span>
             </button>
-            <button 
-              type="button" 
-              class="format-btn" 
+            <button
+              type="button"
+              class="format-btn"
               :class="{ 'is-selected': selectedFormat === 'rar' }"
               @click="setFormat('rar')"
             >
@@ -70,26 +72,21 @@
               <Lock :size="13" class="icon-blue" />
               <span>Захист паролем (необов'язково):</span>
             </label>
-            <button 
-              type="button" 
-              class="btn-text-toggle" 
-              @click="showPassword = !showPassword"
-              tabindex="-1"
-            >
+            <button type="button" class="btn-text-toggle" tabindex="-1" @click="showPassword = !showPassword">
               {{ showPassword ? 'Сховати' : 'Показати' }}
             </button>
           </div>
           <div class="archive-input-wrapper">
-            <input 
-              v-model="password" 
-              :type="showPassword ? 'text' : 'password'" 
-              class="form-input" 
+            <input
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              class="form-input"
               placeholder="Введіть пароль для шифрування..."
               @keydown.enter="submit"
             />
           </div>
           <label v-if="selectedFormat === '7z' && password" class="archive-checkbox-label">
-            <input type="checkbox" v-model="encryptHeader" />
+            <input v-model="encryptHeader" type="checkbox" />
             <span>Шифрувати також імена файлів (Header Encryption)</span>
           </label>
         </div>
@@ -99,15 +96,15 @@
           <label class="archive-label">Рівень стиснення:</label>
           <div class="archive-level-selector">
             <label class="level-radio">
-              <input type="radio" value="1" v-model.number="compressionLevel" />
+              <input v-model.number="compressionLevel" type="radio" value="1" />
               <span>Швидке (1)</span>
             </label>
             <label class="level-radio">
-              <input type="radio" value="5" v-model.number="compressionLevel" />
+              <input v-model.number="compressionLevel" type="radio" value="5" />
               <span>Звичайне (5)</span>
             </label>
             <label class="level-radio">
-              <input type="radio" value="9" v-model.number="compressionLevel" />
+              <input v-model.number="compressionLevel" type="radio" value="9" />
               <span>Максимальне (9)</span>
             </label>
           </div>
@@ -120,21 +117,14 @@
             <div v-for="item in sources.slice(0, 4)" :key="item" class="archive-item-preview">
               {{ item.split(/[/\\]/).filter(Boolean).pop() }}
             </div>
-            <div v-if="sources.length > 4" class="archive-item-more">
-              + ще {{ sources.length - 4 }} елемент(ів)
-            </div>
+            <div v-if="sources.length > 4" class="archive-item-more">+ ще {{ sources.length - 4 }} елемент(ів)</div>
           </div>
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" @click="$emit('close')">Cancel (Esc)</button>
-        <button 
-          ref="confirmBtnRef"
-          class="btn-primary" 
-          :disabled="isProcessing || !archiveName.trim()"
-          @click="submit"
-        >
+        <button ref="confirmBtnRef" class="btn-primary" :disabled="isProcessing || !archiveName.trim()" @click="submit">
           {{ isProcessing ? 'Архівування...' : 'Архівувати (Enter)' }}
         </button>
       </div>

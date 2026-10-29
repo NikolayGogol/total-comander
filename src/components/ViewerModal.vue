@@ -9,32 +9,42 @@
         </div>
         <div class="viewer-actions">
           <!-- macOS Quick Look trigger -->
-          <button class="btn-secondary quicklook-btn" title="Відкрити у програмі за замовчуванням" @click="openSystemApp">
+          <button
+            class="btn-secondary quicklook-btn"
+            title="Відкрити у програмі за замовчуванням"
+            @click="openSystemApp"
+          >
             <ExternalLink :size="13" title="QuickLook" />
             <span>Відкрити в системі</span>
           </button>
 
           <!-- Viewer Modes -->
           <div class="mode-switch">
-            <button 
-              class="mode-btn" 
+            <button
+              class="mode-btn"
               :class="{ active: viewMode === 'text' }"
               title="View as text/code"
               @click="viewMode = 'text'"
-            >Text</button>
-            <button 
+            >
+              Text
+            </button>
+            <button
               v-if="isImageFile"
-              class="mode-btn" 
+              class="mode-btn"
               :class="{ active: viewMode === 'image' }"
               title="View image preview"
               @click="viewMode = 'image'"
-            >Image</button>
-            <button 
-              class="mode-btn" 
+            >
+              Image
+            </button>
+            <button
+              class="mode-btn"
               :class="{ active: viewMode === 'hex' }"
               title="Inspect raw hexadecimal dump"
               @click="viewMode = 'hex'"
-            >Hex</button>
+            >
+              Hex
+            </button>
           </div>
 
           <button class="modal-close-btn" title="Close viewer (Esc)" @click="$emit('close')">

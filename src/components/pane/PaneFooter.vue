@@ -4,14 +4,12 @@
       <span v-if="selectedCount > 0" class="pane-footer-selected">
         {{ selectedCount }} selected ({{ formatBytes(selectedSize) }})
       </span>
-      <span v-else>
-        {{ totalDirectories }} dirs, {{ totalFiles }} files ({{ formatBytes(totalFileSize) }})
-      </span>
+      <span v-else> {{ totalDirectories }} dirs, {{ totalFiles }} files ({{ formatBytes(totalFileSize) }}) </span>
     </div>
 
     <!-- Free & Total Disk Space for current pane -->
-    <div 
-      v-if="freeSpace !== undefined && totalSpace !== undefined" 
+    <div
+      v-if="freeSpace !== undefined && totalSpace !== undefined"
       class="pane-footer-space"
       :title="'Вільне місце на диску: ' + formatBytes(freeSpace) + ' з ' + formatBytes(totalSpace)"
     >

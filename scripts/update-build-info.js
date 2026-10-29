@@ -25,4 +25,3 @@ export const BUILD_DATE = '${buildDate}'
 const outPath = path.resolve(__dirname, '../src/buildInfo.ts')
 fs.writeFileSync(outPath, content, 'utf-8')
 console.log(`[build-info] Version ${pkg.version} (build ${buildNumber}) written to ${outPath}`)
-

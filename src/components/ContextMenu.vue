@@ -177,7 +177,7 @@ import {
   Archive,
   FolderArchive,
   HardDrive,
-  PieChart
+  PieChart,
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -217,4 +217,3 @@ onMounted(() => {
   })
 })
 </script>
-

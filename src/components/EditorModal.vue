@@ -22,7 +22,7 @@
         <div v-if="loading" class="editor-status">Loading file...</div>
         <div v-else-if="error" class="editor-status error">{{ error }}</div>
         <div v-else class="editor-workspace">
-          <div class="editor-line-numbers" ref="lineNumbersRef">
+          <div ref="lineNumbersRef" class="editor-line-numbers">
             <div v-for="line in lineCount" :key="line" class="editor-line-num">{{ line }}</div>
           </div>
           <textarea
@@ -45,9 +45,7 @@
         </div>
         <div class="footer-actions">
           <button class="btn-secondary" @click="requestClose">Cancel</button>
-          <button class="btn-primary" :disabled="saving || !isDirty" @click="saveFile">
-            Save
-          </button>
+          <button class="btn-primary" :disabled="saving || !isDirty" @click="saveFile">Save</button>
         </div>
       </div>
     </div>

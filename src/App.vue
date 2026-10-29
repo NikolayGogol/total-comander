@@ -1,7 +1,7 @@
 <template>
   <div class="app-container" :data-theme="currentTheme" @keydown="handleGlobalShortcuts">
     <!-- Title Bar with Windows TC Brand and Actions -->
-    <TitleBar 
+    <TitleBar
       :show-hidden="showHidden"
       :current-theme="currentTheme"
       @open-search="openSearchModal"
@@ -14,8 +14,8 @@
     />
 
     <!-- Quick Drive Bar (Physical & Logical Drives C:, D:, etc.) -->
-    <DriveBar 
-      :drives="drives" 
+    <DriveBar
+      :drives="drives"
       :current-path="activePaneState.currentPath"
       @select-drive="navigateToDrive"
       @eject-drive="ejectDrive"
@@ -24,7 +24,7 @@
     <!-- Dual Panes Split View -->
     <main class="dual-pane-container">
       <!-- Left Pane -->
-      <PaneView 
+      <PaneView
         :pane="leftPane"
         pane-id="left"
         :is-active="activePaneId === 'left'"
@@ -52,7 +52,7 @@
       />
 
       <!-- Right Pane -->
-      <PaneView 
+      <PaneView
         :pane="rightPane"
         pane-id="right"
         :is-active="activePaneId === 'right'"
@@ -81,14 +81,14 @@
     </main>
 
     <!-- Bottom Action Bar (Classic Total Commander F2-F10) -->
-    <BottomActionBar 
+    <BottomActionBar
       :has-cursor-item="hasActiveCursorItem"
       :selected-count="activePaneState.selectedPaths.size"
       @action="handleBottomAction"
     />
 
     <!-- F3 Viewer Modal -->
-    <ViewerModal 
+    <ViewerModal
       v-if="viewerModal.open"
       :file-path="viewerModal.filePath"
       :file-name="viewerModal.fileName"
@@ -97,7 +97,7 @@
     />
 
     <!-- F4 Editor Modal -->
-    <EditorModal 
+    <EditorModal
       v-if="editorModal.open"
       :file-path="editorModal.filePath"
       :file-name="editorModal.fileName"
@@ -106,7 +106,7 @@
     />
 
     <!-- Operation Modal (Copy / Move / Mkdir / NewFile / Delete / Rename) -->
-    <OperationModal 
+    <OperationModal
       v-if="operationModal.open"
       :op-type="operationModal.opType"
       :source-items="operationModal.sourceItems"
@@ -116,16 +116,21 @@
     />
 
     <!-- Search Modal (Alt+F7) -->
-    <SearchModal 
+    <SearchModal
       v-if="searchModal.open"
       :initial-dir="searchModal.initialDir"
       @close="searchModal.open = false"
       @jump-to="jumpToSearchFile"
-      @open-large-files="(dir) => { searchModal.open = false; openLargeFilesModal(dir); }"
+      @open-large-files="
+        (dir) => {
+          searchModal.open = false
+          openLargeFilesModal(dir)
+        }
+      "
     />
 
     <!-- Create Archive Modal (Alt+F5 / Context Menu) -->
-    <CreateArchiveModal 
+    <CreateArchiveModal
       v-if="createArchiveModal.open"
       :sources="createArchiveModal.sources"
       :current-dir="createArchiveModal.currentDir"
@@ -135,7 +140,7 @@
     />
 
     <!-- Archive Viewer Modal (Alt+F6 / Double-click on archive) -->
-    <ArchiveViewModal 
+    <ArchiveViewModal
       v-if="archiveViewModal.open"
       :archive-path="archiveViewModal.archivePath"
       :target-extract-dir="archiveViewModal.targetExtractDir"
@@ -146,7 +151,7 @@
     />
 
     <!-- Large Files Finder / Disk Cleanup Modal -->
-    <LargeFilesModal 
+    <LargeFilesModal
       v-if="largeFilesModal.open"
       :initial-dir="largeFilesModal.initialDir"
       :drives="drives"
@@ -157,7 +162,7 @@
     />
 
     <!-- Folder Size Analysis Modal -->
-    <FolderSizeModal 
+    <FolderSizeModal
       v-if="folderSizeModal.open"
       :target-path="folderSizeModal.targetPath"
       @close="folderSizeModal.open = false"
@@ -166,7 +171,7 @@
     />
 
     <!-- Right-Click Context Menu -->
-    <ContextMenu 
+    <ContextMenu
       v-if="contextMenu.open"
       :x="contextMenu.x"
       :y="contextMenu.y"
@@ -178,14 +183,14 @@
 
     <!-- Toast Notifications -->
     <div class="toast-container">
-      <div 
-        v-for="toast in toasts" 
-        :key="toast.id" 
+      <div
+        v-for="toast in toasts"
+        :key="toast.id"
         class="toast"
         :class="{
           'toast-error': toast.type === 'error',
           'toast-success': toast.type === 'success',
-          'toast-shortcut': toast.type === 'shortcut'
+          'toast-shortcut': toast.type === 'shortcut',
         }"
       >
         <span v-if="toast.shortcut" class="toast-kbd-badge">{{ toast.shortcut }}</span>
@@ -215,9 +220,7 @@ import { formatBytes, formatNumber } from './utils/formatters'
 
 const activePaneId = ref<'left' | 'right'>('left')
 const showHidden = ref(false)
-const currentTheme = ref<'dark' | 'light'>(
-  (localStorage.getItem('tc-theme') as 'dark' | 'light') || 'dark'
-)
+const currentTheme = ref<'dark' | 'light'>((localStorage.getItem('tc-theme') as 'dark' | 'light') || 'dark')
 const drives = ref<DriveItem[]>([])
 
 function toggleTheme() {
@@ -435,20 +438,20 @@ async function handleContextMenuAction(action: string) {
       break
 
     case 'calculate-dir-size': {
-      const p = (item && item.isDirectory) ? item.path : activePaneState.value.currentPath
+      const p = item && item.isDirectory ? item.path : activePaneState.value.currentPath
       openFolderSizeModal(p)
       break
     }
 
     case 'large-files': {
-      const p = (item && item.isDirectory) ? item.path : activePaneState.value.currentPath
+      const p = item && item.isDirectory ? item.path : activePaneState.value.currentPath
       openLargeFilesModal(p)
       break
     }
 
     case 'zip': {
       const paths = getSelectedOrCursorPaths()
-      const targets = paths.length > 0 ? paths : (item ? [item.path] : [])
+      const targets = paths.length > 0 ? paths : item ? [item.path] : []
       if (targets.length > 0) {
         openCreateArchiveModal(targets)
       } else {
@@ -514,9 +517,12 @@ function showToast(message: string, type: 'success' | 'error' | 'shortcut' = 'su
     toasts.value = toasts.value.filter((t) => t.type !== 'shortcut')
   }
   toasts.value.push({ id, message, type, shortcut })
-  setTimeout(() => {
-    toasts.value = toasts.value.filter((t) => t.id !== id)
-  }, type === 'shortcut' ? 2200 : 3500)
+  setTimeout(
+    () => {
+      toasts.value = toasts.value.filter((t) => t.id !== id)
+    },
+    type === 'shortcut' ? 2200 : 3500
+  )
 }
 
 function showShortcutToast(shortcut: string, message: string) {
@@ -954,7 +960,8 @@ function openSearchModal() {
 }
 
 function openLargeFilesModal(targetPath?: string) {
-  largeFilesModal.initialDir = (typeof targetPath === 'string' && targetPath.trim()) ? targetPath.trim() : activePaneState.value.currentPath
+  largeFilesModal.initialDir =
+    typeof targetPath === 'string' && targetPath.trim() ? targetPath.trim() : activePaneState.value.currentPath
   largeFilesModal.open = true
 }
 
@@ -966,7 +973,8 @@ function openCreateArchiveModal(sources: string[]) {
 
 function openArchiveViewer(archivePath: string) {
   archiveViewModal.archivePath = archivePath
-  archiveViewModal.currentDir = activePaneState.value.currentPath
+  const parentDir = archivePath.replace(/[/\\][^/\\]+$/, '')
+  archiveViewModal.currentDir = parentDir || activePaneState.value.currentPath
   archiveViewModal.targetExtractDir = oppositePaneState.value.currentPath || activePaneState.value.currentPath
   archiveViewModal.open = true
 }
@@ -1010,7 +1018,7 @@ async function onOperationConfirm(payload: { opType: string; target: string }) {
   try {
     if (opType === 'mkdir') {
       const cur = activePaneState.value.currentPath
-      const sep = cur.endsWith('\\') || cur.endsWith('/') ? '' : (cur.includes('\\') ? '\\' : '/')
+      const sep = cur.endsWith('\\') || cur.endsWith('/') ? '' : cur.includes('\\') ? '\\' : '/'
       const fullPath = `${cur}${sep}${target}`
       const res = await window.electronAPI.createFolder(fullPath)
       if (res.success) {
@@ -1021,7 +1029,7 @@ async function onOperationConfirm(payload: { opType: string; target: string }) {
       }
     } else if (opType === 'newfile') {
       const cur = activePaneState.value.currentPath
-      const sep = cur.endsWith('\\') || cur.endsWith('/') ? '' : (cur.includes('\\') ? '\\' : '/')
+      const sep = cur.endsWith('\\') || cur.endsWith('/') ? '' : cur.includes('\\') ? '\\' : '/'
       const fullPath = `${cur}${sep}${target}`
       const res = await window.electronAPI.createFile(fullPath)
       if (res.success) {
@@ -1107,7 +1115,7 @@ async function handleDragDrop(sourcePaths: string[], targetDir: string, isMove: 
 
     if (res.success) {
       const actionWord = isMove ? 'Переміщено' : 'Скопійовано'
-      const itemsWord = rawPaths.length === 1 ? 'елемент' : (rawPaths.length < 5 ? 'елементи' : 'елементів')
+      const itemsWord = rawPaths.length === 1 ? 'елемент' : rawPaths.length < 5 ? 'елементи' : 'елементів'
       showToast(`${actionWord} ${rawPaths.length} ${itemsWord} у "${targetName}"`, 'success')
       refreshAllPanes()
     } else {
@@ -1221,7 +1229,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   // Help / Shortcut Cheat Sheet (F1)
   if (e.key === 'F1') {
     e.preventDefault()
-    showShortcutToast('F1', 'Довідка: Tab, F2-F10, Shift+F4..F8, Alt+F7, Ctrl+A/C/X/V/R/T/W/U, Alt+Enter/←/→/↑, Space, Ins, *')
+    showShortcutToast(
+      'F1',
+      'Довідка: Tab, F2-F10, Shift+F4..F8, Alt+F7, Ctrl+A/C/X/V/R/T/W/U, Alt+Enter/←/→/↑, Space, Ins, *'
+    )
     return
   }
 
@@ -1322,7 +1333,7 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   if (e.key === 'F8' || e.key === 'Delete' || ((e.metaKey || e.ctrlKey) && e.key === 'Backspace')) {
     if (isInputActive && e.key !== 'F8') return
     e.preventDefault()
-    const badge = e.key === 'F8' ? 'F8' : (e.key === 'Delete' ? 'Delete' : 'Ctrl + ⌫')
+    const badge = e.key === 'F8' ? 'F8' : e.key === 'Delete' ? 'Delete' : 'Ctrl + ⌫'
     showShortcutToast(badge, 'Переміщення у Кошик Windows')
     handleBottomAction('delete')
     return
@@ -1392,7 +1403,10 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 
   // Ctrl+Shift+. or Ctrl+H - Toggle Hidden Files
-  if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '.') || (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'h' || e.key === 'H'))) {
+  if (
+    ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '.') ||
+    (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'h' || e.key === 'H'))
+  ) {
     e.preventDefault()
     toggleHiddenFiles()
     return
@@ -1401,7 +1415,7 @@ function handleGlobalShortcuts(e: KeyboardEvent) {
   // Ctrl+D - Quick drives info
   if (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
     e.preventDefault()
-    const driveList = drives.value.map(d => d.name).join(', ')
+    const driveList = drives.value.map((d) => d.name).join(', ')
     showShortcutToast('Ctrl + D', `Диски: ${driveList || 'C:\\'}`)
     return
   }
@@ -1519,14 +1533,10 @@ async function copySelectedToClipboard(action: 'copy' | 'cut' = 'copy') {
       const badge = action === 'copy' ? 'Ctrl + C' : 'Ctrl + X'
       if (count === 1) {
         const fileName = paths[0].split(/[/\\]/).filter(Boolean).pop() || paths[0]
-        const text = action === 'copy'
-          ? `Файл скопійовано у буфер: ${fileName}`
-          : `Файл вирізано у буфер: ${fileName}`
+        const text = action === 'copy' ? `Файл скопійовано у буфер: ${fileName}` : `Файл вирізано у буфер: ${fileName}`
         showShortcutToast(badge, text)
       } else {
-        const text = action === 'copy'
-          ? `Скопійовано ${count} файлів у буфер`
-          : `Вирізано ${count} файлів у буфер`
+        const text = action === 'copy' ? `Скопійовано ${count} файлів у буфер` : `Вирізано ${count} файлів у буфер`
         showShortcutToast(badge, text)
       }
     } else {
@@ -1564,7 +1574,7 @@ async function pasteFromClipboard() {
       ])
       const dirName = targetDir.split(/[/\\]/).filter(Boolean).pop() || targetDir
       const verb = action === 'cut' ? 'Переміщено' : 'Вставлено'
-      const itemsWord = count === 1 ? 'елемент' : (count < 5 ? 'елементи' : 'елементів')
+      const itemsWord = count === 1 ? 'елемент' : count < 5 ? 'елементи' : 'елементів'
       showShortcutToast('Ctrl + V', `${verb} ${count} ${itemsWord} у ${dirName}`)
     } else {
       showToast(opRes.error || 'Помилка вставки файлів', 'error')
@@ -1624,9 +1634,7 @@ async function ejectDrive(path: string) {
     const res = await window.electronAPI.ejectVolume(path)
     if (res.success) {
       // Immediately remove from UI reactive state
-      drives.value = drives.value.filter(
-        (d) => !d.path.toUpperCase().startsWith(driveRoot.toUpperCase())
-      )
+      drives.value = drives.value.filter((d) => !d.path.toUpperCase().startsWith(driveRoot.toUpperCase()))
       showToast('Носій безпечно вилучено', 'success')
       await loadDrivesList()
     } else {
@@ -1642,11 +1650,7 @@ onMounted(async () => {
     document.documentElement.setAttribute('data-theme', currentTheme.value)
     const sys = await window.electronAPI.getSystemInfo()
     homeDir.value = sys.homeDir || 'C:\\'
-    await Promise.all([
-      loadDirectory(leftPane, homeDir.value),
-      loadDirectory(rightPane, 'C:\\'),
-      loadDrivesList(),
-    ])
+    await Promise.all([loadDirectory(leftPane, homeDir.value), loadDirectory(rightPane, 'C:\\'), loadDrivesList()])
 
     // Prevent browser from navigating away on dropped files
     window.addEventListener('dragover', preventDragDefault)

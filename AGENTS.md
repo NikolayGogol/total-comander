@@ -7,6 +7,7 @@
 ## 1. Загальний огляд проєкту (Project Overview)
 
 **Total Commander for Windows** — сучасний orthodox двопанельний файловий менеджер для Windows, розроблений на базі:
+
 - **Node.js (Runtime)** + **Electron**: робота з файловою системою Windows (диски `C:\`, `D:\`, `E:\`), переміщення у Кошик Windows (`shell.trashItem`), відкриття системного термінала (PowerShell / Windows Terminal / CMD) у поточній папці та запуск файлів у нативних програмах за замовчуванням.
 - **Вбудований повнофункціональний архіватор**: додаток містить автономні бінарники в папці `bin/` (`7za.exe`, `rar.exe`, `unrar.exe`), які упаковуються в `resources/bin/`. Користувачеві **не потрібно встановлювати жодних сторонніх програм** для створення та розпакування архівів `ZIP`, `7Z`, `RAR`, `TAR`, `GZ` з підтримкою паролів і шифрування заголовків.
 - **Аналізатор диска та великих файлів (Disk Cleanup / Large Files Finder)**: рекурсивний сканер для виявлення файлів гігантського розміру (>50MB, >100MB, >500MB, >1GB, >2GB або власний поріг) з можливістю швидкого виділення та звільнення пам'яті (переміщення у Кошик, безповоротне видалення).
@@ -51,17 +52,17 @@
 
 ## 3. Команди запуску та збірки (Run & Build Commands)
 
-| Команда | Опис |
-| :--- | :--- |
-| `npm start` | **Головна команда для запуску**. Запускає Vite dev server + Electron додаток з live-reload. |
-| `npm run dev` | Синонім `npm start` (Vite + Electron). |
-| `npm run app` | Синонім `npm start`. |
-| `npm run build` | Компілює бандл (Vue UI в `dist/`, Electron main/preload в `dist-electron/`). |
-| `npm run build:win` | **Створює інсталятори для Windows** (NSIS інсталятор та Portable .exe у `release/`). |
-| `npm run build:win:x64` | Створює 64-бітний Windows NSIS інсталятор (`.exe`). |
-| `npm run build:win:portable` | Створює портативну версію Windows без встановлення. |
-| `npm run build:win:arm64` | Створює Windows інсталятор для пристроїв ARM64. |
-| `npm run run:prod` | Збирає бандл та запускає його у продакшн режимі Electron. |
+| Команда                      | Опис                                                                                        |
+| :--------------------------- | :------------------------------------------------------------------------------------------ |
+| `npm start`                  | **Головна команда для запуску**. Запускає Vite dev server + Electron додаток з live-reload. |
+| `npm run dev`                | Синонім `npm start` (Vite + Electron).                                                      |
+| `npm run app`                | Синонім `npm start`.                                                                        |
+| `npm run build`              | Компілює бандл (Vue UI в `dist/`, Electron main/preload в `dist-electron/`).                |
+| `npm run build:win`          | **Створює інсталятори для Windows** (NSIS інсталятор та Portable .exe у `release/`).        |
+| `npm run build:win:x64`      | Створює 64-бітний Windows NSIS інсталятор (`.exe`).                                         |
+| `npm run build:win:portable` | Створює портативну версію Windows без встановлення.                                         |
+| `npm run build:win:arm64`    | Створює Windows інсталятор для пристроїв ARM64.                                             |
+| `npm run run:prod`           | Збирає бандл та запускає його у продакшн режимі Electron.                                   |
 
 ---
 

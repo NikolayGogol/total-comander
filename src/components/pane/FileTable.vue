@@ -1,8 +1,8 @@
 <template>
-  <div 
-    class="file-table-wrapper" 
-    :class="{ 'is-drag-over': isDragOverTable }"
+  <div
     ref="wrapperRef"
+    class="file-table-wrapper"
+    :class="{ 'is-drag-over': isDragOverTable }"
     tabindex="0"
     @click="handleWrapperClick"
     @keydown="handleKeyDown"
@@ -14,13 +14,17 @@
     <table ref="tableRef" class="file-table">
       <thead>
         <tr>
-          <th class="col-name" title="Сортувати за назвою (клік для перемикання A-Z / Z-A)" @click="$emit('sort', 'name')">
+          <th
+            class="col-name"
+            title="Сортувати за назвою (клік для перемикання A-Z / Z-A)"
+            @click="$emit('sort', 'name')"
+          >
             <div class="th-content">
               <span>Name</span>
               <span v-if="sortField === 'name'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
             </div>
-            <div 
-              class="col-resizer" 
+            <div
+              class="col-resizer"
               :class="{ 'is-active': activeResizingCol === 'name' }"
               title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
               @click.stop
@@ -34,8 +38,8 @@
               <span>Ext</span>
               <span v-if="sortField === 'ext'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
             </div>
-            <div 
-              class="col-resizer" 
+            <div
+              class="col-resizer"
               :class="{ 'is-active': activeResizingCol === 'ext' }"
               title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
               @click.stop
@@ -49,8 +53,8 @@
               <span>Size</span>
               <span v-if="sortField === 'size'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
             </div>
-            <div 
-              class="col-resizer" 
+            <div
+              class="col-resizer"
               :class="{ 'is-active': activeResizingCol === 'size' }"
               title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
               @click.stop
@@ -64,8 +68,8 @@
               <span>Modified</span>
               <span v-if="sortField === 'mtime'" class="sort-arrow">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
             </div>
-            <div 
-              class="col-resizer" 
+            <div
+              class="col-resizer"
               :class="{ 'is-active': activeResizingCol === 'date' }"
               title="Перетягніть для зміни ширини колонки (двічі клікніть для скидання)"
               @click.stop
@@ -77,8 +81,8 @@
       </thead>
       <tbody>
         <!-- Parent Directory (..) -->
-        <tr 
-          v-if="!isRootPath" 
+        <tr
+          v-if="!isRootPath"
           class="file-row is-parent"
           :class="{ 'is-cursor': cursorIndex === -1 }"
           title="⤴ Перейти у батьківську директорію (Backspace або подвійний клік)"
@@ -98,8 +102,8 @@
         </tr>
 
         <!-- File and Directory Rows -->
-        <tr 
-          v-for="(item, index) in items" 
+        <tr
+          v-for="(item, index) in items"
           :key="item.path"
           class="file-row"
           :class="{
@@ -107,7 +111,7 @@
             'is-cursor': cursorIndex === index,
             'is-selected': isSelected(item.path),
             'is-hidden': item.isHidden,
-            'is-drag-target': dragTargetItemPath === item.path
+            'is-drag-target': dragTargetItemPath === item.path,
           }"
           :draggable="true"
           :title="getItemTooltip(item)"
@@ -122,14 +126,23 @@
         >
           <td class="col-name">
             <div class="col-icon-name">
-              <component 
-                :is="getIconComponent(item)" 
-                :size="15" 
+              <component
+                :is="getIconComponent(item)"
+                :size="15"
                 :class="['item-icon', getIconModifier(item)]"
-                :title="item.isDirectory ? 'Папка: ' + item.name : (item.extension ? item.extension.toUpperCase() + ' ' : '') + 'Файл: ' + item.name + ' (' + formatBytes(item.size) + ')'"
+                :title="
+                  item.isDirectory
+                    ? 'Папка: ' + item.name
+                    : (item.extension ? item.extension.toUpperCase() + ' ' : '') +
+                      'Файл: ' +
+                      item.name +
+                      ' (' +
+                      formatBytes(item.size) +
+                      ')'
+                "
               />
-              <span 
-                class="item-name" 
+              <span
+                class="item-name"
                 :class="{ 'name-dir': item.isDirectory }"
                 :data-tooltip="getShortItemTooltip(item)"
                 data-tooltip-pos="right"
@@ -139,14 +152,25 @@
               </span>
             </div>
           </td>
-          <td class="col-ext" :title="item.isDirectory ? 'Папка' : (item.extension || 'Без розширення')">
+          <td class="col-ext" :title="item.isDirectory ? 'Папка' : item.extension || 'Без розширення'">
             <span v-if="!item.isDirectory && item.extension" class="ext-badge" :class="'ext-' + getCategory(item)">
               {{ item.extension }}
             </span>
           </td>
-          <td class="col-size" :title="item.isDirectory ? (item.size > 0 ? formatNumber(item.size) + ' байт' : 'Папка') : formatNumber(item.size) + ' байт'">
+          <td
+            class="col-size"
+            :title="
+              item.isDirectory
+                ? item.size > 0
+                  ? formatNumber(item.size) + ' байт'
+                  : 'Папка'
+                : formatNumber(item.size) + ' байт'
+            "
+          >
             <span v-if="item.isDirectory && (!item.size || item.size === 0)" class="dir-badge">&lt;DIR&gt;</span>
-            <span v-else-if="item.isDirectory" class="file-size-text dir-calculated-size">{{ formatBytes(item.size) }}</span>
+            <span v-else-if="item.isDirectory" class="file-size-text dir-calculated-size">{{
+              formatBytes(item.size)
+            }}</span>
             <span v-else class="file-size-text">{{ formatBytes(item.size) }}</span>
           </td>
           <td class="col-date" :title="'Дата зміни: ' + formatDate(item.mtime)">{{ formatDate(item.mtime) }}</td>
@@ -173,17 +197,7 @@
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import type { FileItem, SortField } from '../../types'
 import { formatBytes, formatDate, formatNumber, getFileCategory, getFileTypeDescription } from '../../utils/formatters'
-import { 
-  Folder, 
-  File, 
-  Code, 
-  Image, 
-  Film, 
-  Music, 
-  FileText, 
-  Archive, 
-  CornerLeftUp 
-} from 'lucide-vue-next'
+import { Folder, File, Code, Image, Film, Music, FileText, Archive, CornerLeftUp } from 'lucide-vue-next'
 
 const props = defineProps<{
   items: FileItem[]
@@ -526,7 +540,8 @@ function onDragStart(e: DragEvent, item: FileItem) {
 
     // 3. Create a clean ghost drag image badge
     const badge = document.createElement('div')
-    badge.style.cssText = 'position: absolute; top: -1000px; left: -1000px; padding: 4px 10px; background: #131824; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; font-family: monospace; font-size: 12px; pointer-events: none; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-weight: bold;'
+    badge.style.cssText =
+      'position: absolute; top: -1000px; left: -1000px; padding: 4px 10px; background: #131824; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; font-family: monospace; font-size: 12px; pointer-events: none; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-weight: bold;'
     badge.textContent = paths.length === 1 ? `📄 ${item.name}` : `📁 ${paths.length} items`
     document.body.appendChild(badge)
     e.dataTransfer.setDragImage(badge, 12, 12)
@@ -672,13 +687,20 @@ function getIconComponent(item: FileItem) {
   const cat = getCategory(item)
   switch (cat) {
     case 'code':
-    case 'exe': return Code
-    case 'image': return Image
-    case 'video': return Film
-    case 'audio': return Music
-    case 'doc': return FileText
-    case 'archive': return Archive
-    default: return File
+    case 'exe':
+      return Code
+    case 'image':
+      return Image
+    case 'video':
+      return Film
+    case 'audio':
+      return Music
+    case 'doc':
+      return FileText
+    case 'archive':
+      return Archive
+    default:
+      return File
   }
 }
 
@@ -691,7 +713,7 @@ function getItemTooltip(item: FileItem): string {
     item.name,
     item.isDirectory ? '[Папка]' : `[${getFileTypeDescription(item.extension || item.name, false)}]`,
     item.isDirectory ? '' : `Розмір: ${formatBytes(item.size)}`,
-    `Змінено: ${formatDate(item.mtime)}`
+    `Змінено: ${formatDate(item.mtime)}`,
   ]
   return parts.filter(Boolean).join(' • ')
 }
@@ -705,6 +727,6 @@ function focus() {
 }
 
 defineExpose({
-  focus
+  focus,
 })
 </script>

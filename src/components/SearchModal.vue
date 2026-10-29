@@ -45,7 +45,7 @@
 
           <div class="form-options">
             <label class="checkbox-label">
-              <input type="checkbox" v-model="recursive" />
+              <input v-model="recursive" type="checkbox" />
               <span>Search subdirectories (recursive)</span>
             </label>
 
@@ -70,7 +70,7 @@
 
         <!-- Search Results List -->
         <div class="search-results-wrapper">
-          <table class="search-table" v-if="results.length > 0">
+          <table v-if="results.length > 0" class="search-table">
             <thead>
               <tr>
                 <th class="search-col-name">File Name</th>

@@ -117,7 +117,10 @@ export interface ElectronAPI {
   copyPaths: (sources: string[], destinationDir: string) => Promise<{ success: boolean; error?: string }>
   movePaths: (sources: string[], destinationDir: string) => Promise<{ success: boolean; error?: string }>
   renamePath: (oldPath: string, newPath: string) => Promise<{ success: boolean; error?: string }>
-  readFile: (filePath: string, maxBytes?: number) => Promise<{ success: boolean; content?: string; isBinary?: boolean; error?: string }>
+  readFile: (
+    filePath: string,
+    maxBytes?: number
+  ) => Promise<{ success: boolean; content?: string; isBinary?: boolean; error?: string }>
   writeFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>
   openPath: (filePath: string) => Promise<{ success: boolean; error?: string }>
   showInFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>
@@ -126,13 +129,47 @@ export interface ElectronAPI {
   createZip: (sources: string[], targetZipPath: string) => Promise<{ success: boolean; error?: string }>
   extractZip: (zipPath: string, targetDir: string) => Promise<{ success: boolean; error?: string }>
   createArchive: (options: CreateArchiveOptions) => Promise<{ success: boolean; targetPath?: string; error?: string }>
-  listArchive: (archivePath: string, password?: string) => Promise<{ success: boolean; entries?: ArchiveEntry[]; error?: string; isEncrypted?: boolean }>
-  extractArchive: (archivePath: string, targetDir: string, password?: string) => Promise<{ success: boolean; error?: string }>
+  listArchive: (
+    archivePath: string,
+    password?: string
+  ) => Promise<{ success: boolean; entries?: ArchiveEntry[]; error?: string; isEncrypted?: boolean }>
+  extractArchive: (
+    archivePath: string,
+    targetDir: string,
+    password?: string
+  ) => Promise<{ success: boolean; error?: string }>
   getDirSize: (dirPath: string) => Promise<{ success: boolean; size?: number; count?: number; error?: string }>
-  analyzeFolderSizes: (targetPath: string) => Promise<{ success: boolean; parentPath?: string; folders?: FolderSizeItem[]; totalSize?: number; totalFiles?: number; error?: string }>
-  findLargeFiles: (options: { targetDir: string; minSizeBytes: number; limit?: number }) => Promise<{ success: boolean; files?: LargeFileItem[]; totalSize?: number; scannedCount?: number; error?: string }>
-  search: (dirPath: string, query: string, recursive: boolean, contentSearch?: string) => Promise<{ success: boolean; results?: SearchResult[]; error?: string }>
-  copyFilesToClipboard: (paths: string[], action?: 'copy' | 'cut') => Promise<{ success: boolean; count?: number; error?: string }>
+  analyzeFolderSizes: (
+    targetPath: string
+  ) => Promise<{
+    success: boolean
+    parentPath?: string
+    folders?: FolderSizeItem[]
+    totalSize?: number
+    totalFiles?: number
+    error?: string
+  }>
+  findLargeFiles: (options: {
+    targetDir: string
+    minSizeBytes: number
+    limit?: number
+  }) => Promise<{
+    success: boolean
+    files?: LargeFileItem[]
+    totalSize?: number
+    scannedCount?: number
+    error?: string
+  }>
+  search: (
+    dirPath: string,
+    query: string,
+    recursive: boolean,
+    contentSearch?: string
+  ) => Promise<{ success: boolean; results?: SearchResult[]; error?: string }>
+  copyFilesToClipboard: (
+    paths: string[],
+    action?: 'copy' | 'cut'
+  ) => Promise<{ success: boolean; count?: number; error?: string }>
   getClipboardFiles: () => Promise<{ success: boolean; paths?: string[]; action?: 'copy' | 'cut'; error?: string }>
   clearClipboard: () => Promise<{ success: boolean }>
   onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll') => void) => () => void

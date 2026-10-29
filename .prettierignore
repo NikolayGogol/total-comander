@@ -1,0 +1,13 @@
+dist
+dist-electron
+release
+node_modules
+bin
+build
+*.ico
+*.png
+*.bmp
+*.exe
+*.log
+src/buildInfo.ts
+package-lock.json

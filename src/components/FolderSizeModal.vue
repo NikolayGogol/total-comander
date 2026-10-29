@@ -18,11 +18,11 @@
       <!-- Body -->
       <div class="folder-size-body">
         <div class="folder-size-toolbar">
-          <input 
-            v-model="filterQuery" 
-            type="text" 
-            class="folder-filter-input" 
-            placeholder="Швидкий фільтр папок за назвою..." 
+          <input
+            v-model="filterQuery"
+            type="text"
+            class="folder-filter-input"
+            placeholder="Швидкий фільтр папок за назвою..."
             @keydown.enter="jumpToSelected"
           />
           <button class="btn-refresh" :disabled="isLoading" @click="loadData">
@@ -65,8 +65,8 @@
                 </td>
               </tr>
 
-              <tr 
-                v-for="folder in filteredFolders" 
+              <tr
+                v-for="folder in filteredFolders"
                 :key="folder.path"
                 class="folder-size-row"
                 :class="{ 'is-selected': selectedPath === folder.path }"
@@ -81,11 +81,7 @@
                 </td>
                 <td class="td-percent">
                   <div class="percent-bar-wrapper">
-                    <progress 
-                      class="folder-progress-bar" 
-                      :value="folder.size" 
-                      :max="totalSize || 1"
-                    ></progress>
+                    <progress class="folder-progress-bar" :value="folder.size" :max="totalSize || 1"></progress>
                     <span class="percent-label">{{ getPercentLabel(folder.size) }}</span>
                   </div>
                 </td>
@@ -103,14 +99,16 @@
           <span class="total-label">Загальний розмір:</span>
           <span class="total-size-value">{{ formatBytes(totalSize) }}</span>
           <span class="total-stats-text">
-            (Папок: <strong>{{ folders.length }}</strong>, Файлів: <strong>{{ formatNumber(totalFiles) }}</strong>)
+            (Папок: <strong>{{ folders.length }}</strong
+            >, Файлів: <strong>{{ formatNumber(totalFiles) }}</strong
+            >)
           </span>
         </div>
 
         <div class="folder-size-actions">
-          <button 
-            class="btn-secondary-action" 
-            :disabled="!selectedPath" 
+          <button
+            class="btn-secondary-action"
+            :disabled="!selectedPath"
             title="Показати у Провіднику Windows"
             @click="showInExplorer"
           >
@@ -118,9 +116,9 @@
             <span>У Провіднику</span>
           </button>
 
-          <button 
-            class="btn-success-action" 
-            :disabled="!selectedPath" 
+          <button
+            class="btn-success-action"
+            :disabled="!selectedPath"
             title="Відкрити папку у Total Commander (Enter)"
             @click="jumpToSelected"
           >
@@ -128,9 +126,7 @@
             <span>Відкрити (Enter)</span>
           </button>
 
-          <button class="btn-secondary-action" @click="$emit('close')">
-            Закрити (Esc)
-          </button>
+          <button class="btn-secondary-action" @click="$emit('close')">Закрити (Esc)</button>
         </div>
       </div>
     </div>
@@ -141,15 +137,7 @@
 import { ref, computed, onMounted } from 'vue'
 import type { FolderSizeItem } from '../types'
 import { formatBytes, formatNumber } from '../utils/formatters'
-import {
-  FolderArchive,
-  Folder,
-  FolderOpen,
-  X,
-  RotateCw,
-  Loader2,
-  ExternalLink,
-} from 'lucide-vue-next'
+import { FolderArchive, Folder, FolderOpen, X, RotateCw, Loader2, ExternalLink } from 'lucide-vue-next'
 
 const props = defineProps<{
   targetPath: string

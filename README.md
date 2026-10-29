@@ -1,88 +1,116 @@
-# Total Commander for macOS 🚀
+# Total Commander for Windows 🚀
 
-A modern, high-performance orthodox two-panel file manager (Total Commander clone) designed specifically for macOS, built with **Node.js**, **Electron**, **Vue 3**, and **SCSS**.
-
----
-
-## ✨ Features
-
-- **Classic Dual-Pane Architecture**:
-  - Independent Left and Right panes with active-state glow.
-  - Multi-tab management in each pane (open multiple directories side-by-side).
-  - Breadcrumb navigation with clickable directory segments or manual path input (`/Users/...`).
-  - History tracking (Back / Forward / Parent Directory `..`).
-  - Live filtering: instant fuzzy search as you type.
-
-- **Classic Total Commander Function Keys (F2 - F10)**:
-  - **F2 Rename**: Rename any file or directory in place.
-  - **F3 View**: In-app quick viewer (Text/Code with syntax line numbering, Image preview, Hex inspection, or trigger native macOS **QuickLook**).
-  - **F4 Edit**: In-app code/text editor with `Cmd+S` save, line numbers, and change detection.
-  - **F5 Copy**: Copy selected files/folders directly from active pane to target pane directory.
-  - **F6 Move**: Move/rename files to target pane with cross-device filesystem fallback.
-  - **F7 Folder**: Quickly create a new directory.
-  - **+File (Shift+F4)**: Create a new file.
-  - **F8 Delete**: Safe deletion by moving items directly to macOS Trash (`shell.trashItem`).
-  - **F9 Terminal**: Instantly open the current directory in macOS Terminal.
-  - **Alt+F7 / F10 Search**: Deep file search with name patterns, containing-text search inside files, and direct jump to matching files.
-
-- **Finder-like Behavior & Native macOS Integration**:
-  - Double-click on any file launches it with its default native macOS application (just like Finder!).
-  - Double-click on any directory navigates inside.
-  - Drag and Drop between panes or directly into subfolders.
-  - Frameless window with integrated macOS traffic lights.
-  - Quick access bar for macOS drives & locations: `Macintosh HD`, `Home (~)`, `Desktop`, `Documents`, `Downloads`, `Applications`, and `/Volumes` mounts.
-  - **Підтримка USB-носіїв та знімних накопичувачів**: автоматичне розпізнавання USB флешок з іконкою `Usb`, відстеження підключення/відключення в реальному часі та нативна кнопка безпечного вилучення (`Eject`).
-  - **Відображення вільного місця на дисках**: статус-бар кожної панелі показує вільне та загальне місце (наприклад, `92.4 GB вільно з 245.1 GB`), а також плашки дисків показують вільний простір.
-  - Toggle hidden files (`Cmd+Shift+.`).
-
-- **Design System & Performance**:
-  - Strict modular **SCSS** architecture with design tokens for colors, sizes, and typography.
-  - **Day.js** for date/time formatting.
-  - **Numeral.js** for number and file size formatting.
-  - Strictly **ZERO inline styles** across the entire codebase.
+Сучасний високопродуктивний orthodox двопанельний файловий менеджер (Total Commander) для Windows, розроблений на базі **Node.js**, **Electron**, **Vue 3 (Composition API)**, **TypeScript** та модульної дизайн-системи **SCSS**.
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## ✨ Основні можливості (Features)
 
-| Shortcut | Action |
-| :--- | :--- |
-| `Tab` | Switch active pane (Left ⇄ Right) |
-| `↑` / `↓` | Navigate files / change cursor |
-| `Space` or `Insert` | Select/deselect file and advance cursor |
-| `Enter` | Open directory or launch file in macOS default app |
-| `Backspace` | Navigate to parent directory (`..`) |
-| `Shift + Click` | Select range of files |
-| `Cmd + A` | Select all files in active pane |
-| `Cmd + C` | Copy selected files to system clipboard (with toast notification) |
-| `Cmd + X` | Cut selected files to system clipboard (with toast notification) |
-| `Cmd + V` | Paste files from clipboard into active directory |
-| `F1` | Show shortcut cheat-sheet |
-| `F2` | Rename file or folder |
-| `F3` | Quick view file (Text / Image / Hex / QuickLook) |
-| `F4` | Edit file in-app |
-| `F5` | Copy selected files to opposite pane |
-| `F6` | Move selected files to opposite pane |
-| `F7` | Create new directory |
-| `Shift + F4` / `Shift + F7` | Create new file |
-| `Alt + F7` / `F10` | Search files (by name & content) |
-| `F8` / `Delete` | Move selected files to macOS Trash |
-| `F9` | Open Terminal at current directory |
-| `Ctrl + U` | Swap Left and Right panes |
-| `Cmd + R` | Refresh panes |
-| `Cmd + Shift + .` | Toggle hidden dotfiles |
-| `Cmd + Shift + T` | Toggle Light / Dark theme |
-| `Cmd + T` | Open new tab in active pane |
-| `Cmd + W` | Close current tab |
-| `Esc` | Close any active modal |
+- **Класична двопанельна архітектура (Dual-Pane Architecture)**:
+  - Незалежні Ліва та Права панелі з підсвічуванням активного фокуса.
+  - Вкладки у кожній панелі (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`) — відкриття кількох папок одночасно.
+  - Навігація через хлібні крихти з можливістю кліку по сегментах або ручного введення шляху (`C:\Users\...`).
+  - Історія переглядів (`Alt+←` Назад / `Alt+→` Вперед / `Backspace` Батьківська папка `..`).
+  - Швидка фільтрація файлів у реальному часі.
+
+- **Повнофункціональний автономний архіватор (ZIP, 7Z, RAR)**:
+  - Автономні бінарники в комплекті (`7za.exe`, `rar.exe`, `unrar.exe` в `resources/bin/`) — **не вимагає встановлення сторонніх програм**.
+  - **Створення архівів (`Alt+F5`)**: створення `ZIP`, `7Z`, `RAR` з вибором рівня стиснення (Швидке, Звичайне, Максимальне), захистом паролем та шифруванням заголовків.
+  - **Вбудований перегляд та розпакування (`Alt+F6` або подвійний клік на архів)**:
+    - **Ієрархічний перегляд папок**: показ лише верхнього рівня директорій з можливістю заходити у підпапки подвійним кліком, виходити на рівень вище через `.. [Parent Directory]` та переходити за хлібними крихтами.
+    - Швидкий пошук файлів усередині архіву.
+    - Вибір цільової папки для розпакування: кнопка `[Поточна папка]`, `[Сусідня панель]` та перемикач створення окремої папки.
+    - Підтримка архівів із паролями.
+
+- **Драг-енд-дроп між панелями (Drag & Drop)**:
+  - Плавне перетягування файлів і папок між лівою і правою панелями.
+  - **Дія за замовчуванням — Копіювання (Copy)**, при затиснутій клавіші `Shift` — Переміщення (Move).
+  - Можливість кидати як на всю панель (у поточну відкриту папку), так і безпосередньо на конкретну підпапку зі списку (`is-drag-target`).
+  - Підтримка перетягування зовнішніх файлів із Провідника Windows (Explorer) або Робочого столу.
+  - Стильний інформативний бейдж під курсором (`📄 deploy.zip` або `📁 3 items`).
+
+- **Аналізатор диска та великих файлів (Disk Cleanup)**:
+  - Швидкий пошук файлів гігантського розміру (>50 MB, >100 MB, >500 MB, >1 GB, >2 GB або власний поріг).
+  - Швидке виділення та звільнення пам'яті (переміщення у Кошик Windows або безповоротне видалення).
+  - Прямий перехід до знайденого файлу в панелі Total Commander або показ у Провіднику Windows.
+
+- **Розрахунок розміру папок усередині програми (`Space`)**:
+  - Модальне вікно детального аналізу папок: точний список усіх підпапок, відсортований за розміром, відсоткова шкала та загальний підсумок.
+  - Жодних зовнішніх вікон властивостей Windows — миттєвий підрахунок всередині програми.
+
+- **Зміна ширини колонок перетягуванням (Resizable Columns)**:
+  - Інтерактивні розділювачі на межах колонок `NAME`, `EXT`, `SIZE`, `MODIFIED`.
+  - Збереження обраної ширини в `localStorage`.
+  - Подвійний клік по розділювачу для скидання до початкового розміру.
+
+- **Функціональні клавіші Total Commander (F2 - F10)**:
+  - **`F2` / `Shift+F6`**: Швидке перейменування вибраного файлу або папки.
+  - **`F3` View**: Вбудований переглядач тексту/коду з номерами рядків, зображень та Hex-дампу.
+  - **`F4` Edit**: Вбудований редактор з підсвічуванням та збереженням `Ctrl+S`.
+  - **`Shift+F4` / `+File`**: Створення нового порожнього файлу.
+  - **`F5` Copy**: Копіювання виділених елементів у протилежну панель.
+  - **`Shift+F5`**: Дублювання (клонування) файлу в поточній папці.
+  - **`F6` Move**: Переміщення виділених елементів у протилежну панель.
+  - **`F7` Folder**: Створення нової папки.
+  - **`F8` / `Delete`**: Переміщення у Кошик Windows (`shell.trashItem`).
+  - **`Shift+Delete` / `Shift+F8`**: Безповоротне видалення.
+  - **`F9` Terminal**: Відкриття поточної папки в Терміналі Windows (PowerShell / Windows Terminal / CMD).
+  - **`Alt+F7` / `F10`**: Розширений пошук файлів за назвою та вмістом.
+
+- **Інтеграція з Windows**:
+  - Подвійний клік на файл викликає асоційовану програму Windows за замовчуванням.
+  - Панель швидкого вибору дисків (`C:`, `D:`, знімні накопичувачі USB) з відображенням вільного місця.
+  - Темна 🌙 та Світла ☀️ теми з миттєвим перемиканням (`Ctrl+Shift+T`).
 
 ---
 
-## 🛠️ Run & Build Commands
+## ⌨️ Гарячі клавіші (Keyboard Shortcuts)
 
-### ⚡ Швидкий запуск розробки (1 команда)
+| Клавіша                         | Дія                                                                               |
+| :------------------------------ | :-------------------------------------------------------------------------------- |
+| `Tab`                           | Перемикання активного фокуса між Лівою та Правою панелями                         |
+| `↑` / `↓`                       | Переміщення курсора по списку файлів                                              |
+| `Space`                         | На папці: розрахунок розміру всередині програми; на файлі: інвертування виділення |
+| `Insert`                        | Виділення поточного файлу та перехід до наступного                                |
+| `Enter`                         | Відкриття папки, запуск файлу у нативній програмі або перегляд архіву             |
+| `Backspace`                     | Перехід у батьківську директорію (`..`)                                           |
+| `Ctrl + A` / Numpad `+`         | Виділити всі файли в активній панелі                                              |
+| `*` / Numpad `*`                | Інвертувати виділення                                                             |
+| Numpad `-`                      | Зняти виділення з усіх файлів                                                     |
+| `Ctrl + C`                      | Скопіювати вибрані шляхи у буфер обміну                                           |
+| `Ctrl + X`                      | Вирізати вибрані файли у буфер обміну                                             |
+| `Ctrl + V`                      | Вставити файли з буфера обміну                                                    |
+| `F1`                            | Довідка та шпаргалка гарячих клавіш                                               |
+| `F2` / `Shift + F6`             | Перейменування вибраного файлу або папки                                          |
+| `F3`                            | Перегляд файлу (Текст / Код / Зображення / Hex)                                   |
+| `F4`                            | Редагування файлу у вбудованому редакторі (`Ctrl+S` зберегти)                     |
+| `Shift + F4`                    | Створити новий файл                                                               |
+| `F5`                            | Копіювати виділені файли у цільову панель                                         |
+| `Shift + F5`                    | Клонувати файл у поточній папці                                                   |
+| `Alt + F5`                      | Створити архів (ZIP, 7Z, RAR) з паролем та рівнем стиснення                       |
+| `F6`                            | Перемістити виділені файли у цільову панель                                       |
+| `Alt + F6`                      | Відкрити вбудований менеджер архівів та розпакувати                               |
+| `F7`                            | Створити нову папку                                                               |
+| `Alt + F7` / `F10`              | Пошук файлів (за назвою та текстом всередині)                                     |
+| `F8` / `Delete`                 | Перемістити у Кошик Windows                                                       |
+| `Shift + Delete`                | Безповоротне видалення                                                            |
+| `F9`                            | Відкрити поточну папку в Терміналі Windows                                        |
+| `Alt + Enter`                   | Показати вибраний файл у Провіднику Windows                                       |
+| `Alt + ←` / `Alt + →`           | Навігація назад / вперед по історії папок                                         |
+| `Ctrl + U`                      | Поміняти ліву і праву панелі місцями (Swap Panes)                                 |
+| `Ctrl + R`                      | Оновити вміст обох панелей                                                        |
+| `Ctrl + Shift + .` / `Ctrl + H` | Показати / приховати приховані файли                                              |
+| `Ctrl + Shift + T`              | Перемикання теми (Світла ☀️ / Темна 🌙)                                           |
+| `Ctrl + T`                      | Нова вкладка в активній панелі                                                    |
+| `Ctrl + W`                      | Закрити поточну вкладку                                                           |
+| `Ctrl + Tab`                    | Перемикання між вкладками панелі                                                  |
+| `Esc`                           | Закрити активне модальне вікно або зняти контекстне меню                          |
 
-Вам потрібна лише **одна команда**, щоб запустити все середовище розробки:
+---
+
+## 🛠️ Запуск та збірка (Build & Run Commands)
+
+### ⚡ Швидкий запуск розробки (Live Dev)
 
 ```bash
 npm start
@@ -90,96 +118,45 @@ npm start
 npm run dev
 ```
 
-> **Що робить ця 1 команда**:
-> 1. Запускає **Vite dev-сервер** (Vue 3, швидкий HMR для компонентів та SCSS).
-> 2. Компілює фонові процеси Electron (**Main** та **Preload**).
-> 3. Автоматично відкриває вікно **Total Commander** на macOS з фірмовою іконкою та меню.
-> 4. Підтримує **Live Reload** для інтерфейсу та автоматичний рестарт при зміні коду. Жодних додаткових терміналів чи команд відкривати не потрібно!
+> **Що відбувається**:
+>
+> 1. Автоматично оновлюється інформація про версію білда (`src/buildInfo.ts`).
+> 2. Запускається **Vite dev-сервер** (Vue 3, швидкий HMR для компонентів та SCSS).
+> 3. Компілюються фонові процеси Electron (**Main** та **Preload**).
+> 4. Відкривається вікно **Total Commander** з повним доступом до файлової системи Windows.
 
----
-
-### Детальний довідник команд з `package.json`
-
-### 1. Development (Live Reload)
-
-| Command | Purpose & Description |
-| :--- | :--- |
-| `npm start` | **Головна команда для щоденної розробки**. Запускає Vite dev server разом із Electron-додатком в один клік. Підтримує гаряче перезавантаження (HMR) для Vue-компонентів і стилів SCSS. |
-| `npm run dev` | Повний синонім `npm start`. Запускає середовище розробки з підключеним live-reload. |
-| `npm run app` | Альтернативний аліас для запуску розробки (`vite`). |
+### 📦 Створення інсталяторів для Windows
 
 ```bash
-# Start the entire development environment (Vite + Electron)
-npm start
-```
+# Повна збірка NSIS інсталятора та Portable .exe (x64)
+npm run build:win
 
----
-
-### 2. Production Build & Local Testing
-
-| Command | Purpose & Description |
-| :--- | :--- |
-| `npm run build` | **Компіляція production-коду**: збирає оптимізований Vue 3 інтерфейс у папку `dist/` та компілює Electron Main і Preload процеси у папку `dist-electron/`. Перевіряє сумісність TypeScript та валідність усіх SCSS-стилів. |
-| `npm run run:prod` | **Тестування зібраного продакшн-бандлу локально**: спочатку виконує `npm run build`, а потім запускає зібраний код через нативний Electron без dev-сервера. Дозволяє перевірити фінальну продуктивність перед створенням інсталятора. |
-
-```bash
-# Compile project to dist/ and dist-electron/
-npm run build
-
-# Test production build locally
-npm run run:prod
-```
-
----
-
-### 3. Packaging & DMG Distribution (macOS)
-
-| Command | Purpose & Description |
-| :--- | :--- |
-| `npm run build:dmg:arm64` | **Створення нативного DMG-інсталятора для Apple Silicon** (процесори M1, M2, M3, M4). Компілює проєкт, пакує нативний додаток із фірмовою іконкою `build/icon.icns` і створює готовий `.dmg` файл у папці `release/Total Commander-1.0.0-arm64.dmg`. |
-| `npm run build:dmg` | Створює стандартний DMG-пакет встановлення для поточної архітектури macOS за допомогою `electron-builder`. |
-
-```bash
-# Build native Apple Silicon (.dmg) installer
-npm run build:dmg:arm64
-```
-
-> **Результат збірки DMG**: готовий образ диска з вікном перетягування у `/Applications` з'являється у папці:
-> `release/Total Commander-1.0.0-arm64.dmg`
-
----
-
-### 4. Packaging & Distribution for Windows (NSIS Installer & Portable EXE)
-
-| Command | Purpose & Description |
-| :--- | :--- |
-| `npm run build:win:x64` | **Створення 64-бітного інсталятора для Windows** (`.exe`). Збирає бандл, створює повноцінний установник NSIS з іконкою `build/icon.ico` та ярликами на Робочому столі та в Меню Пуск. |
-| `npm run build:win:portable` | **Створення Portable-версії для Windows**: один автономний `.exe` файл, який не потребує інсталяції і запускається з будь-якої папки або USB-накопичувача. |
-| `npm run build:win:arm64` | Створює збірку для сучасних Windows-пристроїв на базі ARM64 (наприклад, Snapdragon X Elite). |
-| `npm run build:win` | Створює стандартний набір збірок для Windows (NSIS інсталятор + Portable exe). |
-| `npm run build:all` | **Мультиплатформна збірка**: генерує одночасно пакети для macOS (.dmg) та Windows (.exe). |
-
-```bash
-# Створити Windows x64 інсталятор (.exe)
+# Тільки 64-бітний інсталятор (.exe)
 npm run build:win:x64
 
-# Створити портативну версію Windows (.exe)
+# Портативна версія (без інсталяції)
 npm run build:win:portable
+
+# Збірка для ARM64 пристроїв
+npm run build:win:arm64
 ```
 
-> **Результат збірки для Windows**: готові файли з'являються у каталозі `release/`:
-> - `release/Total Commander-Setup-1.0.0-x64.exe` — інсталятор NSIS (з майстром налаштування та ярликами).
-> - `release/Total Commander-1.0.0-portable.exe` — портативна версія для запуску без встановлення.
-> - `release/win-unpacked/` — розпакований виконуваний каталог.
+Готові файли інсталятора та портативні версії створюються в папці `release/`:
+
+- `release/Total Commander-Setup-1.0.8-x64.exe`
+- `release/Total Commander-1.0.8-portable.exe`
 
 ---
 
-### 5. Lifecycle Hooks
+## 📐 Правила кодової бази
 
-| Hook | Purpose & Description |
-| :--- | :--- |
-| `postinstall` | **Автоматичний хук після встановлення залежностей** (`npm install`). Він автоматично копіює нативну іконку `build/icon.icns` та прописує коректні параметри `CFBundleDisplayName` і `CFBundleName` («Total Commander») у dev-пакет Electron, щоб навіть у режимі розробки в macOS Dock відображалася правильна назва та іконка програми. |
+- **Стилі**: виключно у SCSS файлах (`src/styles/`), жодних інлайн-стилів `style="..."` у Vue шаблонах.
+- **Токени**: кольори, розміри шрифтів, відступи через SCSS змінні (`_variables.scss`).
+- **Форматування**: дати через `dayjs`, байти та розміри файлів через `numeral`.
+- **Безпека**: очищення реактивних об'єктів перед IPC (`JSON.parse(JSON.stringify())` / `toPlain()`).
 
 ---
 
-Full architecture specifications, strict coding rules, and component structures are documented in [AGENTS.md](file:///Users/mikolagogol/Projects/total-comander/AGENTS.md).
+## 📄 Ліцензія
+
+MIT License. Розроблено для продуктивної та швидкої роботи з файлами у Windows.

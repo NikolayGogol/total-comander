@@ -22,16 +22,16 @@
           <div class="control-row">
             <span class="control-label">Папка / Диск:</span>
             <div class="target-dir-input-group">
-              <input 
-                v-model="targetDir" 
-                type="text" 
-                class="target-dir-input" 
-                placeholder="C:\ або вибрана папка" 
+              <input
+                v-model="targetDir"
+                type="text"
+                class="target-dir-input"
+                placeholder="C:\ або вибрана папка"
                 @keydown.enter="startScan"
               />
               <div class="quick-drives-chips">
-                <button 
-                  v-for="d in drives" 
+                <button
+                  v-for="d in drives"
                   :key="d.path"
                   class="chip-btn"
                   :class="{ 'is-selected': targetDir === d.path }"
@@ -39,7 +39,7 @@
                 >
                   {{ d.name }}
                 </button>
-                <button 
+                <button
                   v-if="initialDir"
                   class="chip-btn"
                   :class="{ 'is-selected': targetDir === initialDir }"
@@ -56,62 +56,34 @@
           <div class="control-row">
             <span class="control-label">Мінімальний розмір:</span>
             <div class="size-presets-group">
-              <button 
-                class="chip-btn" 
-                :class="{ 'is-selected': sizePresetMb === 10 }" 
-                @click="setPreset(10)"
-              >
+              <button class="chip-btn" :class="{ 'is-selected': sizePresetMb === 10 }" @click="setPreset(10)">
                 &gt; 10 MB
               </button>
-              <button 
-                class="chip-btn" 
-                :class="{ 'is-selected': sizePresetMb === 25 }" 
-                @click="setPreset(25)"
-              >
+              <button class="chip-btn" :class="{ 'is-selected': sizePresetMb === 25 }" @click="setPreset(25)">
                 &gt; 25 MB
               </button>
-              <button 
-                class="chip-btn" 
-                :class="{ 'is-selected': sizePresetMb === 50 }" 
-                @click="setPreset(50)"
-              >
+              <button class="chip-btn" :class="{ 'is-selected': sizePresetMb === 50 }" @click="setPreset(50)">
                 &gt; 50 MB
               </button>
-              <button 
-                class="chip-btn" 
-                :class="{ 'is-selected': sizePresetMb === 100 }" 
-                @click="setPreset(100)"
-              >
+              <button class="chip-btn" :class="{ 'is-selected': sizePresetMb === 100 }" @click="setPreset(100)">
                 &gt; 100 MB
               </button>
-              <button 
-                class="chip-btn" 
-                :class="{ 'is-selected': sizePresetMb === 500 }" 
-                @click="setPreset(500)"
-              >
+              <button class="chip-btn" :class="{ 'is-selected': sizePresetMb === 500 }" @click="setPreset(500)">
                 &gt; 500 MB
               </button>
-              <button 
-                class="chip-btn" 
-                :class="{ 'is-selected': sizePresetMb === 1024 }" 
-                @click="setPreset(1024)"
-              >
+              <button class="chip-btn" :class="{ 'is-selected': sizePresetMb === 1024 }" @click="setPreset(1024)">
                 &gt; 1 GB
               </button>
-              <button 
-                class="chip-btn" 
-                :class="{ 'is-selected': sizePresetMb === 2048 }" 
-                @click="setPreset(2048)"
-              >
+              <button class="chip-btn" :class="{ 'is-selected': sizePresetMb === 2048 }" @click="setPreset(2048)">
                 &gt; 2 GB
               </button>
               <div class="custom-mb-box">
-                <input 
-                  v-model.number="customSizeMb" 
-                  type="number" 
-                  min="1" 
-                  class="custom-mb-input" 
-                  placeholder="MB" 
+                <input
+                  v-model.number="customSizeMb"
+                  type="number"
+                  min="1"
+                  class="custom-mb-input"
+                  placeholder="MB"
                   @input="sizePresetMb = 0"
                   @keydown.enter="startScan"
                 />
@@ -121,20 +93,16 @@
 
             <!-- Scan Button -->
             <div class="scan-action-box">
-              <button 
-                type="button" 
-                class="btn-folder-analysis" 
+              <button
+                type="button"
+                class="btn-folder-analysis"
                 title="Відкрити структуру папок із точним розрахунком зайнятого місця"
                 @click="openFolderAnalysis"
               >
                 <FolderArchive :size="13" />
                 <span>Аналіз папок диска</span>
               </button>
-              <button 
-                class="btn-scan-primary" 
-                :disabled="isScanning || !targetDir" 
-                @click="startScan"
-              >
+              <button class="btn-scan-primary" :disabled="isScanning || !targetDir" @click="startScan">
                 <Loader2 v-if="isScanning" :size="14" class="spinning-icon" />
                 <Search v-else :size="14" />
                 <span>{{ isScanning ? 'Сканування...' : 'Почати пошук' }}</span>
@@ -165,10 +133,10 @@
             <thead>
               <tr>
                 <th class="th-chk" @click="toggleSelectAll">
-                  <input 
-                    type="checkbox" 
-                    :checked="foundFiles.length > 0 && selectedPaths.size === foundFiles.length" 
-                    :indeterminate="selectedPaths.size > 0 && selectedPaths.size < foundFiles.length" 
+                  <input
+                    type="checkbox"
+                    :checked="foundFiles.length > 0 && selectedPaths.size === foundFiles.length"
+                    :indeterminate="selectedPaths.size > 0 && selectedPaths.size < foundFiles.length"
                     @click.stop="toggleSelectAll"
                   />
                 </th>
@@ -184,15 +152,17 @@
                 <th class="th-date" @click="changeSort('mtime')">
                   Дата зміни {{ sortField === 'mtime' ? (sortAsc ? '▲' : '▼') : '' }}
                 </th>
-                <th class="th-path" @click="changeSort('dir')">
-                  Розташування
-                </th>
+                <th class="th-path" @click="changeSort('dir')">Розташування</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="foundFiles.length === 0 && !isScanning" class="empty-row">
                 <td colspan="6" class="empty-state-cell">
-                  {{ hasScanned ? 'Великих файлів за заданими критеріями не знайдено.' : 'Натисніть "Почати пошук" для сканування диску на великі файли.' }}
+                  {{
+                    hasScanned
+                      ? 'Великих файлів за заданими критеріями не знайдено.'
+                      : 'Натисніть "Почати пошук" для сканування диску на великі файли.'
+                  }}
                 </td>
               </tr>
 
@@ -203,18 +173,18 @@
                 </td>
               </tr>
 
-              <tr 
-                v-for="file in sortedFiles" 
-                :key="file.path" 
-                class="large-file-row" 
+              <tr
+                v-for="file in sortedFiles"
+                :key="file.path"
+                class="large-file-row"
                 :class="{ 'is-selected': selectedPaths.has(file.path) }"
                 @click="toggleFileSelection(file.path, $event)"
                 @dblclick="jumpToFile(file)"
               >
                 <td class="td-chk" @click.stop>
-                  <input 
-                    type="checkbox" 
-                    :checked="selectedPaths.has(file.path)" 
+                  <input
+                    type="checkbox"
+                    :checked="selectedPaths.has(file.path)"
                     @change="toggleFileSelection(file.path)"
                   />
                 </td>
@@ -243,9 +213,9 @@
       <!-- Footer Actions -->
       <div class="large-files-footer">
         <div class="large-files-actions-left">
-          <button 
-            class="btn-danger-action" 
-            :disabled="selectedPaths.size === 0" 
+          <button
+            class="btn-danger-action"
+            :disabled="selectedPaths.size === 0"
             title="Перемістити вибрані файли у Кошик Windows (Delete)"
             @click="deleteSelected(true)"
           >
@@ -253,9 +223,9 @@
             <span>У Кошик ({{ selectedPaths.size }})</span>
           </button>
 
-          <button 
-            class="btn-secondary-action" 
-            :disabled="selectedPaths.size === 0" 
+          <button
+            class="btn-secondary-action"
+            :disabled="selectedPaths.size === 0"
             title="Безповоротно видалити з диску (Shift+Delete)"
             @click="deleteSelected(false)"
           >
@@ -264,9 +234,9 @@
         </div>
 
         <div class="large-files-actions-right">
-          <button 
-            class="btn-secondary-action" 
-            :disabled="!focusedFile" 
+          <button
+            class="btn-secondary-action"
+            :disabled="!focusedFile"
             title="Показати вибраний файл у Провіднику Windows"
             @click="showInExplorer"
           >
@@ -274,9 +244,9 @@
             <span>У Провіднику</span>
           </button>
 
-          <button 
-            class="btn-success-action" 
-            :disabled="!focusedFile" 
+          <button
+            class="btn-success-action"
+            :disabled="!focusedFile"
             title="Перейти до файлу у двопанельному режимі Total Commander (Enter)"
             @click="jumpToFocusedFile"
           >
@@ -284,9 +254,7 @@
             <span>Перейти до файлу (Enter)</span>
           </button>
 
-          <button class="btn-secondary-action" @click="$emit('close')">
-            Закрити (Esc)
-          </button>
+          <button class="btn-secondary-action" @click="$emit('close')">Закрити (Esc)</button>
         </div>
       </div>
     </div>
@@ -355,9 +323,7 @@ const totalSizeFound = computed(() => {
 })
 
 const selectedTotalSize = computed(() => {
-  return foundFiles.value
-    .filter((f) => selectedPaths.value.has(f.path))
-    .reduce((acc, f) => acc + f.size, 0)
+  return foundFiles.value.filter((f) => selectedPaths.value.has(f.path)).reduce((acc, f) => acc + f.size, 0)
 })
 
 const sortedFiles = computed(() => {

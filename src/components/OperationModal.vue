@@ -14,12 +14,14 @@
       <div class="modal-body">
         <!-- New Folder (F7) -->
         <div v-if="opType === 'mkdir'">
-          <label class="op-label">Create directory in: <code>{{ targetDir }}</code></label>
-          <input 
+          <label class="op-label"
+            >Create directory in: <code>{{ targetDir }}</code></label
+          >
+          <input
             ref="inputRef"
-            v-model="inputText" 
-            type="text" 
-            class="form-input" 
+            v-model="inputText"
+            type="text"
+            class="form-input"
             placeholder="New folder name"
             @keydown.enter="submit"
           />
@@ -27,12 +29,14 @@
 
         <!-- New File -->
         <div v-else-if="opType === 'newfile'">
-          <label class="op-label">Create new file in: <code>{{ targetDir }}</code></label>
-          <input 
+          <label class="op-label"
+            >Create new file in: <code>{{ targetDir }}</code></label
+          >
+          <input
             ref="inputRef"
-            v-model="inputText" 
-            type="text" 
-            class="form-input" 
+            v-model="inputText"
+            type="text"
+            class="form-input"
             placeholder="e.g. notes.txt or script.sh"
             @keydown.enter="submit"
           />
@@ -40,12 +44,14 @@
 
         <!-- Rename (F2) -->
         <div v-else-if="opType === 'rename'">
-          <label class="op-label">Rename: <code>{{ sourceItems[0] }}</code></label>
-          <input 
+          <label class="op-label"
+            >Rename: <code>{{ sourceItems[0] }}</code></label
+          >
+          <input
             ref="inputRef"
-            v-model="inputText" 
-            type="text" 
-            class="form-input" 
+            v-model="inputText"
+            type="text"
+            class="form-input"
             placeholder="New name"
             @keydown.enter="submit"
           />
@@ -54,11 +60,11 @@
         <!-- Copy (F5) -->
         <div v-else-if="opType === 'copy'">
           <label class="op-label">Copy {{ sourceItems.length }} item(s) to destination directory:</label>
-          <input 
+          <input
             ref="inputRef"
-            v-model="inputText" 
-            type="text" 
-            class="form-input" 
+            v-model="inputText"
+            type="text"
+            class="form-input"
             placeholder="Destination directory"
             @keydown.enter="submit"
           />
@@ -75,11 +81,11 @@
         <!-- Move (F6) -->
         <div v-else-if="opType === 'move'">
           <label class="op-label">Move {{ sourceItems.length }} item(s) to destination directory:</label>
-          <input 
+          <input
             ref="inputRef"
-            v-model="inputText" 
-            type="text" 
-            class="form-input" 
+            v-model="inputText"
+            type="text"
+            class="form-input"
             placeholder="Destination directory"
             @keydown.enter="submit"
           />
@@ -97,7 +103,8 @@
         <div v-else-if="opType === 'delete'">
           <p class="delete-warning">
             <span v-if="targetDir === 'PERMANENT'">
-              УВАГА! Ви дійсно бажаєте <strong>БЕЗПОВОРОТНО ВИДАЛИТИ {{ sourceItems.length }} елемент(ів)</strong> без можливості відновлення з Кошика?
+              УВАГА! Ви дійсно бажаєте <strong>БЕЗПОВОРОТНО ВИДАЛИТИ {{ sourceItems.length }} елемент(ів)</strong> без
+              можливості відновлення з Кошика?
             </span>
             <span v-else>
               Ви впевнені, що хочете перемістити <strong>{{ sourceItems.length }} елемент(ів)</strong> у Кошик Windows?
@@ -116,19 +123,25 @@
 
       <div class="modal-footer">
         <button class="btn-secondary" @click="$emit('cancel')">Cancel (Esc)</button>
-        <button 
-          v-if="opType === 'delete'" 
+        <button
+          v-if="opType === 'delete'"
           ref="confirmBtnRef"
-          class="btn-danger" 
+          class="btn-danger"
           :disabled="isProcessing"
           @click="submit"
         >
-          {{ isProcessing ? 'Видалення...' : (targetDir === 'PERMANENT' ? 'Безповоротно видалити (Shift+Del)' : 'У Кошик (Delete)') }}
+          {{
+            isProcessing
+              ? 'Видалення...'
+              : targetDir === 'PERMANENT'
+                ? 'Безповоротно видалити (Shift+Del)'
+                : 'У Кошик (Delete)'
+          }}
         </button>
-        <button 
-          v-else 
+        <button
+          v-else
           ref="confirmBtnRef"
-          class="btn-primary" 
+          class="btn-primary"
           :disabled="isProcessing || (opType !== 'delete' && !inputText.trim())"
           @click="submit"
         >
@@ -161,34 +174,58 @@ const isProcessing = ref(false)
 
 const modalTitle = computed(() => {
   switch (props.opType) {
-    case 'mkdir': return 'Create Directory (F7)'
-    case 'newfile': return 'Create File (Shift+F4)'
-    case 'copy': return 'Copy Files (F5)'
-    case 'move': return 'Move / Rename (F6)'
-    case 'delete': return props.targetDir === 'PERMANENT' ? 'Permanent Delete (Shift+Del)' : 'Delete Files (F8)'
-    case 'rename': return 'Rename (F2)'
+    case 'mkdir':
+      return 'Create Directory (F7)'
+    case 'newfile':
+      return 'Create File (Shift+F4)'
+    case 'copy':
+      return 'Copy Files (F5)'
+    case 'move':
+      return 'Move / Rename (F6)'
+    case 'delete':
+      return props.targetDir === 'PERMANENT' ? 'Permanent Delete (Shift+Del)' : 'Delete Files (F8)'
+    case 'rename':
+      return 'Rename (F2)'
+    default:
+      return 'Operation'
   }
 })
 
 const modalIcon = computed(() => {
   switch (props.opType) {
-    case 'mkdir': return FolderPlus
-    case 'newfile': return FilePlus
-    case 'copy': return Copy
-    case 'move': return Move
-    case 'delete': return Trash2
-    case 'rename': return Edit3
+    case 'mkdir':
+      return FolderPlus
+    case 'newfile':
+      return FilePlus
+    case 'copy':
+      return Copy
+    case 'move':
+      return Move
+    case 'delete':
+      return Trash2
+    case 'rename':
+      return Edit3
+    default:
+      return FolderPlus
   }
 })
 
 const modalIconClass = computed(() => {
   switch (props.opType) {
-    case 'mkdir': return 'icon-emerald'
-    case 'newfile': return 'icon-cyan'
-    case 'copy': return 'icon-blue'
-    case 'move': return 'icon-amber'
-    case 'delete': return 'icon-rose'
-    case 'rename': return 'icon-cyan'
+    case 'mkdir':
+      return 'icon-emerald'
+    case 'newfile':
+      return 'icon-cyan'
+    case 'copy':
+      return 'icon-blue'
+    case 'move':
+      return 'icon-amber'
+    case 'delete':
+      return 'icon-rose'
+    case 'rename':
+      return 'icon-cyan'
+    default:
+      return 'icon-blue'
   }
 })
 

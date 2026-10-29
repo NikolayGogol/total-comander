@@ -31,9 +31,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   createFolder: (targetPath: string) => ipcRenderer.invoke('fs:createFolder', targetPath),
   createFile: (targetPath: string) => ipcRenderer.invoke('fs:createFile', targetPath),
-  deletePaths: (paths: string[], moveToTrash?: boolean) => ipcRenderer.invoke('fs:deletePaths', toPlain(paths), moveToTrash),
-  copyPaths: (sources: string[], destinationDir: string) => ipcRenderer.invoke('fs:copyPaths', toPlain(sources), destinationDir),
-  movePaths: (sources: string[], destinationDir: string) => ipcRenderer.invoke('fs:movePaths', toPlain(sources), destinationDir),
+  deletePaths: (paths: string[], moveToTrash?: boolean) =>
+    ipcRenderer.invoke('fs:deletePaths', toPlain(paths), moveToTrash),
+  copyPaths: (sources: string[], destinationDir: string) =>
+    ipcRenderer.invoke('fs:copyPaths', toPlain(sources), destinationDir),
+  movePaths: (sources: string[], destinationDir: string) =>
+    ipcRenderer.invoke('fs:movePaths', toPlain(sources), destinationDir),
   renamePath: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:renamePath', oldPath, newPath),
   readFile: (filePath: string, maxBytes?: number) => ipcRenderer.invoke('fs:readFile', filePath, maxBytes),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),
@@ -41,11 +44,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showInFolder: (filePath: string) => ipcRenderer.invoke('fs:showInFolder', filePath),
   openInTerminal: (dirPath: string) => ipcRenderer.invoke('fs:openInTerminal', dirPath),
   quickLook: (filePath: string) => ipcRenderer.invoke('fs:quickLook', filePath),
-  createZip: (sources: string[], targetZipPath: string) => ipcRenderer.invoke('fs:createZip', toPlain(sources), targetZipPath),
+  createZip: (sources: string[], targetZipPath: string) =>
+    ipcRenderer.invoke('fs:createZip', toPlain(sources), targetZipPath),
   extractZip: (zipPath: string, targetDir: string) => ipcRenderer.invoke('fs:extractZip', zipPath, targetDir),
   createArchive: (options: any) => ipcRenderer.invoke('fs:createArchive', toPlain(options)),
   listArchive: (archivePath: string, password?: string) => ipcRenderer.invoke('fs:listArchive', archivePath, password),
-  extractArchive: (archivePath: string, targetDir: string, password?: string) => ipcRenderer.invoke('fs:extractArchive', archivePath, targetDir, password),
+  extractArchive: (archivePath: string, targetDir: string, password?: string) =>
+    ipcRenderer.invoke('fs:extractArchive', archivePath, targetDir, password),
   getDirSize: (dirPath: string) => ipcRenderer.invoke('fs:getDirSize', dirPath),
   analyzeFolderSizes: (targetPath: string) => ipcRenderer.invoke('fs:analyzeFolderSizes', targetPath),
   findLargeFiles: (options: any) => ipcRenderer.invoke('fs:findLargeFiles', toPlain(options)),

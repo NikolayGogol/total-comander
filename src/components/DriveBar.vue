@@ -1,12 +1,12 @@
 <template>
   <div class="drive-bar">
-    <div 
-      v-for="drive in drives" 
+    <div
+      v-for="drive in drives"
       :key="drive.path"
       class="drive-pill"
-      :class="{ 
+      :class="{
         active: isDriveActive(drive.path),
-        'is-usb': drive.type === 'usb'
+        'is-usb': drive.type === 'usb',
       }"
       :data-tooltip="getDriveTooltip(drive)"
       data-tooltip-pos="bottom"
@@ -15,10 +15,14 @@
     >
       <component :is="getIcon(drive.icon)" :size="13" :title="drive.name" class="drive-icon" />
       <span class="drive-name">{{ drive.name }}</span>
-      <span v-if="drive.freeSpace !== undefined" class="drive-space-badge" :title="'Вільно: ' + formatBytes(drive.freeSpace)">
+      <span
+        v-if="drive.freeSpace !== undefined"
+        class="drive-space-badge"
+        :title="'Вільно: ' + formatBytes(drive.freeSpace)"
+      >
         {{ formatBytes(drive.freeSpace) }}
       </span>
-      <button 
+      <button
         v-if="drive.isRemovable"
         class="drive-eject-btn"
         :disabled="ejectingPath === drive.path"
@@ -36,18 +40,18 @@
 import { ref } from 'vue'
 import type { DriveItem } from '../types'
 import { formatBytes } from '../utils/formatters'
-import { 
-  HardDrive, 
-  Home, 
-  Monitor, 
-  FileText, 
-  Download, 
-  Grid, 
+import {
+  HardDrive,
+  Home,
+  Monitor,
+  FileText,
+  Download,
+  Grid,
   Disc,
   Folder,
   Usb,
   CircleArrowUp,
-  Loader2
+  Loader2,
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -101,15 +105,24 @@ function getDriveTooltip(drive: DriveItem): string {
 
 function getIcon(name: string) {
   switch (name) {
-    case 'HardDrive': return HardDrive
-    case 'Home': return Home
-    case 'Monitor': return Monitor
-    case 'FileText': return FileText
-    case 'Download': return Download
-    case 'Grid': return Grid
-    case 'Disc': return Disc
-    case 'Usb': return Usb
-    default: return Folder
+    case 'HardDrive':
+      return HardDrive
+    case 'Home':
+      return Home
+    case 'Monitor':
+      return Monitor
+    case 'FileText':
+      return FileText
+    case 'Download':
+      return Download
+    case 'Grid':
+      return Grid
+    case 'Disc':
+      return Disc
+    case 'Usb':
+      return Usb
+    default:
+      return Folder
   }
 }
 </script>

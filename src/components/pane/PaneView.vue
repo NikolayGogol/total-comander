@@ -1,12 +1,7 @@
 <template>
-  <div 
-    class="pane-card" 
-    :class="{ 'is-active': isActive }"
-    @focus="$emit('activate')"
-    @click="$emit('activate')"
-  >
+  <div class="pane-card" :class="{ 'is-active': isActive }" @focus="$emit('activate')" @click="$emit('activate')">
     <!-- Pane Tabs -->
-    <PaneTabs 
+    <PaneTabs
       :tabs="pane.tabs"
       :active-tab-id="pane.activeTabId"
       @switch-tab="(id) => $emit('switch-tab', id)"
@@ -15,11 +10,11 @@
     />
 
     <!-- Navigation Header -->
-    <PaneNavHeader 
+    <PaneNavHeader
+      v-model:filter-text="filterText"
       :current-path="pane.currentPath"
       :can-go-back="canGoBack"
       :can-go-forward="canGoForward"
-      v-model:filter-text="filterText"
       @navigate="(p) => $emit('navigate', p)"
       @go-up="$emit('go-up')"
       @go-back="$emit('go-back')"
@@ -28,7 +23,7 @@
     />
 
     <!-- File Table -->
-    <FileTable 
+    <FileTable
       ref="fileTableRef"
       :items="filteredItems"
       :current-path="pane.currentPath"
@@ -53,7 +48,7 @@
     />
 
     <!-- Pane Footer / Stats -->
-    <PaneFooter 
+    <PaneFooter
       :selected-count="pane.selectedPaths.size"
       :selected-size="selectedSize"
       :total-directories="totalDirectories"
@@ -120,9 +115,7 @@ const totalDirectories = computed(() => props.pane.items.filter((i) => i.isDirec
 const totalFiles = computed(() => props.pane.items.filter((i) => !i.isDirectory).length)
 const totalFileSize = computed(() => props.pane.items.reduce((acc, i) => acc + (i.size || 0), 0))
 const selectedSize = computed(() => {
-  return props.pane.items
-    .filter((i) => props.pane.selectedPaths.has(i.path))
-    .reduce((acc, i) => acc + (i.size || 0), 0)
+  return props.pane.items.filter((i) => props.pane.selectedPaths.has(i.path)).reduce((acc, i) => acc + (i.size || 0), 0)
 })
 
 watch(

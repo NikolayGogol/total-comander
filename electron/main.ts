@@ -9,9 +9,7 @@ app.setName('Total Commander')
 app.name = 'Total Commander'
 
 process.env.DIST = path.join(__dirname, '../dist')
-process.env.VITE_PUBLIC = app.isPackaged
-  ? process.env.DIST
-  : path.join(process.env.DIST, '../public')
+process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
 let win: BrowserWindow | null = null
 const preload = path.join(__dirname, 'preload.js')
@@ -361,10 +359,7 @@ function setupIpcHandlers() {
   ipcMain.handle('fs:getDrives', async () => {
     try {
       if (driveInfoCache.size === 0) {
-        await Promise.race([
-          refreshDriveTypes(),
-          new Promise((r) => setTimeout(r, 1500)),
-        ])
+        await Promise.race([refreshDriveTypes(), new Promise((r) => setTimeout(r, 1500))])
       }
 
       const systemDrive = process.env.SystemDrive ? process.env.SystemDrive.toUpperCase() + '\\' : 'C:\\'
@@ -762,13 +757,17 @@ Write-Output "DONE"
           if (fs.existsSync(psExe)) {
             const escapedDir = cleanDir.replace(/'/g, "''")
             const targetCmd = fs.existsSync(cmdExe) ? cmdExe : 'cmd.exe'
-            exec(`"${targetCmd}" /c start "" "${psExe}" -NoExit -Command "Set-Location -LiteralPath '${escapedDir}'"`, { cwd: cleanDir }, (psErr) => {
-              if (psErr) {
-                launchCmd()
-              } else {
-                resolve({ success: true })
+            exec(
+              `"${targetCmd}" /c start "" "${psExe}" -NoExit -Command "Set-Location -LiteralPath '${escapedDir}'"`,
+              { cwd: cleanDir },
+              (psErr) => {
+                if (psErr) {
+                  launchCmd()
+                } else {
+                  resolve({ success: true })
+                }
               }
-            })
+            )
           } else {
             launchCmd()
           }
@@ -883,90 +882,96 @@ Write-Output "DONE"
   })
 
   // Create Archive (7Z, ZIP, RAR with optional password & compression level)
-  ipcMain.handle('fs:createArchive', async (_, options: {
-    sources: string[]
-    targetPath: string
-    format: 'zip' | '7z' | 'rar'
-    password?: string
-    level?: number
-    encryptHeader?: boolean
-  }) => {
-    try {
-      const { sources, targetPath, format, password, level = 5, encryptHeader } = options
-      if (!sources || sources.length === 0) {
-        return { success: false, error: 'Не вибрано файли для архівування' }
+  ipcMain.handle(
+    'fs:createArchive',
+    async (
+      _,
+      options: {
+        sources: string[]
+        targetPath: string
+        format: 'zip' | '7z' | 'rar'
+        password?: string
+        level?: number
+        encryptHeader?: boolean
       }
-
-      await safeEnsureDir(path.dirname(targetPath))
-      const parentDir = path.dirname(sources[0])
-      const basenames = sources.map((s) => path.basename(s))
-      const sevenZip = get7zPath()
-      const rarPath = getRarPath()
-
-      if (format === 'rar') {
-        if (!rarPath) {
-          return { success: false, error: 'Архіватор RAR не знайдено на системі.' }
+    ) => {
+      try {
+        const { sources, targetPath, format, password, level = 5, encryptHeader } = options
+        if (!sources || sources.length === 0) {
+          return { success: false, error: 'Не вибрано файли для архівування' }
         }
-        const rarLevel = level >= 9 ? '5' : (level <= 1 ? '1' : '3')
-        const args: string[] = ['a', '-ep1', '-y', `-m${rarLevel}`]
-        if (password) {
-          args.push(`-p${password}`)
-          if (encryptHeader) {
-            args.push(`-hp${password}`)
+
+        await safeEnsureDir(path.dirname(targetPath))
+        const parentDir = path.dirname(sources[0])
+        const basenames = sources.map((s) => path.basename(s))
+        const sevenZip = get7zPath()
+        const rarPath = getRarPath()
+
+        if (format === 'rar') {
+          if (!rarPath) {
+            return { success: false, error: 'Архіватор RAR не знайдено на системі.' }
           }
-        }
-        args.push(targetPath)
-        args.push(...basenames)
+          const rarLevel = level >= 9 ? '5' : level <= 1 ? '1' : '3'
+          const args: string[] = ['a', '-ep1', '-y', `-m${rarLevel}`]
+          if (password) {
+            args.push(`-p${password}`)
+            if (encryptHeader) {
+              args.push(`-hp${password}`)
+            }
+          }
+          args.push(targetPath)
+          args.push(...basenames)
 
-        await new Promise<void>((resolve, reject) => {
-          execFile(rarPath, args, { cwd: parentDir }, (err, stdout, stderr) => {
-            if (err) return reject(new Error(stderr || err.message))
-            resolve()
+          await new Promise<void>((resolve, reject) => {
+            execFile(rarPath, args, { cwd: parentDir }, (err, stdout, stderr) => {
+              if (err) return reject(new Error(stderr || err.message))
+              resolve()
+            })
           })
-        })
-        return { success: true, targetPath }
-      }
-
-      if (sevenZip) {
-        const typeArg = format === '7z' ? '-t7z' : '-tzip'
-        const args: string[] = ['a', typeArg, '-y', `-mx${level}`]
-        if (password) {
-          args.push(`-p${password}`)
+          return { success: true, targetPath }
         }
-        if (format === '7z' && password && encryptHeader) {
-          args.push('-mhe=on')
+
+        if (sevenZip) {
+          const typeArg = format === '7z' ? '-t7z' : '-tzip'
+          const args: string[] = ['a', typeArg, '-y', `-mx${level}`]
+          if (password) {
+            args.push(`-p${password}`)
+          }
+          if (format === '7z' && password && encryptHeader) {
+            args.push('-mhe=on')
+          }
+          args.push(targetPath)
+          args.push(...basenames)
+
+          await new Promise<void>((resolve, reject) => {
+            execFile(sevenZip, args, { cwd: parentDir }, (err, stdout, stderr) => {
+              if (err) return reject(new Error(stderr || err.message))
+              resolve()
+            })
+          })
+          return { success: true, targetPath }
         }
-        args.push(targetPath)
-        args.push(...basenames)
 
-        await new Promise<void>((resolve, reject) => {
-          execFile(sevenZip, args, { cwd: parentDir }, (err, stdout, stderr) => {
-            if (err) return reject(new Error(stderr || err.message))
-            resolve()
+        // Fallback for zip
+        const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+        const tarExe = path.join(sysRoot, 'System32', 'tar.exe')
+        if (fs.existsSync(tarExe) && !password && format === 'zip') {
+          const args: string[] = ['-a', '-c', '-f', targetPath, '-C', parentDir, ...basenames]
+          await new Promise<void>((resolve, reject) => {
+            execFile(tarExe, args, { cwd: parentDir }, (err, stdout, stderr) => {
+              if (err) return reject(new Error(stderr || err.message))
+              resolve()
+            })
           })
-        })
-        return { success: true, targetPath }
-      }
+          return { success: true, targetPath }
+        }
 
-      // Fallback for zip
-      const sysRoot = process.env.SystemRoot || 'C:\\Windows'
-      const tarExe = path.join(sysRoot, 'System32', 'tar.exe')
-      if (fs.existsSync(tarExe) && !password && format === 'zip') {
-        const args: string[] = ['-a', '-c', '-f', targetPath, '-C', parentDir, ...basenames]
-        await new Promise<void>((resolve, reject) => {
-          execFile(tarExe, args, { cwd: parentDir }, (err, stdout, stderr) => {
-            if (err) return reject(new Error(stderr || err.message))
-            resolve()
-          })
-        })
-        return { success: true, targetPath }
+        return { success: false, error: 'Архіватор не знайдено' }
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Помилка архівування' }
       }
-
-      return { success: false, error: 'Архіватор не знайдено' }
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Помилка архівування' }
     }
-  })
+  )
 
   // List files inside archive (7Z, ZIP, RAR, TAR, GZ)
   ipcMain.handle('fs:listArchive', async (_, archivePath: string, password?: string) => {
@@ -987,7 +992,11 @@ Write-Output "DONE"
             if (stdout) return resolve(stdout)
             if (err) {
               const str = (stderr || err.message || '').toLowerCase()
-              if (str.includes('wrong password') || str.includes('password') || str.includes('can not open encrypted')) {
+              if (
+                str.includes('wrong password') ||
+                str.includes('password') ||
+                str.includes('can not open encrypted')
+              ) {
                 return reject(new Error('WRONG_PASSWORD'))
               }
               return reject(new Error(stderr || err.message))
@@ -1058,7 +1067,10 @@ Write-Output "DONE"
         }).catch(() => '')
 
         if (out) {
-          const lines = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+          const lines = out
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter(Boolean)
           const entries = lines.map((l) => ({
             path: l,
             name: l.split(/[/\\]/).filter(Boolean).pop() || l,
@@ -1324,126 +1336,132 @@ Write-Output "DONE"
   }
 
   // Find Large Files (Disk Space Analyzer / Cleanup)
-  ipcMain.handle('fs:findLargeFiles', async (_, options: {
-    targetDir: string
-    minSizeBytes: number
-    limit?: number
-  }) => {
-    try {
-      const { targetDir, minSizeBytes = 50 * 1024 * 1024, limit = 200 } = options
-      if (!targetDir || !fs.existsSync(targetDir)) {
-        return { success: false, error: 'Директорія або диск не існує' }
+  ipcMain.handle(
+    'fs:findLargeFiles',
+    async (
+      _,
+      options: {
+        targetDir: string
+        minSizeBytes: number
+        limit?: number
       }
+    ) => {
+      try {
+        const { targetDir, minSizeBytes = 50 * 1024 * 1024, limit = 200 } = options
+        if (!targetDir || !fs.existsSync(targetDir)) {
+          return { success: false, error: 'Директорія або диск не існує' }
+        }
 
-      const largeFiles: Array<{
-        path: string
-        name: string
-        size: number
-        mtime: number
-        extension: string
-        dir: string
-      }> = []
+        const largeFiles: Array<{
+          path: string
+          name: string
+          size: number
+          mtime: number
+          extension: string
+          dir: string
+        }> = []
 
-      let scannedCount = 0
-      let totalSize = 0
+        let scannedCount = 0
+        let totalSize = 0
 
-      // If scanning root of a drive, immediately grab locked system files (hiberfil.sys, pagefile.sys)
-      const isDriveRoot = /^[a-zA-Z]:[/\\]?$/.test(targetDir)
-      if (isDriveRoot) {
-        const locked = getWindowsLockedFiles(targetDir)
-        for (const lf of locked) {
-          if (lf.size >= minSizeBytes) {
-            totalSize += lf.size
-            largeFiles.push(lf)
+        // If scanning root of a drive, immediately grab locked system files (hiberfil.sys, pagefile.sys)
+        const isDriveRoot = /^[a-zA-Z]:[/\\]?$/.test(targetDir)
+        if (isDriveRoot) {
+          const locked = getWindowsLockedFiles(targetDir)
+          for (const lf of locked) {
+            if (lf.size >= minSizeBytes) {
+              totalSize += lf.size
+              largeFiles.push(lf)
+            }
           }
         }
-      }
 
-      // System / junk / looped folders to skip
-      const skipNames = new Set([
-        '$recycle.bin',
-        'system volume information',
-        'recovery',
-        'msocache',
-        'winsxs',
-        'assembly',
-        'node_modules',
-      ])
+        // System / junk / looped folders to skip
+        const skipNames = new Set([
+          '$recycle.bin',
+          'system volume information',
+          'recovery',
+          'msocache',
+          'winsxs',
+          'assembly',
+          'node_modules',
+        ])
 
-      const queue: { dir: string; depth: number }[] = [{ dir: targetDir, depth: 0 }]
+        const queue: { dir: string; depth: number }[] = [{ dir: targetDir, depth: 0 }]
 
-      while (queue.length > 0 && scannedCount < 600000) {
-        const current = queue.shift()!
-        if (current.depth > 14) continue
+        while (queue.length > 0 && scannedCount < 600000) {
+          const current = queue.shift()!
+          if (current.depth > 14) continue
 
-        let entries: fs.Dirent[]
-        try {
-          entries = await fsPromises.readdir(current.dir, { withFileTypes: true })
-        } catch {
-          continue
-        }
+          let entries: fs.Dirent[]
+          try {
+            entries = await fsPromises.readdir(current.dir, { withFileTypes: true })
+          } catch {
+            continue
+          }
 
-        // If at root of a drive, prioritize user directories over Windows system internals
-        if (current.depth === 0) {
-          entries.sort((a, b) => {
-            const aName = a.name.toLowerCase()
-            const bName = b.name.toLowerCase()
-            if (aName === 'users') return -1
-            if (bName === 'users') return 1
-            if (aName.includes('program')) return -1
-            if (bName.includes('program')) return 1
-            if (aName.includes('games') || aName.includes('xbox')) return -1
-            if (bName.includes('games') || bName.includes('xbox')) return 1
-            if (aName === 'windows') return 1
-            if (bName === 'windows') return -1
-            return 0
-          })
-        }
+          // If at root of a drive, prioritize user directories over Windows system internals
+          if (current.depth === 0) {
+            entries.sort((a, b) => {
+              const aName = a.name.toLowerCase()
+              const bName = b.name.toLowerCase()
+              if (aName === 'users') return -1
+              if (bName === 'users') return 1
+              if (aName.includes('program')) return -1
+              if (bName.includes('program')) return 1
+              if (aName.includes('games') || aName.includes('xbox')) return -1
+              if (bName.includes('games') || bName.includes('xbox')) return 1
+              if (aName === 'windows') return 1
+              if (bName === 'windows') return -1
+              return 0
+            })
+          }
 
-        for (const entry of entries) {
-          scannedCount++
-          const lowerName = entry.name.toLowerCase()
+          for (const entry of entries) {
+            scannedCount++
+            const lowerName = entry.name.toLowerCase()
 
-          if (entry.isDirectory()) {
-            if (skipNames.has(lowerName)) continue
-            if (entry.isSymbolicLink()) continue
-            // Restrict depth inside Windows system internals
-            if (current.dir.toLowerCase().includes('\\windows') && current.depth >= 3) continue
-            queue.push({ dir: path.join(current.dir, entry.name), depth: current.depth + 1 })
-          } else if (entry.isFile()) {
-            try {
-              const fullPath = path.join(current.dir, entry.name)
-              const st = await fsPromises.stat(fullPath)
-              if (st.size >= minSizeBytes) {
-                totalSize += st.size
-                largeFiles.push({
-                  path: fullPath,
-                  name: entry.name,
-                  size: st.size,
-                  mtime: st.mtimeMs,
-                  extension: path.extname(entry.name).replace(/^\./, '').toLowerCase(),
-                  dir: current.dir,
-                })
-              }
-            } catch {}
+            if (entry.isDirectory()) {
+              if (skipNames.has(lowerName)) continue
+              if (entry.isSymbolicLink()) continue
+              // Restrict depth inside Windows system internals
+              if (current.dir.toLowerCase().includes('\\windows') && current.depth >= 3) continue
+              queue.push({ dir: path.join(current.dir, entry.name), depth: current.depth + 1 })
+            } else if (entry.isFile()) {
+              try {
+                const fullPath = path.join(current.dir, entry.name)
+                const st = await fsPromises.stat(fullPath)
+                if (st.size >= minSizeBytes) {
+                  totalSize += st.size
+                  largeFiles.push({
+                    path: fullPath,
+                    name: entry.name,
+                    size: st.size,
+                    mtime: st.mtimeMs,
+                    extension: path.extname(entry.name).replace(/^\./, '').toLowerCase(),
+                    dir: current.dir,
+                  })
+                }
+              } catch {}
+            }
           }
         }
-      }
 
-      // Sort descending by size (largest first)
-      largeFiles.sort((a, b) => b.size - a.size)
+        // Sort descending by size (largest first)
+        largeFiles.sort((a, b) => b.size - a.size)
 
-      const resultFiles = limit > 0 ? largeFiles.slice(0, limit) : largeFiles
-      return {
-        success: true,
-        files: resultFiles,
-        totalSize,
-        scannedCount,
+        const resultFiles = limit > 0 ? largeFiles.slice(0, limit) : largeFiles
+        return {
+          success: true,
+          files: resultFiles,
+          totalSize,
+          scannedCount,
+        }
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Помилка сканування великих файлів' }
       }
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Помилка сканування великих файлів' }
     }
-  })
+  )
 
   // File Search (Total Commander Alt+F7)
   ipcMain.handle('fs:search', async (_, dirPath: string, query: string, recursive = true, contentSearch?: string) => {
@@ -1551,7 +1569,10 @@ Write-Output "DONE"
 
       const text = clipboard.readText().trim()
       if (text) {
-        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+        const lines = text
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter(Boolean)
         const valid = lines
           .map((l) => {
             let p = l.replace(/^file:\/\/\/?/, '')

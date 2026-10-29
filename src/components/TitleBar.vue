@@ -5,9 +5,9 @@
         <span class="brand-badge">TC</span>
         <span class="brand-title">Total Commander</span>
         <span class="brand-version">Windows Edition</span>
-        <span 
-          class="build-badge" 
-          :data-tooltip="'Дата збірки: ' + BUILD_DATE" 
+        <span
+          class="build-badge"
+          :data-tooltip="'Дата збірки: ' + BUILD_DATE"
           data-tooltip-pos="bottom"
           :title="'Total Commander v' + APP_VERSION + ' (build ' + BUILD_NUMBER + ')\nДата збірки: ' + BUILD_DATE"
         >
@@ -18,8 +18,8 @@
 
     <div class="title-bar-actions">
       <!-- Quick Search -->
-      <button 
-        class="btn-icon" 
+      <button
+        class="btn-icon"
         data-tooltip="Пошук файлів (Alt+F7 / F10)"
         data-tooltip-pos="bottom"
         title="Пошук файлів за назвою або вмістом (Alt+F7 або F10)"
@@ -29,8 +29,8 @@
       </button>
 
       <!-- Large Files Finder / Disk Cleanup -->
-      <button 
-        class="btn-icon" 
+      <button
+        class="btn-icon"
         data-tooltip="Пошук великих файлів (Звільнення місця на диску)"
         data-tooltip-pos="bottom"
         title="Аналізатор диска: Пошук великих файлів для звільнення місця на диску"
@@ -40,21 +40,21 @@
       </button>
 
       <!-- Toggle Hidden Files -->
-      <button 
-        class="btn-icon" 
+      <button
+        class="btn-icon"
         :class="{ active: showHidden }"
         :data-tooltip="showHidden ? 'Приховати файли (Ctrl+Shift+.)' : 'Показати приховані файли (Ctrl+Shift+.)'"
         data-tooltip-pos="bottom"
         :title="showHidden ? 'Приховати приховані файли (Ctrl+Shift+.)' : 'Показати приховані файли (Ctrl+Shift+.)'"
         @click="$emit('toggle-hidden')"
       >
-        <Eye :size="15" v-if="showHidden" />
-        <EyeOff :size="15" v-else />
+        <Eye v-if="showHidden" :size="15" />
+        <EyeOff v-else :size="15" />
       </button>
 
       <!-- Swap Panes -->
-      <button 
-        class="btn-icon" 
+      <button
+        class="btn-icon"
         data-tooltip="Поміняти панелі (Ctrl+U)"
         data-tooltip-pos="bottom"
         title="Поміняти ліву і праву панелі місцями (Ctrl+U)"
@@ -64,8 +64,8 @@
       </button>
 
       <!-- Open Terminal -->
-      <button 
-        class="btn-icon" 
+      <button
+        class="btn-icon"
         data-tooltip="Відкрити Термінал (F9)"
         data-tooltip-pos="bottom"
         title="Відкрити активну папку в Терміналі Windows (F9)"
@@ -75,8 +75,8 @@
       </button>
 
       <!-- Refresh Panes -->
-      <button 
-        class="btn-icon" 
+      <button
+        class="btn-icon"
         data-tooltip="Оновити панелі (Ctrl+R)"
         data-tooltip-pos="bottom"
         title="Оновити вміст обох панелей (Ctrl+R)"
@@ -86,12 +86,18 @@
       </button>
 
       <!-- Prominent Theme Switcher Button / Segmented Control -->
-      <button 
+      <button
         type="button"
-        class="theme-switcher-pill" 
-        :data-tooltip="currentTheme === 'dark' ? 'Увімкнути світлу тему (Ctrl+Shift+T)' : 'Увімкнути темну тему (Ctrl+Shift+T)'"
+        class="theme-switcher-pill"
+        :data-tooltip="
+          currentTheme === 'dark' ? 'Увімкнути світлу тему (Ctrl+Shift+T)' : 'Увімкнути темну тему (Ctrl+Shift+T)'
+        "
         data-tooltip-pos="bottom-left"
-        :title="currentTheme === 'dark' ? 'Перемкнути на світлу тему (Ctrl+Shift+T)' : 'Перемкнути на темну тему (Ctrl+Shift+T)'"
+        :title="
+          currentTheme === 'dark'
+            ? 'Перемкнути на світлу тему (Ctrl+Shift+T)'
+            : 'Перемкнути на темну тему (Ctrl+Shift+T)'
+        "
         @click="$emit('toggle-theme')"
       >
         <span class="theme-option" :class="{ 'is-active': currentTheme === 'light' }">
@@ -109,17 +115,7 @@
 
 <script setup lang="ts">
 import { APP_VERSION, BUILD_NUMBER, BUILD_DATE } from '../buildInfo'
-import { 
-  Search, 
-  PieChart,
-  Eye, 
-  EyeOff, 
-  ArrowLeftRight, 
-  Terminal, 
-  RotateCw,
-  Sun,
-  Moon
-} from 'lucide-vue-next'
+import { Search, PieChart, Eye, EyeOff, ArrowLeftRight, Terminal, RotateCw, Sun, Moon } from 'lucide-vue-next'
 
 defineProps<{
   showHidden: boolean

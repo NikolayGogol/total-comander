@@ -18,17 +18,8 @@ export function formatDate(timestamp?: number | null, format = 'YYYY-MM-DD HH:mm
   return d.format(format)
 }
 
-export type FileCategory = 
-  | 'folder' 
-  | 'exe' 
-  | 'archive' 
-  | 'image' 
-  | 'video' 
-  | 'audio' 
-  | 'code' 
-  | 'doc' 
-  | 'system' 
-  | 'default'
+export type FileCategory =
+  'folder' | 'exe' | 'archive' | 'image' | 'video' | 'audio' | 'code' | 'doc' | 'system' | 'default'
 
 export interface CategoryInfo {
   category: FileCategory
@@ -70,7 +61,36 @@ export function getFileCategory(nameOrExt?: string | null, isDir?: boolean): Cat
   }
 
   // Code / Web / Config
-  if (['js', 'ts', 'vue', 'jsx', 'tsx', 'html', 'css', 'scss', 'json', 'py', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'rb', 'sh', 'yaml', 'yml', 'toml', 'sql', 'xml'].includes(cleanExt)) {
+  if (
+    [
+      'js',
+      'ts',
+      'vue',
+      'jsx',
+      'tsx',
+      'html',
+      'css',
+      'scss',
+      'json',
+      'py',
+      'go',
+      'rs',
+      'c',
+      'cpp',
+      'h',
+      'hpp',
+      'java',
+      'cs',
+      'php',
+      'rb',
+      'sh',
+      'yaml',
+      'yml',
+      'toml',
+      'sql',
+      'xml',
+    ].includes(cleanExt)
+  ) {
     return { category: 'code', icon: 'Code', classModifier: 'icon-code' }
   }
 
@@ -102,7 +122,8 @@ export function getFileTypeDescription(nameOrExt?: string | null, isDir?: boolea
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'].includes(cleanExt)) return 'Графічне зображення'
   if (['mp4', 'mov', 'avi', 'mkv'].includes(cleanExt)) return 'Відеофайл'
   if (['mp3', 'wav', 'flac', 'aac'].includes(cleanExt)) return 'Аудіозапис'
-  if (['ts', 'js', 'vue', 'py', 'json', 'yaml', 'yml', 'html', 'css', 'scss'].includes(cleanExt)) return 'Вихідний код / Конфігурація'
+  if (['ts', 'js', 'vue', 'py', 'json', 'yaml', 'yml', 'html', 'css', 'scss'].includes(cleanExt))
+    return 'Вихідний код / Конфігурація'
   if (['pdf', 'doc', 'docx', 'txt', 'md'].includes(cleanExt)) return 'Текстовий документ'
   return cleanExt ? `Файл (${cleanExt.toUpperCase()})` : 'Файл'
 }

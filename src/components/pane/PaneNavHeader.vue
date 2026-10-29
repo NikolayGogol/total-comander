@@ -1,8 +1,8 @@
 <template>
   <div class="pane-header">
-    <button 
-      class="nav-btn" 
-      :disabled="!canGoBack" 
+    <button
+      class="nav-btn"
+      :disabled="!canGoBack"
       data-tooltip="Назад в історії"
       data-tooltip-pos="bottom"
       title="Назад в історії переходів"
@@ -11,9 +11,9 @@
       <ChevronLeft :size="14" />
     </button>
 
-    <button 
-      class="nav-btn" 
-      :disabled="!canGoForward" 
+    <button
+      class="nav-btn"
+      :disabled="!canGoForward"
       data-tooltip="Вперед в історії"
       data-tooltip-pos="bottom"
       title="Вперед в історії переходів"
@@ -22,9 +22,9 @@
       <ChevronRight :size="14" />
     </button>
 
-    <button 
-      class="nav-btn" 
-      :disabled="isRootPath" 
+    <button
+      class="nav-btn"
+      :disabled="isRootPath"
       data-tooltip="Батьківська папка (..)"
       data-tooltip-pos="bottom"
       title="Перейти у батьківську директорію (Backspace або ..)"
@@ -34,12 +34,12 @@
     </button>
 
     <!-- Path Bar / Breadcrumbs -->
-    <div class="path-box" @click="startEditing" title="Клікніть для ручного введення шляху">
-      <input 
-        v-if="isEditing" 
+    <div class="path-box" title="Клікніть для ручного введення шляху" @click="startEditing">
+      <input
+        v-if="isEditing"
         ref="inputRef"
-        v-model="editPath" 
-        type="text" 
+        v-model="editPath"
+        type="text"
         class="path-input"
         placeholder="C:\шлях\до\папки"
         title="Натисніть Enter для переходу, Esc для скасування"
@@ -50,8 +50,8 @@
       <div v-else class="breadcrumbs">
         <template v-for="(segment, idx) in pathSegments" :key="idx">
           <span v-if="idx > 0" class="crumb-sep">\</span>
-          <span 
-            class="crumb" 
+          <span
+            class="crumb"
             :title="'Перейти до: ' + segment.fullPath"
             @click.stop="$emit('navigate', segment.fullPath)"
           >
@@ -61,11 +61,11 @@
       </div>
     </div>
 
-    <button 
-      class="nav-btn" 
+    <button
+      class="nav-btn"
       data-tooltip="Оновити папку (Ctrl+R)"
       data-tooltip-pos="bottom"
-      title="Оновити вміст директорії (Ctrl+R)" 
+      title="Оновити вміст директорії (Ctrl+R)"
       @click.stop="$emit('refresh')"
     >
       <RotateCw :size="13" />
@@ -74,23 +74,23 @@
     <!-- Quick Filter -->
     <div class="filter-box" title="Фільтрація файлів у поточній папці">
       <Search :size="12" class="filter-icon" />
-      <input 
+      <input
         :value="filterText"
-        type="text" 
-        class="filter-input" 
+        type="text"
+        class="filter-input"
         placeholder="Filter..."
         title="Введіть назву для швидкої фільтрації (Esc для очищення)"
         @input="$emit('update:filterText', ($event.target as HTMLInputElement).value)"
         @keydown.esc="$emit('update:filterText', '')"
       />
-      <X 
-        v-if="filterText" 
-        :size="11" 
+      <X
+        v-if="filterText"
+        :size="11"
         class="filter-clear-btn"
         data-tooltip="Очистити (Esc)"
         data-tooltip-pos="bottom"
         title="Очистити фільтр (Esc)"
-        @click="$emit('update:filterText', '')" 
+        @click="$emit('update:filterText', '')"
       />
     </div>
   </div>
@@ -98,14 +98,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ArrowUp, 
-  RotateCw, 
-  Search, 
-  X 
-} from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, ArrowUp, RotateCw, Search, X } from 'lucide-vue-next'
 
 const props = defineProps<{
   currentPath: string
@@ -146,9 +139,7 @@ const pathSegments = computed<PathSegment[]>(() => {
   if (driveMatch) {
     const driveLetter = driveMatch[1].toUpperCase()
     const rest = driveMatch[2]
-    const list: PathSegment[] = [
-      { label: driveLetter, fullPath: `${driveLetter}\\` }
-    ]
+    const list: PathSegment[] = [{ label: driveLetter, fullPath: `${driveLetter}\\` }]
 
     const subParts = rest.split(/[/\\]/).filter(Boolean)
     let current = `${driveLetter}\\`
