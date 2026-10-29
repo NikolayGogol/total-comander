@@ -116,15 +116,11 @@ export function isProtectedSystemFile(name: string, fullPath: string): boolean {
   ) {
     return true
   }
-  if (
-    lowerName === '.spotlight-v100' ||
-    lowerName === '.fseventsd' ||
-    lowerName === '.documentrevisions-v100'
-  ) {
-    return true
-  }
+  return lowerName === '.spotlight-v100' ||
+      lowerName === '.fseventsd' ||
+      lowerName === '.documentrevisions-v100';
 
-  return false
+
 }
 
 export function setupDiskIpc() {

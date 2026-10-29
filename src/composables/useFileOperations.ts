@@ -1,5 +1,5 @@
-import type { Ref } from "vue";
-import type { FileItem, PaneState } from "@/types";
+import type {Ref} from "vue";
+import type {FileItem, PaneState} from "@/types";
 
 export interface FileOperationsContext {
   activePaneId: Ref<"left" | "right">;
@@ -361,11 +361,9 @@ export function useFileOperations(ctx: FileOperationsContext) {
         break;
 
       case "large-files": {
-        const targetPath =
-          item && item.isDirectory
+        ctx.largeFilesModal.initialDir = item && item.isDirectory
             ? item.path
             : ctx.activePaneState.value.currentPath;
-        ctx.largeFilesModal.initialDir = targetPath;
         ctx.largeFilesModal.open = true;
         break;
       }
