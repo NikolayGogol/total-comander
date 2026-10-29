@@ -166,6 +166,6 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; count?: number; error?: string }>
   getClipboardFiles: () => Promise<{ success: boolean; paths?: string[]; action?: 'copy' | 'cut'; error?: string }>
   clearClipboard: () => Promise<{ success: boolean }>
-  onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll') => void) => () => void
+  onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll' | 'refresh') => void) => () => void
   getSystemInfo: () => Promise<SystemInfo>
 }

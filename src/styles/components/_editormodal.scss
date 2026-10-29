@@ -1,0 +1,74 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+// Editor Modal (F4)
+.editor-card {
+  width: 920px;
+  height: 700px;
+
+  .dirty-badge {
+    font-size: $font-size-xs;
+    color: $color-accent-amber;
+    background: rgba(245, 158, 11, 0.15);
+    padding: $size-space-2xs $size-space-sm;
+    border-radius: $radius-xs;
+  }
+
+  .editor-header-actions {
+    display: flex;
+    align-items: center;
+    gap: $size-space-md;
+  }
+
+  .editor-body {
+    padding: 0;
+    display: flex;
+    background: var(--bg-viewer);
+    overflow: hidden;
+  }
+
+  .editor-workspace {
+    display: flex;
+    width: 100%;
+    height: 100%;
+
+    .editor-line-numbers {
+      padding: $size-space-lg $size-space-md;
+      background: var(--bg-panel-header);
+      border-right: 1px solid $color-border-subtle;
+      color: $color-text-dim;
+      text-align: right;
+      font-family: $font-family-mono;
+      font-size: $font-size-base;
+      line-height: 1.5;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .editor-textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: $size-space-lg $size-space-xl;
+      color: var(--text-main);
+      font-family: $font-family-mono;
+      font-size: $font-size-base;
+      line-height: 1.5;
+      tab-size: 2;
+      white-space: pre;
+      overflow: auto;
+      @include custom-scrollbar;
+    }
+  }
+
+  .editor-stats {
+    display: flex;
+    align-items: center;
+    gap: $size-space-lg;
+    font-family: $font-family-mono;
+    font-size: $font-size-xs;
+    color: $color-text-dim;
+  }
+}

@@ -60,7 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('clipboard:copyFiles', toPlain(paths), action),
   getClipboardFiles: () => ipcRenderer.invoke('clipboard:getFiles'),
   clearClipboard: () => ipcRenderer.invoke('clipboard:clear'),
-  onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll') => void) => {
+  onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll' | 'refresh') => void) => {
     const listener = (_: any, cmd: any) => callback(cmd)
     ipcRenderer.on('app:command', listener)
     return () => ipcRenderer.removeListener('app:command', listener)

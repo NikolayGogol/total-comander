@@ -14,6 +14,10 @@
 @use './components/filetable';
 @use './components/bottomactionbar';
 @use './components/modals';
+@use './components/viewermodal';
+@use './components/editormodal';
+@use './components/operationmodal';
+@use './components/searchmodal';
 @use './components/toast';
 @use './components/tooltip';
 @use './components/contextmenu';

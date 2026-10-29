@@ -1,0 +1,128 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+// Viewer Modal (F3)
+.viewer-card {
+  width: 920px;
+  height: 680px;
+
+  .file-size-tag {
+    font-size: $font-size-xs;
+    color: $color-text-dim;
+    background: var(--bg-pill);
+    padding: $size-space-2xs $size-space-sm;
+    border-radius: $radius-xs;
+    font-family: $font-family-mono;
+  }
+
+  .viewer-actions {
+    display: flex;
+    align-items: center;
+    gap: $size-space-lg;
+  }
+
+  .mode-switch {
+    display: flex;
+    background: var(--bg-input);
+    border: 1px solid $color-border-subtle;
+    border-radius: $radius-sm;
+    padding: $size-space-2xs;
+
+    .mode-btn {
+      @include button-base;
+      color: $color-text-dim;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+      padding: $size-space-2xs $size-space-md;
+
+      &.active {
+        background: $color-accent-blue;
+        color: white;
+      }
+    }
+  }
+
+  .viewer-body {
+    padding: 0;
+    display: flex;
+    background: var(--bg-viewer);
+    overflow: auto;
+    @include custom-scrollbar;
+  }
+
+  .viewer-status {
+    margin: auto;
+    color: $color-text-dim;
+    font-size: $font-size-md;
+
+    &.error {
+      color: $color-accent-rose;
+    }
+  }
+
+  .text-viewer-container {
+    display: flex;
+    width: 100%;
+    min-height: 100%;
+    font-family: $font-family-mono;
+    font-size: $font-size-base;
+
+    .line-numbers {
+      padding: $size-space-lg $size-space-md;
+      background: var(--bg-panel-header);
+      border-right: 1px solid $color-border-subtle;
+      color: $color-text-dim;
+      text-align: right;
+      user-select: none;
+    }
+
+    .text-content {
+      flex: 1;
+      padding: $size-space-lg $size-space-xl;
+      margin: 0;
+      overflow-x: auto;
+      color: var(--text-main);
+      line-height: 1.5;
+      user-select: text;
+      @include custom-scrollbar;
+    }
+  }
+
+  .hex-viewer-container {
+    padding: $size-space-lg;
+    width: 100%;
+    overflow: auto;
+    @include custom-scrollbar;
+
+    .hex-content {
+      font-family: $font-family-mono;
+      font-size: $font-size-sm;
+      color: $color-accent-cyan;
+      line-height: 1.4;
+      user-select: text;
+    }
+  }
+
+  .image-viewer-container {
+    @include flex-center;
+    width: 100%;
+    height: 100%;
+    padding: $size-space-2xl;
+
+    .preview-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: $radius-sm;
+      box-shadow: $shadow-lg;
+    }
+  }
+
+  .viewer-filepath {
+    font-family: $font-family-mono;
+    font-size: $font-size-xs;
+    color: $color-text-dim;
+    @include truncate-text;
+    max-width: 600px;
+  }
+}

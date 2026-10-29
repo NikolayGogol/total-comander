@@ -1,0 +1,50 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+// Operation Modal (Copy, Move, Mkdir, Delete, Rename)
+.op-card {
+  width: 520px;
+
+  .op-label {
+    display: block;
+    font-size: $font-size-base;
+    color: $color-text-muted;
+    margin-bottom: $size-space-md;
+
+    code {
+      color: $color-accent-cyan;
+      font-family: $font-family-mono;
+    }
+  }
+
+  .delete-warning {
+    color: var(--accent-rose);
+    font-size: $font-size-md;
+    margin-bottom: $size-space-lg;
+  }
+
+  .items-preview-list {
+    margin-top: $size-space-lg;
+    max-height: 140px;
+    overflow-y: auto;
+    background: var(--bg-input);
+    border: 1px solid $color-border-subtle;
+    border-radius: $radius-sm;
+    padding: $size-space-sm $size-space-md;
+    font-family: $font-family-mono;
+    font-size: $font-size-xs;
+    @include custom-scrollbar;
+
+    .item-preview {
+      color: $color-text-muted;
+      @include truncate-text;
+      padding: $size-space-2xs 0;
+    }
+
+    .item-preview-more {
+      color: $color-text-dim;
+      font-style: italic;
+      padding-top: $size-space-xs;
+    }
+  }
+}
