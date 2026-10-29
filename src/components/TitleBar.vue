@@ -5,6 +5,14 @@
         <span class="brand-badge">TC</span>
         <span class="brand-title">Total Commander</span>
         <span class="brand-version">Windows Edition</span>
+        <span 
+          class="build-badge" 
+          :data-tooltip="'Дата збірки: ' + BUILD_DATE" 
+          data-tooltip-pos="bottom"
+          :title="'Total Commander v' + APP_VERSION + ' (build ' + BUILD_NUMBER + ')\nДата збірки: ' + BUILD_DATE"
+        >
+          v{{ APP_VERSION }} (b{{ BUILD_NUMBER }})
+        </span>
       </div>
     </div>
 
@@ -89,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { APP_VERSION, BUILD_NUMBER, BUILD_DATE } from '../buildInfo'
 import { 
   Search, 
   Eye, 

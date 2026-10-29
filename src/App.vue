@@ -361,6 +361,26 @@ async function handleContextMenuAction(action: string) {
       selectAllInActivePane()
       break
 
+    case 'zip': {
+      const paths = getSelectedOrCursorPaths()
+      if (paths.length === 0 && item) {
+        archivePathsToZip([item.path])
+      } else if (paths.length > 0) {
+        archivePathsToZip(paths)
+      } else {
+        showToast('Не вибрано жодного файлу для архівування', 'error')
+      }
+      break
+    }
+
+    case 'unzip': {
+      const targetItem = item || getActiveCursorItem()
+      if (targetItem && !targetItem.isDirectory) {
+        extractZipFile(targetItem.path)
+      }
+      break
+    }
+
     case 'clipboard-copy':
       copySelectedToClipboard('copy')
       break
@@ -720,7 +740,14 @@ function navigateToDrive(path: string) {
 }
 
 async function openActiveTerminal() {
-  await window.electronAPI.openInTerminal(activePaneState.value.currentPath)
+  const currentDir = activePaneState.value.currentPath
+  const res = await window.electronAPI.openInTerminal(currentDir)
+  if (res.success) {
+    const dirName = currentDir.split(/[/\\]/).filter(Boolean).pop() || currentDir
+    showShortcutToast('F9', `Термінал відкрито у: ${dirName}`)
+  } else {
+    showToast(res.error || 'Не вдалося відкрити термінал', 'error')
+  }
 }
 
 // Native open (Windows Explorer association on double-click)
@@ -955,6 +982,61 @@ async function handleDragDrop(sourcePaths: string[], targetDir: string, isMove: 
     }
   } catch (err: any) {
     showToast(`Помилка drag & drop: ${err.message}`, 'error')
+  }
+}
+
+// ZIP Archiving & Extraction (Alt+F5 / Alt+F6)
+async function archivePathsToZip(sources: string[]) {
+  if (!sources || sources.length === 0) return
+  const curDir = activePaneState.value.currentPath
+  const sep = curDir.includes('/') ? '/' : '\\'
+
+  let baseName = 'archive'
+  if (sources.length === 1) {
+    const sName = sources[0].split(/[/\\]/).filter(Boolean).pop() || 'archive'
+    baseName = sName.replace(/\.[^.]+$/, '')
+  } else {
+    baseName = curDir.split(/[/\\]/).filter(Boolean).pop() || 'archive'
+  }
+
+  const zipName = `${baseName}.zip`
+  const targetZip = `${curDir.replace(/[/\\]+$/, '')}${sep}${zipName}`
+
+  showShortcutToast('Alt + F5', `Створення архіву "${zipName}"...`)
+
+  try {
+    const res = await window.electronAPI.createZip(sources, targetZip)
+    if (res.success) {
+      showToast(`Архів успішно створено: ${zipName}`, 'success')
+      refreshAllPanes()
+    } else {
+      showToast(`Помилка архівування: ${res.error}`, 'error')
+    }
+  } catch (err: any) {
+    showToast(`Помилка архівування: ${err.message}`, 'error')
+  }
+}
+
+async function extractZipFile(zipPath: string) {
+  if (!zipPath) return
+  const curDir = activePaneState.value.currentPath
+  const sep = curDir.includes('/') ? '/' : '\\'
+  const zipName = zipPath.split(/[/\\]/).filter(Boolean).pop() || 'Archive.zip'
+  const folderName = zipName.replace(/\.[^.]+$/, '')
+  const targetDir = `${curDir.replace(/[/\\]+$/, '')}${sep}${folderName}`
+
+  showShortcutToast('Alt + F6', `Розархівування "${zipName}"...`)
+
+  try {
+    const res = await window.electronAPI.extractZip(zipPath, targetDir)
+    if (res.success) {
+      showToast(`Архів розпаковано у папку "${folderName}"`, 'success')
+      refreshAllPanes()
+    } else {
+      showToast(`Помилка розархівування: ${res.error}`, 'error')
+    }
+  } catch (err: any) {
+    showToast(`Помилка розархівування: ${err.message}`, 'error')
   }
 }
 

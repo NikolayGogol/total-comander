@@ -65,6 +65,7 @@ export interface SystemInfo {
   tmpDir: string
   platform: string
   username: string
+  version?: string
 }
 
 export interface ElectronAPI {
@@ -86,6 +87,8 @@ export interface ElectronAPI {
   showInFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>
   openInTerminal: (dirPath: string) => Promise<{ success: boolean; error?: string }>
   quickLook: (filePath: string) => Promise<{ success: boolean; error?: string }>
+  createZip: (sources: string[], targetZipPath: string) => Promise<{ success: boolean; error?: string }>
+  extractZip: (zipPath: string, targetDir: string) => Promise<{ success: boolean; error?: string }>
   getDirSize: (dirPath: string) => Promise<{ success: boolean; size?: number; count?: number; error?: string }>
   search: (dirPath: string, query: string, recursive: boolean, contentSearch?: string) => Promise<{ success: boolean; results?: SearchResult[]; error?: string }>
   copyFilesToClipboard: (paths: string[], action?: 'copy' | 'cut') => Promise<{ success: boolean; count?: number; error?: string }>

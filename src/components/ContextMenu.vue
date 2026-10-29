@@ -46,6 +46,18 @@
           <span class="item-shortcut">F2</span>
         </button>
 
+        <button class="context-menu-item" @click="trigger('zip')">
+          <Archive :size="14" class="item-icon" />
+          <span class="item-label">Архівувати у ZIP</span>
+          <span class="item-shortcut">Alt+F5</span>
+        </button>
+
+        <button v-if="isArchive(item)" class="context-menu-item" @click="trigger('unzip')">
+          <FolderArchive :size="14" class="item-icon" />
+          <span class="item-label">Розархівувати вміст</span>
+          <span class="item-shortcut">Alt+F6</span>
+        </button>
+
         <div class="context-menu-separator"></div>
 
         <button class="context-menu-item" @click="trigger('clipboard-copy')">
@@ -145,7 +157,9 @@ import {
   ClipboardPaste,
   CheckSquare,
   Terminal,
-  RotateCw
+  RotateCw,
+  Archive,
+  FolderArchive
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -161,6 +175,12 @@ const emit = defineEmits<{
 }>()
 
 const menuRef = ref<HTMLElement | null>(null)
+
+function isArchive(item: FileItem | null): boolean {
+  if (!item || item.isDirectory) return false
+  const ext = (item.extension || '').toLowerCase()
+  return ext === 'zip' || ext === 'tar' || ext === 'gz' || ext === 'tgz' || ext === '7z'
+}
 
 function trigger(action: string) {
   emit('action', action)

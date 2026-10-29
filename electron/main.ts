@@ -106,7 +106,7 @@ function createWindow() {
     height: 820,
     minWidth: 900,
     minHeight: 600,
-    title: 'Total Commander',
+    title: `Total Commander v${app.getVersion()}`,
     icon: iconPath,
     titleBarStyle: 'default',
     autoHideMenuBar: true,
@@ -246,6 +246,7 @@ function setupIpcHandlers() {
       tmpDir: os.tmpdir(),
       platform: process.platform,
       username: os.userInfo().username,
+      version: app.getVersion(),
     }
   })
 
@@ -680,20 +681,63 @@ Write-Output "DONE"
 
   // Open Directory in Windows Terminal / PowerShell / CMD
   ipcMain.handle('fs:openInTerminal', async (_, dirPath: string) => {
-    try {
-      exec(`start wt.exe -d "${dirPath}"`, (err) => {
-        if (err) {
-          exec(`start powershell.exe -NoExit -Command "Set-Location -LiteralPath '${dirPath}'"`, (err2) => {
-            if (err2) {
-              exec(`start cmd.exe /K cd /D "${dirPath}"`)
+    return new Promise((resolve) => {
+      try {
+        let cleanDir = dirPath ? path.resolve(dirPath) : 'C:\\'
+        if (/^[a-zA-Z]:$/.test(cleanDir)) {
+          cleanDir += '\\'
+        }
+
+        const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+        const psExe = path.join(sysRoot, 'System32\\WindowsPowerShell\\v1.0\\powershell.exe')
+        const cmdExe = path.join(sysRoot, 'System32\\cmd.exe')
+        const localAppData = process.env.LOCALAPPDATA || ''
+        const wtPath = localAppData ? path.join(localAppData, 'Microsoft', 'WindowsApps', 'wt.exe') : ''
+        const hasWt = wtPath ? fs.existsSync(wtPath) : false
+
+        const launchCmd = () => {
+          const targetCmd = fs.existsSync(cmdExe) ? cmdExe : 'cmd.exe'
+          exec(`"${targetCmd}" /c start "" "${targetCmd}" /K cd /D "${cleanDir}"`, { cwd: cleanDir }, (cmdErr) => {
+            if (cmdErr) {
+              resolve({ success: false, error: cmdErr.message })
+            } else {
+              resolve({ success: true })
             }
           })
         }
-      })
-      return { success: true }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
+
+        const launchPowerShell = () => {
+          if (fs.existsSync(psExe)) {
+            const escapedDir = cleanDir.replace(/'/g, "''")
+            const targetCmd = fs.existsSync(cmdExe) ? cmdExe : 'cmd.exe'
+            exec(`"${targetCmd}" /c start "" "${psExe}" -NoExit -Command "Set-Location -LiteralPath '${escapedDir}'"`, { cwd: cleanDir }, (psErr) => {
+              if (psErr) {
+                launchCmd()
+              } else {
+                resolve({ success: true })
+              }
+            })
+          } else {
+            launchCmd()
+          }
+        }
+
+        if (hasWt) {
+          const targetCmd = fs.existsSync(cmdExe) ? cmdExe : 'cmd.exe'
+          exec(`"${targetCmd}" /c start "" "${wtPath}" -d "${cleanDir}"`, { cwd: cleanDir }, (wtErr) => {
+            if (wtErr) {
+              launchPowerShell()
+            } else {
+              resolve({ success: true })
+            }
+          })
+        } else {
+          launchPowerShell()
+        }
+      } catch (err: any) {
+        resolve({ success: false, error: err.message })
+      }
+    })
   })
 
   // QuickLook substitute: Open default system app
@@ -703,6 +747,73 @@ Write-Output "DONE"
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
+    }
+  })
+
+  // Create ZIP Archive
+  ipcMain.handle('fs:createZip', async (_, sources: string[], targetZipPath: string) => {
+    try {
+      if (!sources || sources.length === 0) {
+        return { success: false, error: 'Не вибрано файли для архівування' }
+      }
+
+      const parentDir = path.dirname(sources[0])
+      const basenames = sources.map((s) => path.basename(s))
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+      const sysTar = path.join(sysRoot, 'System32', 'tar.exe')
+      const tarExe = fs.existsSync(sysTar) ? sysTar : null
+
+      if (tarExe) {
+        const escapedNames = basenames.map((b) => `"${b}"`).join(' ')
+        const cmd = `"${tarExe}" -a -c -f "${targetZipPath}" -C "${parentDir}" ${escapedNames}`
+        await new Promise<void>((resolve, reject) => {
+          exec(cmd, { cwd: parentDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true }
+      } else {
+        const psList = sources.map((s) => `'${s.replace(/'/g, "''")}'`).join(', ')
+        const psScript = `Compress-Archive -LiteralPath @(${psList}) -DestinationPath '${targetZipPath.replace(/'/g, "''")}' -Force`
+        const { error } = await runPowerShell(psScript)
+        if (error) return { success: false, error }
+        return { success: true }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Помилка архівування' }
+    }
+  })
+
+  // Extract ZIP Archive
+  ipcMain.handle('fs:extractZip', async (_, zipPath: string, targetDir: string) => {
+    try {
+      if (!fs.existsSync(zipPath)) {
+        return { success: false, error: 'Файл архіву не знайдено' }
+      }
+
+      await fsPromises.mkdir(targetDir, { recursive: true })
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+      const sysTar = path.join(sysRoot, 'System32', 'tar.exe')
+      const tarExe = fs.existsSync(sysTar) ? sysTar : null
+
+      if (tarExe) {
+        const cmd = `"${tarExe}" -xf "${zipPath}" -C "${targetDir}"`
+        await new Promise<void>((resolve, reject) => {
+          exec(cmd, { cwd: targetDir }, (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message))
+            resolve()
+          })
+        })
+        return { success: true }
+      } else {
+        const psScript = `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${targetDir.replace(/'/g, "''")}' -Force`
+        const { error } = await runPowerShell(psScript)
+        if (error) return { success: false, error }
+        return { success: true }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Помилка розархівування' }
     }
   })
 

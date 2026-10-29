@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showInFolder: (filePath: string) => ipcRenderer.invoke('fs:showInFolder', filePath),
   openInTerminal: (dirPath: string) => ipcRenderer.invoke('fs:openInTerminal', dirPath),
   quickLook: (filePath: string) => ipcRenderer.invoke('fs:quickLook', filePath),
+  createZip: (sources: string[], targetZipPath: string) => ipcRenderer.invoke('fs:createZip', toPlain(sources), targetZipPath),
+  extractZip: (zipPath: string, targetDir: string) => ipcRenderer.invoke('fs:extractZip', zipPath, targetDir),
   getDirSize: (dirPath: string) => ipcRenderer.invoke('fs:getDirSize', dirPath),
   search: (dirPath: string, query: string, recursive: boolean, contentSearch?: string) =>
     ipcRenderer.invoke('fs:search', dirPath, query, recursive, contentSearch),

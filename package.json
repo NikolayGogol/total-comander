@@ -1,10 +1,13 @@
 {
   "name": "total-commander-windows",
   "productName": "Total Commander",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Total Commander orthodox two-pane file manager for Windows built with Node.js, Electron, Vue 3, and SCSS",
   "main": "dist-electron/main.js",
   "scripts": {
+    "prestart": "node scripts/update-build-info.js",
+    "predev": "node scripts/update-build-info.js",
+    "prebuild": "node scripts/update-build-info.js",
     "start": "vite",
     "dev": "vite",
     "app": "vite",

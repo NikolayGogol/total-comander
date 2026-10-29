@@ -51,6 +51,19 @@
       font-weight: $font-weight-medium;
       border: 1px solid var(--border-fn-key);
     }
+
+    .build-badge {
+      font-size: $font-size-2xs;
+      font-family: $font-family-mono;
+      color: var(--text-dim);
+      background: var(--bg-surface-raised);
+      padding: 1px $size-space-sm;
+      border-radius: $radius-xs;
+      font-weight: $font-weight-normal;
+      border: 1px solid var(--border-subtle);
+      user-select: none;
+      cursor: default;
+    }
   }
 
   .title-bar-actions {
