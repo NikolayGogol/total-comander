@@ -44,8 +44,9 @@
       @update-cursor="(idx) => $emit('update-cursor', idx)"
       @toggle-select="(p) => $emit('toggle-select', p)"
       @select-range="(from, to) => $emit('select-range', from, to)"
+      @clear-selection="$emit('clear-selection')"
       @sort="(field) => $emit('sort', field)"
-      @drop-items="(sources, target) => $emit('drag-drop-items', sources, target)"
+      @drop-items="(sources, target, isMove) => $emit('drag-drop-items', sources, target, isMove)"
       @context-menu="(payload) => $emit('context-menu', payload)"
     />
 
@@ -93,9 +94,10 @@ const emit = defineEmits<{
   (e: 'update-cursor', index: number): void
   (e: 'toggle-select', path: string): void
   (e: 'select-range', fromIndex: number, toIndex: number): void
+  (e: 'clear-selection'): void
   (e: 'sort', field: SortField): void
   (e: 'open-native', item: FileItem): void
-  (e: 'drag-drop-items', sourcePaths: string[], targetDir: string): void
+  (e: 'drag-drop-items', sourcePaths: string[], targetDir: string, isMove?: boolean): void
   (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null }): void
 }>()
 

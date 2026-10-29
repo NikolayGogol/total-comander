@@ -4,9 +4,10 @@
     :class="{ 'is-drag-over': isDragOverTable }"
     ref="wrapperRef"
     tabindex="0"
+    @click="handleWrapperClick"
     @keydown="handleKeyDown"
     @dragover.prevent="onTableDragOver"
-    @dragleave="isDragOverTable = false"
+    @dragleave="onTableDragLeave"
     @drop.prevent="onTableDrop"
     @contextmenu.prevent="onTableContextMenu"
   >
@@ -85,6 +86,7 @@
               />
               <span 
                 class="item-name" 
+                :class="{ 'name-dir': item.isDirectory }"
                 :data-tooltip="getShortItemTooltip(item)"
                 data-tooltip-pos="right"
                 :title="item.path"
@@ -94,12 +96,15 @@
             </div>
           </td>
           <td class="col-ext" :title="item.isApp ? 'Програма macOS' : (item.isDirectory ? 'Папка' : (item.extension || 'Без розширення'))">
-            {{ item.isApp ? 'APP' : (item.isDirectory ? '' : item.extension) }}
+            <span v-if="item.isApp" class="app-badge">&lt;APP&gt;</span>
+            <span v-else-if="!item.isDirectory && item.extension" class="ext-badge" :class="'ext-' + getCategory(item)">
+              {{ item.extension }}
+            </span>
           </td>
           <td class="col-size" :title="item.isApp ? 'Програма macOS (.app)' : (item.isDirectory ? 'Папка' : formatNumber(item.size) + ' байт')">
             <span v-if="item.isApp" class="app-badge">&lt;APP&gt;</span>
             <span v-else-if="item.isDirectory" class="dir-badge">&lt;DIR&gt;</span>
-            <span v-else>{{ formatBytes(item.size) }}</span>
+            <span v-else class="file-size-text">{{ formatBytes(item.size) }}</span>
           </td>
           <td class="col-date" :title="'Дата зміни: ' + formatDate(item.mtime)">{{ formatDate(item.mtime) }}</td>
           <td class="col-perms" :title="'Права доступу UNIX: ' + item.permissions">{{ item.permissions }}</td>
@@ -108,8 +113,8 @@
         <!-- Empty State -->
         <tr v-if="items.length === 0 && !loading">
           <td colspan="5" class="empty-state">
-            <span v-if="filterText">No files matching "{{ filterText }}"</span>
-            <span v-else>Directory is empty</span>
+            <span v-if="filterText">Немає файлів за запитом "{{ filterText }}"</span>
+            <span v-else>Директорія порожня</span>
           </td>
         </tr>
       </tbody>
@@ -117,15 +122,22 @@
 
     <!-- Loading Overlay -->
     <div v-if="loading" class="loading-overlay">
-      <span>Loading...</span>
+      <span>Завантаження...</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import type { FileItem, SortField } from '../../types'
-import { formatBytes, formatDate, formatNumber, getFileCategory, getFileTypeDescription } from '../../utils/formatters'
+import type { FileItem, SortField, SortOrder } from '../../types'
+import { 
+  formatBytes, 
+  formatDate, 
+  formatNumber, 
+  getFileCategory, 
+  getItemTooltip, 
+  getShortItemTooltip 
+} from '../../utils/formatters'
 import { 
   Folder, 
   File, 
@@ -144,7 +156,7 @@ const props = defineProps<{
   cursorIndex: number
   selectedPaths: Set<string>
   sortField: SortField
-  sortOrder: 'asc' | 'desc'
+  sortOrder: SortOrder
   filterText: string
   loading: boolean
 }>()
@@ -156,8 +168,9 @@ const emit = defineEmits<{
   (e: 'update-cursor', index: number): void
   (e: 'toggle-select', path: string): void
   (e: 'select-range', fromIndex: number, toIndex: number): void
+  (e: 'clear-selection'): void
   (e: 'sort', field: SortField): void
-  (e: 'drop-items', sourcePaths: string[], targetDir: string): void
+  (e: 'drop-items', sourcePaths: string[], targetDir: string, isMove?: boolean): void
   (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null }): void
 }>()
 
@@ -171,6 +184,11 @@ function isSelected(path: string): boolean {
 
 function setCursor(idx: number) {
   emit('update-cursor', idx)
+}
+
+function handleWrapperClick(e: MouseEvent) {
+  if ((e.target as HTMLElement)?.closest('tbody')) return
+  emit('clear-selection')
 }
 
 function onRowContextMenu(e: MouseEvent, item: FileItem, index: number) {
@@ -197,12 +215,10 @@ function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
 
 function handleRowDblClick(item: FileItem) {
   if (item.isApp) {
-    // Launch macOS Application bundle
     emit('open-native', item)
   } else if (item.isDirectory) {
     emit('navigate', item.path)
   } else {
-    // Open in native default app (like macOS Finder)
     emit('open-native', item)
   }
 }
@@ -219,11 +235,28 @@ function handleKeyDown(e: KeyboardEvent) {
     }
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
-    const minCursor = props.currentPath === '/' ? 0 : -1
-    if (props.cursorIndex > minCursor) {
+    if (props.cursorIndex > (props.currentPath !== '/' ? -1 : 0)) {
       setCursor(props.cursorIndex - 1)
       scrollToCursor()
     }
+  } else if (e.key === 'Home') {
+    e.preventDefault()
+    setCursor(props.currentPath !== '/' ? -1 : 0)
+    scrollToCursor()
+  } else if (e.key === 'End') {
+    e.preventDefault()
+    if (len > 0) {
+      setCursor(len - 1)
+      scrollToCursor()
+    }
+  } else if (e.key === 'PageUp') {
+    e.preventDefault()
+    setCursor(Math.max(props.currentPath !== '/' ? -1 : 0, props.cursorIndex - 15))
+    scrollToCursor()
+  } else if (e.key === 'PageDown') {
+    e.preventDefault()
+    setCursor(Math.min(len - 1, props.cursorIndex + 15))
+    scrollToCursor()
   } else if (e.key === ' ' || e.key === 'Insert') {
     e.preventDefault()
     if (props.cursorIndex >= 0 && props.cursorIndex < len) {
@@ -263,6 +296,47 @@ function scrollToCursor() {
   })
 }
 
+function extractDroppedPaths(e: DragEvent): string[] {
+  if (!e.dataTransfer) return []
+
+  const json = e.dataTransfer.getData('application/json')
+  if (json) {
+    try {
+      const parsed = JSON.parse(json)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed
+      }
+    } catch {}
+  }
+
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    const list: string[] = []
+    for (let i = 0; i < e.dataTransfer.files.length; i++) {
+      const file = e.dataTransfer.files[i]
+      let p = ''
+      if (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function') {
+        p = window.electronAPI.getPathForFile(file)
+      }
+      if (!p) {
+        p = (file as any).path || ''
+      }
+      if (p) list.push(p)
+    }
+    if (list.length > 0) return list
+  }
+
+  const text = e.dataTransfer.getData('text/plain')
+  if (text) {
+    const lines = text
+      .split(/[\r\n]+/)
+      .map((l) => l.trim().replace(/^["']|["']$/g, ''))
+      .filter((l) => l.length > 0 && l.startsWith('/'))
+    if (lines.length > 0) return lines
+  }
+
+  return []
+}
+
 // Drag and drop handlers
 function onDragStart(e: DragEvent, item: FileItem) {
   const selected = Array.from(props.selectedPaths)
@@ -273,25 +347,29 @@ function onDragStart(e: DragEvent, item: FileItem) {
 
 function onTableDragOver(e: DragEvent) {
   isDragOverTable.value = true
-  e.dataTransfer!.dropEffect = 'copy'
+  e.dataTransfer!.dropEffect = e.shiftKey ? 'move' : 'copy'
+}
+
+function onTableDragLeave(e: DragEvent) {
+  const related = e.relatedTarget as HTMLElement | null
+  if (!related || !wrapperRef.value?.contains(related)) {
+    isDragOverTable.value = false
+  }
 }
 
 function onTableDrop(e: DragEvent) {
   isDragOverTable.value = false
   dragTargetItemPath.value = null
-  const rawData = e.dataTransfer?.getData('application/json')
-  if (rawData) {
-    try {
-      const paths = JSON.parse(rawData) as string[]
-      emit('drop-items', paths, props.currentPath)
-    } catch {}
+  const sources = extractDroppedPaths(e)
+  if (sources.length > 0) {
+    emit('drop-items', sources, props.currentPath, e.shiftKey)
   }
 }
 
 function onItemDragOver(e: DragEvent, item: FileItem) {
   if (item.isDirectory) {
     dragTargetItemPath.value = item.path
-    e.dataTransfer!.dropEffect = 'copy'
+    e.dataTransfer!.dropEffect = e.shiftKey ? 'move' : 'copy'
   }
 }
 
@@ -304,81 +382,35 @@ function onItemDragLeave(item: FileItem) {
 function onItemDrop(e: DragEvent, item: FileItem) {
   dragTargetItemPath.value = null
   isDragOverTable.value = false
-  const rawData = e.dataTransfer?.getData('application/json')
-  if (rawData) {
-    try {
-      const paths = JSON.parse(rawData) as string[]
-      const target = item.isDirectory ? item.path : props.currentPath
-      emit('drop-items', paths, target)
-    } catch {}
+  const sources = extractDroppedPaths(e)
+  if (sources.length > 0) {
+    const target = item.isDirectory ? item.path : props.currentPath
+    emit('drop-items', sources, target, e.shiftKey)
   }
+}
+
+function getCategory(item: FileItem) {
+  return getFileCategory(item.extension || item.name, item.isDirectory).category
 }
 
 // Icon selectors
 function getIconComponent(item: FileItem) {
-  const cat = getFileCategory(item.extension, item.isDirectory)
-  switch (cat.icon) {
-    case 'Folder': return Folder
-    case 'Code': return Code
-    case 'Image': return Image
-    case 'Film': return Film
-    case 'Music': return Music
-    case 'FileText': return FileText
-    case 'Archive': return Archive
+  if (item.isDirectory) return Folder
+  const cat = getCategory(item)
+  switch (cat) {
+    case 'code':
+    case 'app': return Code
+    case 'image': return Image
+    case 'video': return Film
+    case 'audio': return Music
+    case 'doc': return FileText
+    case 'archive': return Archive
     default: return File
   }
 }
 
 function getIconModifier(item: FileItem): string {
-  return getFileCategory(item.extension, item.isDirectory).classModifier
-}
-
-function getShortItemTooltip(item?: FileItem): string {
-  if (!item) return ''
-  if (item.isApp) {
-    return `🚀 ${item.name} • Програма macOS`
-  }
-  if (item.isDirectory) {
-    return `📁 ${item.name} • Папка`
-  }
-  const ext = item.extension ? item.extension.toUpperCase().replace('.', '') + ' • ' : ''
-  return `📄 ${item.name} • ${ext}${formatBytes(item.size)}`
-}
-
-function getItemTooltip(item?: FileItem): string {
-  if (!item) return ''
-  if (item.isApp) {
-    return [
-      `🚀 Програма: ${item.name || ''}`,
-      `Тип: Програма Apple macOS (.app)`,
-      `Шлях: ${item.path || ''}`,
-      `Змінено: ${formatDate(item.mtime)}`,
-      `Права доступу: ${item.permissions || '--'}`,
-      `💡 Подвійний клік або Enter — запустити програму`,
-    ].join('\n')
-  }
-  if (item.isDirectory) {
-    return [
-      `📁 Папка: ${item.name || ''}`,
-      `Шлях: ${item.path || ''}`,
-      `Змінено: ${formatDate(item.mtime)}`,
-      `Права доступу: ${item.permissions || '--'}`,
-      `💡 Подвійний клік — увійти у папку`,
-    ].join('\n')
-  }
-
-  const extStr = item.extension ? ` (${item.extension.toUpperCase()})` : ''
-  const sizeDetailed = `${formatBytes(item.size)} (${formatNumber(item.size)} байт)`
-  const typeDesc = getFileTypeDescription(item.extension, false)
-  return [
-    `📄 Файл: ${item.name || ''}${extStr}`,
-    `Тип: ${typeDesc}`,
-    `Розмір: ${sizeDetailed}`,
-    `Шлях: ${item.path || ''}`,
-    `Змінено: ${formatDate(item.mtime)}`,
-    `Права доступу: ${item.permissions || '--'}`,
-    `💡 Подвійний клік — відкрити у нативній програмі`,
-  ].join('\n')
+  return getFileCategory(item.extension || item.name, item.isDirectory).classModifier
 }
 
 defineExpose({

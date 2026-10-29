@@ -155,6 +155,22 @@ $blur-modal: blur(8px);
   --bg-modal-overlay: rgba(0, 0, 0, 0.7);
   --bg-loading: rgba(18, 22, 32, 0.65);
   --bg-toast: #1c2333;
+  --scrollbar-track: rgba(255, 255, 255, 0.015);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.25);
+  --scrollbar-thumb-hover: rgba(148, 163, 184, 0.55);
+  --scrollbar-thumb-active: #{$dark-accent-blue};
+
+  // Semantic File & Item Colors
+  --color-dir: #f59e0b;
+  --color-dir-name: #fcd34d;
+  --color-exe: #10b981;
+  --color-archive: #c084fc;
+  --color-code: #38bdf8;
+  --color-doc: #60a5fa;
+  --color-image: #34d399;
+  --color-video: #f43f5e;
+  --color-audio: #f472b6;
+  --color-system: #94a3b8;
 }
 
 [data-theme='light'] {
@@ -200,6 +216,22 @@ $blur-modal: blur(8px);
   --bg-modal-overlay: rgba(15, 23, 42, 0.45);
   --bg-loading: rgba(248, 250, 252, 0.75);
   --bg-toast: #ffffff;
+  --scrollbar-track: rgba(0, 0, 0, 0.02);
+  --scrollbar-thumb: rgba(100, 116, 139, 0.25);
+  --scrollbar-thumb-hover: rgba(100, 116, 139, 0.55);
+  --scrollbar-thumb-active: #{$light-accent-blue};
+
+  // Semantic File & Item Colors
+  --color-dir: #d97706;
+  --color-dir-name: #b45309;
+  --color-exe: #059669;
+  --color-archive: #9333ea;
+  --color-code: #0284c7;
+  --color-doc: #2563eb;
+  --color-image: #059669;
+  --color-video: #e11d48;
+  --color-audio: #db2777;
+  --color-system: #64748b;
 }
 
 // --- Dynamic SCSS Aliases (binds SCSS $color-* variables to CSS theme custom properties) ---

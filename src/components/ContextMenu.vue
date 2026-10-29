@@ -47,6 +47,7 @@ import {
   FolderOpen,
   RotateCw,
   CheckSquare,
+  Link,
 } from 'lucide-vue-next'
 
 interface ContextItemDef {
@@ -121,6 +122,7 @@ const itemsList = computed<ContextItemDef[]>(() => {
     list.push({ isDivider: true })
     list.push({ action: 'clipboard-copy', label: 'Скопіювати', icon: ClipboardCopy, shortcut: `${cmd}C` })
     list.push({ action: 'clipboard-cut', label: 'Вирізати', icon: Scissors, shortcut: `${cmd}X` })
+    list.push({ action: 'copy-path', label: 'Скопіювати повний шлях', icon: Link })
 
     list.push({ isDivider: true })
     list.push({ action: 'show-in-folder', label: finderLabel, icon: FolderSearch })

@@ -54,25 +54,25 @@
 
 // Columns definition
 .col-name {
-  width: 44%;
+  width: auto;
 }
 
 .col-ext {
   color: var(--text-muted);
-  width: 65px;
+  width: 70px;
   font-weight: $font-weight-medium;
 }
 
 .col-size {
   text-align: right;
   color: var(--text-secondary);
-  width: 85px;
+  width: 90px;
   font-variant-numeric: tabular-nums;
 }
 
 .col-date {
   color: var(--text-muted);
-  width: 135px;
+  width: 140px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -182,18 +182,87 @@
   .item-icon {
     flex-shrink: 0;
 
-    &.icon-folder { color: #2563eb; }
-    &.icon-image { color: #059669; }
-    &.icon-video { color: #e11d48; }
-    &.icon-audio { color: #c026d3; }
-    &.icon-code { color: #7c3aed; }
-    &.icon-doc { color: #0284c7; }
-    &.icon-archive { color: #d97706; }
+    &.icon-folder {
+      color: var(--color-dir);
+      fill: currentColor;
+      fill-opacity: 0.16;
+    }
+    &.icon-image { color: var(--color-image); }
+    &.icon-video { color: var(--color-video); }
+    &.icon-audio { color: var(--color-audio); }
+    &.icon-code { color: var(--color-code); }
+    &.icon-doc { color: var(--color-doc); }
+    &.icon-archive { color: var(--color-archive); }
+    &.icon-system { color: var(--color-system); }
     &.icon-default { color: var(--text-muted); }
   }
 
   .item-name {
     @include truncate-text;
+
+    &.name-dir {
+      color: var(--color-dir-name);
+      font-weight: $font-weight-semibold;
+    }
+  }
+}
+
+.file-size-text {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.ext-badge {
+  display: inline-block;
+  font-size: $font-size-2xs;
+  font-weight: $font-weight-semibold;
+  padding: 1px $size-space-xs;
+  border-radius: $radius-xs;
+  text-transform: lowercase;
+
+  &.ext-app,
+  &.ext-exe {
+    color: var(--color-exe);
+    background: rgba(16, 185, 129, 0.14);
+  }
+
+  &.ext-archive {
+    color: var(--color-archive);
+    background: rgba(168, 85, 247, 0.14);
+  }
+
+  &.ext-code {
+    color: var(--color-code);
+    background: rgba(56, 189, 248, 0.14);
+  }
+
+  &.ext-doc {
+    color: var(--color-doc);
+    background: rgba(96, 165, 250, 0.14);
+  }
+
+  &.ext-image {
+    color: var(--color-image);
+    background: rgba(52, 211, 153, 0.14);
+  }
+
+  &.ext-video {
+    color: var(--color-video);
+    background: rgba(244, 63, 94, 0.14);
+  }
+
+  &.ext-audio {
+    color: var(--color-audio);
+    background: rgba(236, 72, 153, 0.14);
+  }
+
+  &.ext-system {
+    color: var(--color-system);
+    background: rgba(100, 116, 139, 0.12);
+  }
+
+  &.ext-default {
+    color: var(--text-dim);
   }
 }
 

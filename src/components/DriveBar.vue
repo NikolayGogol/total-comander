@@ -24,16 +24,19 @@
       <button 
         v-if="drive.isRemovable"
         class="drive-eject-btn"
-        title="Витягти носій (Eject)"
-        @click.stop="$emit('eject-drive', drive.path)"
+        :disabled="ejectingPath === drive.path"
+        :title="ejectingPath === drive.path ? 'Витягування носія...' : 'Витягти носій (Eject)'"
+        @click.stop="handleEject(drive.path)"
       >
-        <CircleArrowUp :size="11" title="Витягти носій" />
+        <Loader2 v-if="ejectingPath === drive.path" :size="11" class="spin" />
+        <CircleArrowUp v-else :size="11" title="Витягти носій" />
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { DriveItem } from '../types'
 import { formatBytes } from '../utils/formatters'
 import { 
@@ -46,7 +49,8 @@ import {
   Disc,
   Folder,
   Usb,
-  CircleArrowUp
+  CircleArrowUp,
+  Loader2
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -54,10 +58,26 @@ const props = defineProps<{
   currentPath: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'select-drive', path: string): void
   (e: 'eject-drive', path: string): void
 }>()
+
+const ejectingPath = ref<string | null>(null)
+
+function handleEject(path: string) {
+  if (ejectingPath.value) return
+  ejectingPath.value = path
+  try {
+    emit('eject-drive', path)
+  } finally {
+    setTimeout(() => {
+      if (ejectingPath.value === path) {
+        ejectingPath.value = null
+      }
+    }, 2500)
+  }
+}
 
 function isDriveActive(drivePath: string): boolean {
   if (drivePath === '/') {

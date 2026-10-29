@@ -20,6 +20,7 @@ export interface DriveItem {
   path: string
   icon: string
   type: 'home' | 'root' | 'volume' | 'bookmark' | 'folder' | 'usb' | 'dmg'
+  label?: string
   freeSpace?: number
   availableSpace?: number
   purgeableSpace?: number
@@ -73,6 +74,7 @@ export interface SystemInfo {
 }
 
 export interface ElectronAPI {
+  getPathForFile?: (file: File) => string
   readDir: (dirPath: string, showHidden?: boolean) => Promise<{ success: boolean; data?: FileItem[]; error?: string }>
   getDrives: () => Promise<{ success: boolean; data?: DriveItem[]; error?: string }>
   getDiskSpace: (dirPath: string) => Promise<{ success: boolean; free?: number; available?: number; purgeable?: number; total?: number; error?: string }>

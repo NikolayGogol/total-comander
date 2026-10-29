@@ -93,10 +93,15 @@
           </div>
         </div>
 
-        <!-- Delete (F8) -->
+        <!-- Delete (F8 / Shift+Delete) -->
         <div v-else-if="opType === 'delete'">
           <p class="delete-warning">
-            Are you sure you want to move <strong>{{ sourceItems.length }} item(s)</strong> to macOS Trash?
+            <span v-if="targetDir === 'PERMANENT'">
+              УВАГА! Ви дійсно бажаєте <strong>БЕЗПОВОРОТНО ВИДАЛИТИ {{ sourceItems.length }} елемент(ів)</strong> без можливості відновлення зі Смітника?
+            </span>
+            <span v-else>
+              Ви впевнені, що хочете перемістити <strong>{{ sourceItems.length }} елемент(ів)</strong> у macOS Смітник?
+            </span>
           </p>
           <div class="items-preview-list">
             <div v-for="item in sourceItems.slice(0, 6)" :key="item" class="item-preview">
@@ -113,14 +118,16 @@
         <button class="btn-secondary" @click="$emit('cancel')">Cancel (Esc)</button>
         <button 
           v-if="opType === 'delete'" 
+          ref="confirmBtnRef"
           class="btn-danger" 
           :disabled="isProcessing"
           @click="submit"
         >
-          {{ isProcessing ? 'Deleting...' : 'Move to Trash' }}
+          {{ isProcessing ? 'Видалення...' : (targetDir === 'PERMANENT' ? 'Безповоротно видалити (Shift+Del)' : 'У Смітник (Delete)') }}
         </button>
         <button 
           v-else 
+          ref="confirmBtnRef"
           class="btn-primary" 
           :disabled="isProcessing || (opType !== 'delete' && !inputText.trim())"
           @click="submit"
@@ -133,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { FolderPlus, FilePlus, Copy, Move, Trash2, Edit3, X } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -148,16 +155,17 @@ const emit = defineEmits<{
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
+const confirmBtnRef = ref<HTMLButtonElement | null>(null)
 const inputText = ref('')
 const isProcessing = ref(false)
 
 const modalTitle = computed(() => {
   switch (props.opType) {
-    case 'mkdir': return 'Create Directory'
-    case 'newfile': return 'Create File'
+    case 'mkdir': return 'Create Directory (F7)'
+    case 'newfile': return 'Create File (Shift+F4)'
     case 'copy': return 'Copy Files (F5)'
     case 'move': return 'Move / Rename (F6)'
-    case 'delete': return 'Delete Files (F8)'
+    case 'delete': return props.targetDir === 'PERMANENT' ? 'Permanent Delete (Shift+Del)' : 'Delete Files (F8)'
     case 'rename': return 'Rename (F2)'
   }
 })
@@ -185,12 +193,23 @@ const modalIconClass = computed(() => {
 })
 
 function submit() {
+  if (isProcessing.value) return
   if (props.opType !== 'delete' && !inputText.value.trim()) return
   isProcessing.value = true
   emit('confirm', {
     opType: props.opType,
     target: inputText.value.trim(),
   })
+}
+
+function handleModalKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    submit()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    emit('cancel')
+  }
 }
 
 onMounted(() => {
@@ -201,12 +220,22 @@ onMounted(() => {
   } else if (props.opType === 'copy' || props.opType === 'move') {
     inputText.value = props.targetDir
   } else if (props.opType === 'rename' && props.sourceItems[0]) {
-    inputText.value = props.sourceItems[0].split('/').pop() || ''
+    inputText.value = props.sourceItems[0].split('/').filter(Boolean).pop() || ''
   }
 
   nextTick(() => {
-    inputRef.value?.focus()
-    inputRef.value?.select()
+    if (props.opType === 'delete') {
+      confirmBtnRef.value?.focus()
+    } else {
+      inputRef.value?.focus()
+      inputRef.value?.select()
+    }
   })
+
+  window.addEventListener('keydown', handleModalKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleModalKeyDown)
 })
 </script>

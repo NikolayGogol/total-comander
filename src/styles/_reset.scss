@@ -9,6 +9,56 @@
   -webkit-user-drag: none;
 }
 
+// Global sleek custom scrollbar
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: $radius-full;
+
+  &:hover {
+    background: var(--scrollbar-track);
+  }
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: $radius-full;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--scrollbar-thumb-hover);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  &:active {
+    background-color: var(--scrollbar-thumb-active);
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 html, body, #app {
   width: 100%;
   height: 100%;
@@ -21,4 +71,15 @@ html, body, #app {
   -webkit-font-smoothing: antialiased;
 }
 
-@include custom-scrollbar;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}

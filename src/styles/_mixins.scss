@@ -19,19 +19,51 @@
 }
 
 @mixin custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+
   &::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
   }
+
   &::-webkit-scrollbar-track {
     background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--border-subtle);
     border-radius: $radius-full;
+
+    &:hover {
+      background: var(--scrollbar-track);
+    }
   }
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--border-hover);
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: $radius-full;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: var(--scrollbar-thumb-hover);
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    &:active {
+      background-color: var(--scrollbar-thumb-active);
+      border: 1px solid transparent;
+      background-clip: padding-box;
+    }
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 }
 
