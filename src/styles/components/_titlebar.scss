@@ -1,5 +1,5 @@
-@use '../variables' as *;
-@use '../mixins' as *;
+@use "../variables" as *;
+@use "../mixins" as *;
 
 .title-bar {
   display: flex;
@@ -25,7 +25,11 @@
     font-family: $font-family-sans;
 
     .brand-badge {
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      background: linear-gradient(
+        135deg,
+        var(--accent-blue),
+        var(--accent-cyan)
+      );
       color: #fff;
       font-weight: $font-weight-extrabold;
       font-size: $font-size-2xs;

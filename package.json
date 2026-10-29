@@ -5,12 +5,16 @@
   "description": "Total Commander for macOS built with Node.js, Electron, Vue 3, and SCSS",
   "main": "dist-electron/main.js",
   "scripts": {
-    "start": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
-    "dev": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
-    "app": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
-    "build": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build",
-    "build:dmg": "vite build && electron-builder --mac dmg",
-    "build:dmg:arm64": "vite build && electron-builder --mac dmg --arm64",
+    "start": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
+    "dev": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
+    "app": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
+    "build": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build",
+    "build:dmg": "node scripts/update-build-info.mjs && vite build && electron-builder --mac dmg",
+    "build:dmg:arm64": "node scripts/update-build-info.mjs && vite build && electron-builder --mac dmg --arm64",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{vue,ts,scss}\"",
+    "fix": "eslint . --fix && prettier --write \"src/**/*.{vue,ts,scss}\"",
     "run:prod": "vite build && electron .",
     "postinstall": "cp build/icon.icns node_modules/electron/dist/Electron.app/Contents/Resources/electron.icns 2>/dev/null || true; /usr/libexec/PlistBuddy -c \"Set :CFBundleDisplayName 'Total Commander'\" node_modules/electron/dist/Electron.app/Contents/Info.plist 2>/dev/null || true; /usr/libexec/PlistBuddy -c \"Set :CFBundleName 'Total Commander'\" node_modules/electron/dist/Electron.app/Contents/Info.plist 2>/dev/null || true"
   },
@@ -77,15 +81,22 @@
     "vue": "^3.5.44"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.5",
     "@types/numeral": "^2.0.5",
     "@vitejs/plugin-vue": "^6.0.10",
     "electron": "^41.7.1",
     "electron-builder": "^26.0.12",
+    "eslint": "^10.13.0",
+    "eslint-plugin-vue": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
     "sass": "^1.106.1",
-    "typescript": "^7.0.2",
+    "typescript": "~5.8.2",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vite-plugin-electron": "^1.1.2",
-    "vite-plugin-electron-renderer": "^1.0.0"
+    "vite-plugin-electron-renderer": "^1.0.0",
+    "vue-eslint-parser": "^10.4.1"
   }
 }

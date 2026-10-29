@@ -1,0 +1,216 @@
+@use "../variables" as *;
+@use "../mixins" as *;
+
+.folder-size-card {
+  width: 680px;
+  height: 520px;
+
+  .folder-size-body {
+    display: flex;
+    flex-direction: column;
+    gap: $size-space-md;
+    padding: $size-space-md $size-space-xl;
+    overflow: hidden;
+  }
+
+  .folder-size-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $size-space-md;
+
+    .path-display {
+      display: flex;
+      align-items: center;
+      gap: $size-space-sm;
+      font-size: $font-size-xs;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      padding: $size-space-xs $size-space-md;
+      border-radius: $radius-sm;
+      color: $color-text-muted;
+      max-width: 80%;
+      overflow: hidden;
+
+      code {
+        color: $color-accent-blue;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .btn-rescan {
+      @include button-base;
+      @include flex-center;
+      gap: $size-space-xs;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      color: $color-text-main;
+      padding: $size-space-xs $size-space-md;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      cursor: pointer;
+
+      &:hover {
+        background: $color-bg-row-hover;
+      }
+    }
+  }
+
+  .folder-size-loading,
+  .folder-size-error {
+    @include flex-center;
+    flex-direction: column;
+    gap: $size-space-md;
+    flex: 1;
+    color: $color-text-muted;
+    font-size: $font-size-sm;
+  }
+
+  .folder-size-content {
+    display: flex;
+    flex-direction: column;
+    gap: $size-space-md;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .folder-summary-bar {
+    display: flex;
+    gap: $size-space-md;
+
+    .summary-pill {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: $size-space-xs $size-space-md;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      border-radius: $radius-sm;
+
+      .pill-title {
+        font-size: $font-size-2xs;
+        color: $color-text-muted;
+      }
+
+      .pill-value {
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        color: $color-text-main;
+
+        &.text-accent {
+          color: $color-accent-blue;
+        }
+      }
+    }
+  }
+
+  .subfolders-list-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid $color-border-subtle;
+    border-radius: $radius-sm;
+    background: $color-bg-table;
+    @include custom-scrollbar;
+  }
+
+  .subfolders-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: $font-size-xs;
+    text-align: left;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: $color-bg-panel-header;
+      padding: $size-space-xs $size-space-sm;
+      border-bottom: 1px solid $color-border-subtle;
+      color: $color-text-muted;
+      font-weight: $font-weight-semibold;
+      z-index: 2;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-pill);
+
+      &:hover {
+        background: $color-bg-row-hover;
+      }
+    }
+
+    td {
+      padding: $size-space-xs $size-space-sm;
+    }
+
+    .col-name {
+      display: flex;
+      align-items: center;
+      gap: $size-space-xs;
+      color: $color-text-main;
+      font-weight: $font-weight-medium;
+    }
+
+    .col-share {
+      width: 160px;
+
+      .share-bar-container {
+        display: flex;
+        align-items: center;
+        gap: $size-space-sm;
+
+        .share-bar-fill {
+          height: 6px;
+          background: $color-accent-blue;
+          border-radius: $radius-full;
+          width: var(--bar-width, 4%);
+          min-width: 4px;
+          transition: width 0.3s ease;
+        }
+
+        .share-percent {
+          font-size: $font-size-2xs;
+          color: $color-text-muted;
+          min-width: 30px;
+        }
+      }
+    }
+
+    .col-size {
+      width: 90px;
+      text-align: right;
+      color: $color-accent-cyan;
+      font-weight: $font-weight-medium;
+    }
+
+    .col-count {
+      width: 60px;
+      text-align: right;
+      color: $color-text-muted;
+    }
+
+    .col-action {
+      width: 80px;
+      text-align: center;
+
+      .btn-open-folder {
+        @include button-base;
+        font-size: $font-size-2xs;
+        padding: 2px $size-space-sm;
+        border-radius: $radius-sm;
+        background: var(--bg-pill);
+        border: 1px solid var(--border-pill);
+        color: $color-text-muted;
+        cursor: pointer;
+
+        &:hover {
+          color: $color-accent-blue;
+          border-color: $color-accent-blue;
+        }
+      }
+    }
+  }
+}

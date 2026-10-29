@@ -1,8 +1,8 @@
 <template>
   <footer class="bottom-action-bar">
     <!-- F2 Rename -->
-    <button 
-      class="fn-button" 
+    <button
+      class="fn-button"
       :disabled="!hasCursorItem"
       data-tooltip="Перейменувати вибраний елемент (F2)"
       data-tooltip-pos="top"
@@ -14,8 +14,8 @@
     </button>
 
     <!-- F5 Copy -->
-    <button 
-      class="fn-button" 
+    <button
+      class="fn-button"
       :disabled="selectedCount === 0 && !hasCursorItem"
       data-tooltip="Копіювати у сусідню панель (F5)"
       data-tooltip-pos="top"
@@ -27,8 +27,8 @@
     </button>
 
     <!-- F6 Move -->
-    <button 
-      class="fn-button" 
+    <button
+      class="fn-button"
       :disabled="selectedCount === 0 && !hasCursorItem"
       data-tooltip="Перемістити у сусідню панель (F6)"
       data-tooltip-pos="top"
@@ -39,9 +39,21 @@
       <span>Move</span>
     </button>
 
+    <!-- F7 Folder -->
+    <button
+      class="fn-button"
+      data-tooltip="Створити нову папку (F7)"
+      data-tooltip-pos="top"
+      title="Створити нову папку в активній панелі (F7)"
+      @click="$emit('action', 'mkdir')"
+    >
+      <span class="fn-key">F7</span>
+      <span>Folder</span>
+    </button>
+
     <!-- Shift+F4 / New File -->
-    <button 
-      class="fn-button" 
+    <button
+      class="fn-button"
       data-tooltip="Створити новий файл (Shift+F4)"
       data-tooltip-pos="top"
       title="Створити новий файл (Shift+F4)"
@@ -52,8 +64,8 @@
     </button>
 
     <!-- F8 Delete -->
-    <button 
-      class="fn-button" 
+    <button
+      class="fn-button"
       :disabled="selectedCount === 0 && !hasCursorItem"
       data-tooltip="Видалити у Смітник (F8 / Delete)"
       data-tooltip-pos="top"
@@ -65,8 +77,8 @@
     </button>
 
     <!-- F9 Terminal -->
-    <button 
-      class="fn-button" 
+    <button
+      class="fn-button"
       data-tooltip="Відкрити Термінал (F9)"
       data-tooltip-pos="top"
       title="Відкрити активну папку в Терміналі (F9)"
@@ -80,11 +92,24 @@
 
 <script setup lang="ts">
 defineProps<{
-  hasCursorItem: boolean
-  selectedCount: number
-}>()
+  hasCursorItem: boolean;
+  selectedCount: number;
+}>();
 
 defineEmits<{
-  (e: 'action', type: 'rename' | 'view' | 'edit' | 'copy' | 'move' | 'mkdir' | 'newfile' | 'delete' | 'terminal' | 'search'): void
-}>()
+  (
+    e: "action",
+    type:
+      | "rename"
+      | "view"
+      | "edit"
+      | "copy"
+      | "move"
+      | "mkdir"
+      | "newfile"
+      | "delete"
+      | "terminal"
+      | "search",
+  ): void;
+}>();
 </script>

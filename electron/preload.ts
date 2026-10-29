@@ -42,6 +42,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openInTerminal: (dirPath: string) => ipcRenderer.invoke('fs:openInTerminal', dirPath),
   quickLook: (filePath: string) => ipcRenderer.invoke('fs:quickLook', filePath),
   getDirSize: (dirPath: string) => ipcRenderer.invoke('fs:getDirSize', dirPath),
+  getFolderSizeBreakdown: (dirPath: string) => ipcRenderer.invoke('fs:getFolderSizeBreakdown', dirPath),
+  createArchive: (sources: string[], targetZipPath: string) =>
+    ipcRenderer.invoke('fs:createArchive', toPlain(sources), targetZipPath),
+  listArchive: (archivePath: string) => ipcRenderer.invoke('fs:listArchive', archivePath),
+  extractArchive: (archivePath: string, destinationDir: string, selectedFiles?: string[]) =>
+    ipcRenderer.invoke('fs:extractArchive', archivePath, destinationDir, toPlain(selectedFiles)),
+  analyzeDisk: (dirPath: string, maxItems?: number) =>
+    ipcRenderer.invoke('fs:analyzeDisk', dirPath, maxItems),
+  getBuildInfo: () => ipcRenderer.invoke('app:getBuildInfo'),
   search: (dirPath: string, query: string, recursive: boolean, contentSearch?: string) =>
     ipcRenderer.invoke('fs:search', dirPath, query, recursive, contentSearch),
   copyFilesToClipboard: (paths: string[], action?: 'copy' | 'cut') =>

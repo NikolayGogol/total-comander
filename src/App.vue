@@ -1,10 +1,18 @@
 <template>
-  <div class="app-container" :data-theme="currentTheme" @keydown="handleGlobalShortcuts">
+  <div
+    class="app-container"
+    :data-theme="currentTheme"
+    @keydown="handleGlobalShortcuts"
+  >
     <!-- Title Bar with macOS Traffic Lights Space -->
-    <TitleBar 
+    <TitleBar
       :show-hidden="showHidden"
       :current-theme="currentTheme"
+      :build-version="
+        'v' + BUILD_INFO.version + ' (b.' + BUILD_INFO.buildNumber + ')'
+      "
       @open-search="openSearchModal"
+      @open-analyzer="openLargeFilesModal"
       @toggle-hidden="toggleHiddenFiles"
       @swap-panes="swapPanes"
       @open-terminal="openActiveTerminal"
@@ -13,17 +21,18 @@
     />
 
     <!-- Quick Drive / Location Bar -->
-    <DriveBar 
-      :drives="drives" 
+    <DriveBar
+      :drives="drives"
       :current-path="activePaneState.currentPath"
       @select-drive="navigateToDrive"
-      @eject-drive="ejectDrive"
+      @eject-drive="handleEjectDrive"
     />
 
     <!-- Dual Panes Split View -->
     <main class="dual-pane-container">
       <!-- Left Pane -->
-      <PaneView 
+      <PaneView
+        ref="leftPaneRef"
         :pane="leftPane"
         :is-active="activePaneId === 'left'"
         :can-go-back="canGoBack('left')"
@@ -43,12 +52,14 @@
         @clear-selection="() => clearSelection('left')"
         @sort="(field) => setSort('left', field)"
         @open-native="openFileNative"
+        @open-archive="openArchiveInViewer"
         @drag-drop-items="handleDragDrop"
         @context-menu="(payload) => handleContextMenu('left', payload)"
       />
 
       <!-- Right Pane -->
-      <PaneView 
+      <PaneView
+        ref="rightPaneRef"
         :pane="rightPane"
         :is-active="activePaneId === 'right'"
         :can-go-back="canGoBack('right')"
@@ -68,20 +79,21 @@
         @clear-selection="() => clearSelection('right')"
         @sort="(field) => setSort('right', field)"
         @open-native="openFileNative"
+        @open-archive="openArchiveInViewer"
         @drag-drop-items="handleDragDrop"
         @context-menu="(payload) => handleContextMenu('right', payload)"
       />
     </main>
 
     <!-- Bottom Action Bar (Classic Total Commander F2-F10) -->
-    <BottomActionBar 
+    <BottomActionBar
       :has-cursor-item="hasActiveCursorItem"
       :selected-count="activePaneState.selectedPaths.size"
       @action="handleBottomAction"
     />
 
     <!-- F3 Viewer Modal -->
-    <ViewerModal 
+    <ViewerModal
       v-if="viewerModal.open"
       :file-path="viewerModal.filePath"
       :file-name="viewerModal.fileName"
@@ -90,7 +102,7 @@
     />
 
     <!-- F4 Editor Modal -->
-    <EditorModal 
+    <EditorModal
       v-if="editorModal.open"
       :file-path="editorModal.filePath"
       :file-name="editorModal.fileName"
@@ -99,7 +111,7 @@
     />
 
     <!-- Operation Modal (Copy / Move / Mkdir / NewFile / Delete / Rename) -->
-    <OperationModal 
+    <OperationModal
       v-if="operationModal.open"
       :op-type="operationModal.opType"
       :source-items="operationModal.sourceItems"
@@ -109,15 +121,49 @@
     />
 
     <!-- Search Modal (Alt+F7) -->
-    <SearchModal 
+    <SearchModal
       v-if="searchModal.open"
       :initial-dir="searchModal.initialDir"
       @close="searchModal.open = false"
       @jump-to="jumpToSearchFile"
     />
 
+    <!-- Create Archive Modal (Alt+F5) -->
+    <CreateArchiveModal
+      v-if="createArchiveModal.open"
+      :source-items="createArchiveModal.sourceItems"
+      :target-dir="createArchiveModal.targetDir"
+      @confirm="onArchiveCreateConfirm"
+      @close="createArchiveModal.open = false"
+    />
+
+    <!-- Archive View Modal (Alt+F6 / Double-click) -->
+    <ArchiveViewModal
+      v-if="archiveViewModal.open"
+      :archive-path="archiveViewModal.archivePath"
+      :destination-dir="archiveViewModal.destinationDir"
+      @extract="onArchiveExtractConfirm"
+      @close="archiveViewModal.open = false"
+    />
+
+    <!-- Large Files & Disk Cleanup Modal (Alt+L) -->
+    <LargeFilesModal
+      v-if="largeFilesModal.open"
+      :initial-dir="largeFilesModal.initialDir"
+      @close="largeFilesModal.open = false"
+      @refreshed="refreshAllPanes"
+    />
+
+    <!-- Folder Size Breakdown Modal -->
+    <FolderSizeModal
+      v-if="folderSizeModal.open"
+      :folder-path="folderSizeModal.folderPath"
+      @navigate="(p) => navigatePane(activePaneId, p)"
+      @close="folderSizeModal.open = false"
+    />
+
     <!-- Right-Click Context Menu -->
-    <ContextMenu 
+    <ContextMenu
       :visible="contextMenuState.visible"
       :x="contextMenuState.x"
       :y="contextMenuState.y"
@@ -130,17 +176,19 @@
 
     <!-- Toast Notifications -->
     <div class="toast-container">
-      <div 
-        v-for="toast in toasts" 
-        :key="toast.id" 
+      <div
+        v-for="toast in toasts"
+        :key="toast.id"
         class="toast"
         :class="{
           'toast-error': toast.type === 'error',
           'toast-success': toast.type === 'success',
-          'toast-shortcut': toast.type === 'shortcut'
+          'toast-shortcut': toast.type === 'shortcut',
         }"
       >
-        <span v-if="toast.shortcut" class="toast-kbd-badge">{{ toast.shortcut }}</span>
+        <span v-if="toast.shortcut" class="toast-kbd-badge">{{
+          toast.shortcut
+        }}</span>
         <span class="toast-message">{{ toast.message }}</span>
       </div>
     </div>
@@ -148,1296 +196,275 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import type { PaneState, DriveItem, FileItem, SortField } from './types'
-import { getParentPath, getPathLeafName, isRootPath, normalizePath } from './utils/paths'
-import TitleBar from './components/TitleBar.vue'
-import DriveBar from './components/DriveBar.vue'
-import PaneView from './components/pane/PaneView.vue'
-import BottomActionBar from './components/BottomActionBar.vue'
-import ViewerModal from './components/ViewerModal.vue'
-import EditorModal from './components/EditorModal.vue'
-import OperationModal from './components/OperationModal.vue'
-import SearchModal from './components/SearchModal.vue'
-import ContextMenu from './components/ContextMenu.vue'
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { BUILD_INFO } from "@/buildInfo";
+import TitleBar from "@/components/TitleBar.vue";
+import DriveBar from "@/components/DriveBar.vue";
+import PaneView from "@/components/pane/PaneView.vue";
+import BottomActionBar from "@/components/BottomActionBar.vue";
+import ViewerModal from "@/components/ViewerModal.vue";
+import EditorModal from "@/components/EditorModal.vue";
+import OperationModal from "@/components/OperationModal.vue";
+import SearchModal from "@/components/SearchModal.vue";
+import ContextMenu from "@/components/ContextMenu.vue";
+import CreateArchiveModal from "@/components/CreateArchiveModal.vue";
+import ArchiveViewModal from "@/components/ArchiveViewModal.vue";
+import LargeFilesModal from "@/components/LargeFilesModal.vue";
+import FolderSizeModal from "@/components/FolderSizeModal.vue";
 
-const activePaneId = ref<'left' | 'right'>('left')
-const showHidden = ref(false)
-const currentTheme = ref<'dark' | 'light'>(
-  (localStorage.getItem('tc-theme') as 'dark' | 'light') || 'dark'
-)
-const drives = ref<DriveItem[]>([])
+import { useToast } from "@/composables/useToast";
+import { useModals } from "@/composables/useModals";
+import { usePanes } from "@/composables/usePanes";
+import { useDrives } from "@/composables/useDrives";
+import { useClipboard } from "@/composables/useClipboard";
+import { useShortcuts } from "@/composables/useShortcuts";
+import { useFileOperations } from "@/composables/useFileOperations";
+
+const leftPaneRef = ref<InstanceType<typeof PaneView> | null>(null);
+const rightPaneRef = ref<InstanceType<typeof PaneView> | null>(null);
+
+const currentTheme = ref<"dark" | "light">(
+  (localStorage.getItem("tc-theme") as "dark" | "light") || "dark",
+);
+
+const { toasts, showToast, showShortcutToast } = useToast();
+
+const {
+  viewerModal,
+  editorModal,
+  operationModal,
+  searchModal,
+  createArchiveModal,
+  archiveViewModal,
+  largeFilesModal,
+  folderSizeModal,
+  contextMenuState,
+  isAnyModalOpen,
+  closeAllModals,
+} = useModals();
+
+const {
+  activePaneId,
+  showHidden,
+  leftPane,
+  rightPane,
+  activePaneState,
+  oppositePaneState,
+  hasActiveCursorItem,
+  getActiveCursorItem,
+  getSelectedOrCursorPaths,
+  loadDirectory,
+  setSort,
+  navigatePane,
+  goUp,
+  canGoBack,
+  canGoForward,
+  goBack,
+  goForward,
+  refreshPane,
+  refreshAllPanes,
+  switchTab,
+  newTab,
+  closeTab,
+  switchNextTab,
+  updateCursor,
+  toggleSelect,
+  selectRange,
+  clearSelection,
+  selectAllInActivePane,
+  invertSelectionInActivePane,
+  deselectAllInActivePane,
+  swapPanes,
+  toggleHiddenFiles,
+} = usePanes(showToast, showShortcutToast);
+
+const { drives, homeDir, loadDrivesList, ejectDrive } = useDrives(showToast);
+
+const { copySelectedToClipboard, pasteFromClipboard } = useClipboard(
+  showToast,
+  showShortcutToast,
+);
+
+const {
+  openActiveTerminal,
+  openFileNative,
+  openSearchModal,
+  jumpToSearchFile,
+  openCreateArchiveModal,
+  openArchiveInViewer,
+  openLargeFilesModal,
+  handleBottomAction,
+  onArchiveCreateConfirm,
+  onArchiveExtractConfirm,
+  handleContextMenu,
+  handleContextMenuAction,
+  onOperationConfirm,
+  onFileSaved,
+  handleDragDrop,
+} = useFileOperations({
+  activePaneId,
+  activePaneState,
+  oppositePaneState,
+  leftPane,
+  rightPane,
+  leftPaneRef,
+  rightPaneRef,
+  operationModal,
+  viewerModal,
+  editorModal,
+  searchModal,
+  createArchiveModal,
+  archiveViewModal,
+  largeFilesModal,
+  folderSizeModal,
+  contextMenuState,
+  getActiveCursorItem,
+  getSelectedOrCursorPaths,
+  loadDirectory,
+  navigatePane,
+  refreshPane,
+  refreshAllPanes,
+  copySelectedToClipboard,
+  pasteFromClipboard,
+  selectAllInActivePane,
+  showToast,
+  showShortcutToast,
+});
 
 function toggleTheme() {
-  currentTheme.value = currentTheme.value === 'dark' ? 'light' : 'dark'
-  localStorage.setItem('tc-theme', currentTheme.value)
-  document.documentElement.setAttribute('data-theme', currentTheme.value)
-  showShortcutToast('Cmd + Shift + T', `Тема змінена на: ${currentTheme.value === 'dark' ? '🌙 Темна' : '☀️ Світла'}`)
-}
-
-function createDefaultPaneState(initialPath: string): PaneState {
-  const tabId = 'tab-' + Math.random().toString(36).substring(2, 9)
-  const cleanPath = normalizePath(initialPath)
-  return {
-    currentPath: cleanPath,
-    tabs: [
-      {
-        id: tabId,
-        title: getPathLeafName(cleanPath),
-        path: cleanPath,
-        history: [cleanPath],
-        historyIndex: 0,
-      },
-    ],
-    activeTabId: tabId,
-    items: [],
-    selectedPaths: new Set(),
-    cursorIndex: 0,
-    sortField: 'name',
-    sortOrder: 'asc',
-    filterText: '',
-    showHidden: false,
-    loading: false,
-    error: null,
-  }
-}
-
-const leftPane = reactive<PaneState>(createDefaultPaneState('/'))
-const rightPane = reactive<PaneState>(createDefaultPaneState('/'))
-
-const activePaneState = computed(() => {
-  return activePaneId.value === 'left' ? leftPane : rightPane
-})
-
-const oppositePaneState = computed(() => {
-  return activePaneId.value === 'left' ? rightPane : leftPane
-})
-
-// Modals State
-const viewerModal = reactive({
-  open: false,
-  filePath: '',
-  fileName: '',
-  fileSize: 0,
-})
-
-const editorModal = reactive({
-  open: false,
-  filePath: '',
-  fileName: '',
-})
-
-const operationModal = reactive<{
-  open: boolean
-  opType: 'copy' | 'move' | 'mkdir' | 'newfile' | 'delete' | 'rename'
-  sourceItems: string[]
-  targetDir: string
-}>({
-  open: false,
-  opType: 'copy',
-  sourceItems: [],
-  targetDir: '',
-})
-
-const searchModal = reactive({
-  open: false,
-  initialDir: '',
-})
-
-// Right-click Context Menu State
-const contextMenuState = reactive<{
-  visible: boolean
-  x: number
-  y: number
-  item: FileItem | null
-  paneId: 'left' | 'right'
-}>({
-  visible: false,
-  x: 0,
-  y: 0,
-  item: null,
-  paneId: 'left',
-})
-
-// Toast notification stack
-interface ToastItem {
-  id: number
-  message: string
-  type: 'success' | 'error' | 'shortcut'
-  shortcut?: string
-}
-
-const toasts = ref<ToastItem[]>([])
-let toastCounter = 0
-
-function showToast(message: string, type: 'success' | 'error' | 'shortcut' = 'success', shortcut?: string) {
-  const id = ++toastCounter
-  if (type === 'shortcut') {
-    toasts.value = toasts.value.filter((t) => t.type !== 'shortcut')
-  }
-  toasts.value.push({ id, message, type, shortcut })
-  setTimeout(() => {
-    toasts.value = toasts.value.filter((t) => t.id !== id)
-  }, type === 'shortcut' ? 2200 : 3500)
-}
-
-function showShortcutToast(shortcut: string, message: string) {
-  showToast(message, 'shortcut', shortcut)
-}
-
-// Active Item Detection
-const hasActiveCursorItem = computed(() => {
-  const p = activePaneState.value
-  return p.cursorIndex >= 0 && p.cursorIndex < p.items.length
-})
-
-function getActiveCursorItem(): FileItem | null {
-  const p = activePaneState.value
-  if (p.cursorIndex >= 0 && p.cursorIndex < p.items.length) {
-    return p.items[p.cursorIndex]
-  }
-  return null
-}
-
-function getSelectedOrCursorPaths(): string[] {
-  const p = activePaneState.value
-  if (p.selectedPaths.size > 0) {
-    return Array.from(p.selectedPaths)
-  }
-  const item = getActiveCursorItem()
-  return item ? [item.path] : []
-}
-
-// Load Directory
-async function loadDirectory(pane: PaneState, dirPath: string) {
-  pane.loading = true
-  pane.error = null
-
-  try {
-    const res = await window.electronAPI.readDir(dirPath, showHidden.value)
-    if (res.success && res.data) {
-      pane.currentPath = dirPath
-      const currentTab = pane.tabs.find((t) => t.id === pane.activeTabId)
-      if (currentTab) {
-        currentTab.path = dirPath
-        currentTab.title = getPathLeafName(dirPath)
-      }
-
-      sortItems(res.data, pane.sortField, pane.sortOrder)
-      pane.items = res.data
-      pane.selectedPaths.clear()
-      pane.cursorIndex = pane.items.length > 0 ? 0 : -1
-
-      // Fetch free and total disk space for current path
-      try {
-        const spaceRes = await window.electronAPI.getDiskSpace(dirPath)
-        if (spaceRes.success && spaceRes.total !== undefined) {
-          pane.freeSpace = spaceRes.free
-          pane.availableSpace = spaceRes.available
-          pane.purgeableSpace = spaceRes.purgeable
-          pane.totalSpace = spaceRes.total
-        }
-      } catch {
-        // Non-blocking
-      }
-    } else {
-      pane.error = res.error || 'Failed to read directory'
-      showToast(res.error || 'Failed to open directory', 'error')
-    }
-  } catch (err: any) {
-    pane.error = err.message
-    showToast(err.message, 'error')
-  } finally {
-    pane.loading = false
-  }
-}
-
-function sortItems(items: FileItem[], field: SortField, order: 'asc' | 'desc') {
-  items.sort((a, b) => {
-    if (a.isDirectory && !b.isDirectory) return -1
-    if (!a.isDirectory && b.isDirectory) return 1
-
-    let compare = 0
-    if (field === 'name') {
-      compare = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-    } else if (field === 'ext') {
-      compare = a.extension.localeCompare(b.extension)
-    } else if (field === 'size') {
-      compare = a.size - b.size
-    } else if (field === 'mtime') {
-      compare = a.mtime - b.mtime
-    }
-
-    return order === 'asc' ? compare : -compare
-  })
-}
-
-function setSort(paneKey: 'left' | 'right', field: SortField) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  if (p.sortField === field) {
-    p.sortOrder = p.sortOrder === 'asc' ? 'desc' : 'asc'
-  } else {
-    p.sortField = field
-    p.sortOrder = 'asc'
-  }
-  sortItems(p.items, p.sortField, p.sortOrder)
-}
-
-function navigatePane(paneKey: 'left' | 'right', targetPath: string) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const tab = p.tabs.find((t) => t.id === p.activeTabId)
-  if (tab) {
-    if (tab.history[tab.historyIndex] !== targetPath) {
-      tab.history = tab.history.slice(0, tab.historyIndex + 1)
-      tab.history.push(targetPath)
-      tab.historyIndex = tab.history.length - 1
-    }
-  }
-  loadDirectory(p, targetPath)
-}
-
-function goUp(paneKey: 'left' | 'right') {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  if (isRootPath(p.currentPath)) return
-  const parentPath = getParentPath(p.currentPath)
-  if (parentPath && parentPath !== p.currentPath) {
-    navigatePane(paneKey, parentPath)
-  }
-}
-
-function canGoBack(paneKey: 'left' | 'right'): boolean {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const tab = p.tabs.find((t) => t.id === p.activeTabId)
-  return !!tab && tab.historyIndex > 0
-}
-
-function canGoForward(paneKey: 'left' | 'right'): boolean {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const tab = p.tabs.find((t) => t.id === p.activeTabId)
-  return !!tab && tab.historyIndex < tab.history.length - 1
-}
-
-function goBack(paneKey: 'left' | 'right') {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const tab = p.tabs.find((t) => t.id === p.activeTabId)
-  if (tab && tab.historyIndex > 0) {
-    tab.historyIndex--
-    loadDirectory(p, tab.history[tab.historyIndex])
-  }
-}
-
-function goForward(paneKey: 'left' | 'right') {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const tab = p.tabs.find((t) => t.id === p.activeTabId)
-  if (tab && tab.historyIndex < tab.history.length - 1) {
-    tab.historyIndex++
-    loadDirectory(p, tab.history[tab.historyIndex])
-  }
-}
-
-function refreshPane(paneKey: 'left' | 'right') {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  loadDirectory(p, p.currentPath)
-}
-
-function refreshAllPanes() {
-  refreshPane('left')
-  refreshPane('right')
-}
-
-// Tabs
-function switchTab(paneKey: 'left' | 'right', tabId: string) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const tab = p.tabs.find((t) => t.id === tabId)
-  if (tab) {
-    p.activeTabId = tabId
-    loadDirectory(p, tab.path)
-  }
-}
-
-function newTab(paneKey: 'left' | 'right') {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const newId = 'tab-' + Math.random().toString(36).substring(2, 9)
-  p.tabs.push({
-    id: newId,
-    title: getPathLeafName(p.currentPath),
-    path: p.currentPath,
-    history: [p.currentPath],
-    historyIndex: 0,
-  })
-  p.activeTabId = newId
-}
-
-function closeTab(paneKey: 'left' | 'right', tabId: string) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  if (p.tabs.length <= 1) return
-  const idx = p.tabs.findIndex((t) => t.id === tabId)
-  if (idx !== -1) {
-    p.tabs.splice(idx, 1)
-    if (p.activeTabId === tabId) {
-      const nextTab = p.tabs[Math.max(0, idx - 1)]
-      p.activeTabId = nextTab.id
-      loadDirectory(p, nextTab.path)
-    }
-  }
-}
-
-// Selection & Cursor
-function updateCursor(paneKey: 'left' | 'right', idx: number) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  p.cursorIndex = idx
-}
-
-function toggleSelect(paneKey: 'left' | 'right', path: string) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const next = new Set(p.selectedPaths)
-  if (next.has(path)) {
-    next.delete(path)
-    showShortcutToast('Space / Ins', 'Знято виділення з елемента')
-  } else {
-    next.add(path)
-    showShortcutToast('Space / Ins', 'Виділено елемент')
-  }
-  p.selectedPaths = next
-}
-
-function selectRange(paneKey: 'left' | 'right', from: number, to: number) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  const start = Math.min(from, to)
-  const end = Math.max(from, to)
-  const next = new Set(p.selectedPaths)
-  for (let i = start; i <= end; i++) {
-    if (p.items[i]) {
-      next.add(p.items[i].path)
-    }
-  }
-  p.selectedPaths = next
-  p.cursorIndex = to
-  showShortcutToast('Shift + Click', `Виділено діапазон (${p.selectedPaths.size} елементів)`)
-}
-
-function clearSelection(paneKey: 'left' | 'right') {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  p.selectedPaths = new Set()
-}
-
-function selectAllInActivePane() {
-  const p = activePaneState.value
-  const next = new Set<string>()
-  p.items.forEach((item) => next.add(item.path))
-  p.selectedPaths = next
-  showShortcutToast('Cmd + A / +', `Виділено всі файли (${p.items.length})`)
-}
-
-function invertSelectionInActivePane() {
-  const p = activePaneState.value
-  const next = new Set<string>()
-  for (const item of p.items) {
-    if (!p.selectedPaths.has(item.path)) {
-      next.add(item.path)
-    }
-  }
-  p.selectedPaths = next
-  showShortcutToast('*', `Інвертовано виділення (${p.selectedPaths.size} вибрано)`)
-}
-
-function deselectAllInActivePane() {
-  const p = activePaneState.value
-  p.selectedPaths = new Set()
-  showShortcutToast('- / Esc', 'Знято виділення з усіх файлів')
-}
-
-function switchNextTab(paneKey: 'left' | 'right', direction: 1 | -1 = 1) {
-  const p = paneKey === 'left' ? leftPane : rightPane
-  if (p.tabs.length <= 1) return
-  const curIdx = p.tabs.findIndex((t) => t.id === p.activeTabId)
-  if (curIdx === -1) return
-  const nextIdx = (curIdx + direction + p.tabs.length) % p.tabs.length
-  switchTab(paneKey, p.tabs[nextIdx].id)
-}
-
-// Global Actions
-function toggleHiddenFiles() {
-  showHidden.value = !showHidden.value
-  refreshAllPanes()
-  showShortcutToast('Cmd + Shift + .', showHidden.value ? 'Показано приховані файли (.dotfiles)' : 'Сховано приховані файли')
-}
-
-function swapPanes() {
-  const tempPath = leftPane.currentPath
-  loadDirectory(leftPane, rightPane.currentPath)
-  loadDirectory(rightPane, tempPath)
-  showShortcutToast('Ctrl + U', 'Поміняно ліву і праву панелі місцями')
+  currentTheme.value = currentTheme.value === "dark" ? "light" : "dark";
+  localStorage.setItem("tc-theme", currentTheme.value);
+  document.documentElement.setAttribute("data-theme", currentTheme.value);
+  showShortcutToast(
+    "Cmd + Shift + T",
+    `Тема змінена на: ${currentTheme.value === "dark" ? "🌙 Темна" : "☀️ Світла"}`,
+  );
 }
 
 function navigateToDrive(path: string) {
-  navigatePane(activePaneId.value, path)
+  navigatePane(activePaneId.value, path);
 }
 
-async function openActiveTerminal() {
-  await window.electronAPI.openInTerminal(activePaneState.value.currentPath)
+function handleEjectDrive(path: string) {
+  ejectDrive(path, leftPane, rightPane, navigatePane);
 }
 
-// Native open (macOS Finder style on double-click!)
-async function openFileNative(item: FileItem) {
-  const res = await window.electronAPI.openPath(item.path)
-  if (!res.success) {
-    showToast(`Could not open file: ${res.error}`, 'error')
-  }
-}
-
-// Bottom Action Bar handlers
-function handleBottomAction(type: string) {
-  const cursorItem = getActiveCursorItem()
-  const selectedPaths = getSelectedOrCursorPaths()
-
-  switch (type) {
-    case 'rename':
-      if (cursorItem) {
-        operationModal.opType = 'rename'
-        operationModal.sourceItems = [cursorItem.path]
-        operationModal.targetDir = ''
-        operationModal.open = true
-      }
-      break
-
-    case 'view':
-      if (cursorItem && !cursorItem.isDirectory) {
-        viewerModal.filePath = cursorItem.path
-        viewerModal.fileName = cursorItem.name
-        viewerModal.fileSize = cursorItem.size
-        viewerModal.open = true
-      }
-      break
-
-    case 'edit':
-      if (cursorItem && !cursorItem.isDirectory) {
-        editorModal.filePath = cursorItem.path
-        editorModal.fileName = cursorItem.name
-        editorModal.open = true
-      }
-      break
-
-    case 'copy':
-      if (selectedPaths.length > 0) {
-        operationModal.opType = 'copy'
-        operationModal.sourceItems = selectedPaths
-        operationModal.targetDir = oppositePaneState.value.currentPath
-        operationModal.open = true
-      }
-      break
-
-    case 'clone':
-      if (cursorItem) {
-        operationModal.opType = 'copy'
-        operationModal.sourceItems = [cursorItem.path]
-        operationModal.targetDir = activePaneState.value.currentPath
-        operationModal.open = true
-      }
-      break
-
-    case 'move':
-      if (selectedPaths.length > 0) {
-        operationModal.opType = 'move'
-        operationModal.sourceItems = selectedPaths
-        operationModal.targetDir = oppositePaneState.value.currentPath
-        operationModal.open = true
-      }
-      break
-
-    case 'mkdir':
-      operationModal.opType = 'mkdir'
-      operationModal.sourceItems = []
-      operationModal.targetDir = activePaneState.value.currentPath
-      operationModal.open = true
-      break
-
-    case 'newfile':
-      operationModal.opType = 'newfile'
-      operationModal.sourceItems = []
-      operationModal.targetDir = activePaneState.value.currentPath
-      operationModal.open = true
-      break
-
-    case 'delete':
-      if (selectedPaths.length > 0) {
-        operationModal.opType = 'delete'
-        operationModal.sourceItems = selectedPaths
-        operationModal.targetDir = ''
-        operationModal.open = true
-      }
-      break
-
-    case 'permanent-delete':
-      if (selectedPaths.length > 0) {
-        operationModal.opType = 'delete'
-        operationModal.sourceItems = selectedPaths
-        operationModal.targetDir = 'PERMANENT'
-        operationModal.open = true
-      }
-      break
-
-    case 'terminal':
-      openActiveTerminal()
-      break
-
-    case 'search':
-      openSearchModal()
-      break
-  }
-}
-
-function openSearchModal() {
-  searchModal.initialDir = activePaneState.value.currentPath
-  searchModal.open = true
-}
-
-function jumpToSearchFile(filePath: string) {
-  searchModal.open = false
-  const parts = filePath.split('/')
-  parts.pop()
-  const dir = parts.join('/') || '/'
-  navigatePane(activePaneId.value, dir)
-}
-
-function handleContextMenu(paneId: 'left' | 'right', payload: { x: number; y: number; item: FileItem | null }) {
-  activePaneId.value = paneId
-  const p = paneId === 'left' ? leftPane : rightPane
-  if (payload.item) {
-    const idx = p.items.findIndex((i) => i.path === payload.item!.path)
-    if (idx !== -1 && !p.selectedPaths.has(payload.item.path)) {
-      p.cursorIndex = idx
-    }
-  }
-  contextMenuState.visible = true
-  contextMenuState.x = payload.x
-  contextMenuState.y = payload.y
-  contextMenuState.item = payload.item
-  contextMenuState.paneId = paneId
-}
-
-async function handleContextMenuAction(action: string, item: FileItem | null) {
-  switch (action) {
-    case 'open':
-      if (item) {
-        if (item.isApp) {
-          await openFileNative(item)
-        } else if (item.isDirectory) {
-          navigatePane(contextMenuState.paneId, item.path)
-        } else {
-          await openFileNative(item)
-        }
-      }
-      break
-
-    case 'show-package-contents':
-      if (item) {
-        navigatePane(contextMenuState.paneId, item.path)
-      }
-      break
-
-    case 'view':
-      if (item && !item.isDirectory) {
-        viewerModal.filePath = item.path
-        viewerModal.fileName = item.name
-        viewerModal.fileSize = item.size
-        viewerModal.open = true
-      }
-      break
-
-    case 'edit':
-      if (item && !item.isDirectory) {
-        editorModal.filePath = item.path
-        editorModal.fileName = item.name
-        editorModal.open = true
-      }
-      break
-
-    case 'copy':
-      handleBottomAction('copy')
-      break
-
-    case 'move':
-      handleBottomAction('move')
-      break
-
-    case 'rename':
-      handleBottomAction('rename')
-      break
-
-    case 'delete':
-      handleBottomAction('delete')
-      break
-
-    case 'clipboard-copy':
-      copySelectedToClipboard('copy')
-      break
-
-    case 'clipboard-cut':
-      copySelectedToClipboard('cut')
-      break
-
-    case 'copy-path':
-      if (item) {
-        try {
-          await navigator.clipboard.writeText(item.path)
-          showShortcutToast('Link', `Шлях скопійовано: ${item.name}`)
-        } catch {
-          showToast('Не вдалося скопіювати шлях', 'error')
-        }
-      }
-      break
-
-    case 'paste':
-      pasteFromClipboard()
-      break
-
-    case 'show-in-folder':
-      if (item) {
-        try {
-          await window.electronAPI.showInFolder(item.path)
-          showShortcutToast('Finder', `Показано у Finder: ${item.name}`)
-        } catch (err: any) {
-          showToast(err.message, 'error')
-        }
-      }
-      break
-
-    case 'terminal':
-      openActiveTerminal()
-      break
-
-    case 'mkdir':
-      handleBottomAction('mkdir')
-      break
-
-    case 'newfile':
-      handleBottomAction('newfile')
-      break
-
-    case 'select-all':
-      selectAllInActivePane()
-      break
-
-    case 'refresh':
-      refreshPane(contextMenuState.paneId)
-      break
-  }
-}
-
-async function onOperationConfirm(payload: { opType: string; target: string }) {
-  operationModal.open = false
-  const { opType, target } = payload
-  const rawSources: string[] = JSON.parse(JSON.stringify(operationModal.sourceItems))
-
-  try {
-    if (opType === 'mkdir') {
-      const fullPath = `${activePaneState.value.currentPath}/${target}`
-      const res = await window.electronAPI.createFolder(fullPath)
-      if (res.success) {
-        showToast(`Created directory "${target}"`, 'success')
-        refreshPane(activePaneId.value)
-      } else {
-        showToast(`Error creating folder: ${res.error}`, 'error')
-      }
-    } else if (opType === 'newfile') {
-      const fullPath = `${activePaneState.value.currentPath}/${target}`
-      const res = await window.electronAPI.createFile(fullPath)
-      if (res.success) {
-        showToast(`Created file "${target}"`, 'success')
-        refreshPane(activePaneId.value)
-      } else {
-        showToast(`Error creating file: ${res.error}`, 'error')
-      }
-    } else if (opType === 'rename') {
-      const oldPath = rawSources[0]
-      const dirParts = oldPath.split('/')
-      dirParts.pop()
-      const newPath = `${dirParts.join('/')}/${target}`
-      const res = await window.electronAPI.renamePath(oldPath, newPath)
-      if (res.success) {
-        showToast(`Renamed to "${target}"`, 'success')
-        refreshAllPanes()
-      } else {
-        showToast(`Rename error: ${res.error}`, 'error')
-      }
-    } else if (opType === 'copy') {
-      const res = await window.electronAPI.copyPaths(rawSources, target)
-      if (res.success) {
-        showToast(`Copied ${rawSources.length} item(s)`, 'success')
-        refreshAllPanes()
-      } else {
-        showToast(`Copy error: ${res.error}`, 'error')
-      }
-    } else if (opType === 'move') {
-      const res = await window.electronAPI.movePaths(rawSources, target)
-      if (res.success) {
-        showToast(`Moved ${rawSources.length} item(s)`, 'success')
-        refreshAllPanes()
-      } else {
-        showToast(`Move error: ${res.error}`, 'error')
-      }
-    } else if (opType === 'delete') {
-      const isPermanent = operationModal.targetDir === 'PERMANENT'
-      const res = await window.electronAPI.deletePaths(rawSources, !isPermanent)
-      if (res.success) {
-        const msg = isPermanent
-          ? `Безповоротно видалено ${rawSources.length} елемент(ів)`
-          : `Переміщено ${rawSources.length} елемент(ів) у macOS Смітник`
-        showToast(msg, 'success')
-        refreshAllPanes()
-      } else {
-        showToast(`Помилка видалення: ${res.error}`, 'error')
-      }
-    }
-  } catch (err: any) {
-    showToast(`Operation failed: ${err.message}`, 'error')
-  }
-}
-
-function onFileSaved() {
-  showToast('File saved successfully', 'success')
-  refreshAllPanes()
-}
-
-// Drag and drop between panes & folders
-async function handleDragDrop(sourcePaths: string[], targetDir: string, isMove: boolean = false) {
-  try {
-    if (!sourcePaths || sourcePaths.length === 0) return
-    const rawPaths: string[] = JSON.parse(JSON.stringify(sourcePaths))
-    const targetName = targetDir.split('/').filter(Boolean).pop() || targetDir
-
-    // Avoid dropping onto the exact same folder if single item is already in it
-    const firstParent = rawPaths[0].substring(0, rawPaths[0].lastIndexOf('/')) || '/'
-    if (rawPaths.length === 1 && (firstParent === targetDir.replace(/\/+$/, '') || firstParent === targetDir)) {
-      showToast('Цільова папка збігається з вихідною', 'error')
-      return
-    }
-
-    const res = isMove
-      ? await window.electronAPI.movePaths(rawPaths, targetDir)
-      : await window.electronAPI.copyPaths(rawPaths, targetDir)
-
-    if (res.success) {
-      const actionWord = isMove ? 'Переміщено' : 'Скопійовано'
-      const itemsWord = rawPaths.length === 1 ? 'елемент' : (rawPaths.length < 5 ? 'елементи' : 'елементів')
-      showToast(`${actionWord} ${rawPaths.length} ${itemsWord} у "${targetName}"`, 'success')
-      refreshAllPanes()
-    } else {
-      showToast(`Помилка drag & drop: ${res.error}`, 'error')
-    }
-  } catch (err: any) {
-    showToast(`Помилка drag & drop: ${err.message}`, 'error')
-  }
-}
-
-// Global Keyboard Shortcuts
-function handleGlobalShortcuts(e: KeyboardEvent) {
-  if (contextMenuState.visible) {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      contextMenuState.visible = false
-      return
-    }
-  }
-
-  if (viewerModal.open || editorModal.open || operationModal.open || searchModal.open) {
-    if (e.key === 'Escape') {
-      viewerModal.open = false
-      editorModal.open = false
-      operationModal.open = false
-      searchModal.open = false
-      showShortcutToast('Esc', 'Закрито активне модальне вікно')
-    }
-    return
-  }
-
-  const activeEl = document.activeElement as HTMLElement
-  const isInputActive = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')
-
-  // Switch tabs in active pane with Ctrl+Tab / Ctrl+Shift+Tab
-  if (e.ctrlKey && e.key === 'Tab') {
-    e.preventDefault()
-    switchNextTab(activePaneId.value, e.shiftKey ? -1 : 1)
-    return
-  }
-
-  // Switch Active Pane with Tab
-  if (e.key === 'Tab' && !e.ctrlKey && !e.altKey) {
-    e.preventDefault()
-    activePaneId.value = activePaneId.value === 'left' ? 'right' : 'left'
-    showShortcutToast('Tab', `Активна панель: ${activePaneId.value === 'left' ? 'Ліва' : 'Права'}`)
-    return
-  }
-
-  // Swap Left & Right Panes with Ctrl+U or Cmd+U
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'u' || e.key === 'U')) {
-    e.preventDefault()
-    swapPanes()
-    return
-  }
-
-  // Help / Shortcut Cheat Sheet (F1)
-  if (e.key === 'F1') {
-    e.preventDefault()
-    showShortcutToast('F1', 'Довідка: Tab, F2-F10, Shift+F4..F8, Alt+F7, Cmd+A/C/X/V/R/T/W, Alt+Enter/←/→/↑, Space, Ins, *')
-    return
-  }
-
-  // F2 or Shift+F6 - Rename
-  if (e.key === 'F2' || (e.shiftKey && e.key === 'F6')) {
-    e.preventDefault()
-    showShortcutToast(e.key === 'F2' ? 'F2' : 'Shift + F6', 'Перейменування файлу або папки')
-    handleBottomAction('rename')
-    return
-  }
-
-  // F3 - View
-  if (e.key === 'F3') {
-    e.preventDefault()
-    showShortcutToast('F3', 'Швидкий перегляд файлу')
-    handleBottomAction('view')
-    return
-  }
-
-  // F4 - Edit / Shift+F4 New File
-  if (e.key === 'F4') {
-    e.preventDefault()
-    if (e.shiftKey) {
-      showShortcutToast('Shift + F4', 'Створення нового файлу')
-      handleBottomAction('newfile')
-    } else {
-      showShortcutToast('F4', 'Редагування у вбудованому редакторі')
-      handleBottomAction('edit')
-    }
-    return
-  }
-
-  // F5 - Copy (Shift+F5: Duplicate/Clone in same directory)
-  if (e.key === 'F5') {
-    e.preventDefault()
-    if (e.shiftKey) {
-      showShortcutToast('Shift + F5', 'Копіювання у поточну папку (Clone)')
-      handleBottomAction('clone')
-    } else {
-      showShortcutToast('F5', 'Копіювання у цільову панель')
-      handleBottomAction('copy')
-    }
-    return
-  }
-
-  // F6 - Move
-  if (e.key === 'F6' && !e.shiftKey) {
-    e.preventDefault()
-    showShortcutToast('F6', 'Переміщення у цільову панель')
-    handleBottomAction('move')
-    return
-  }
-
-  // F7 - New Folder / Alt+F7 Search / Shift+F7 New File
-  if (e.key === 'F7') {
-    e.preventDefault()
-    if (e.altKey) {
-      showShortcutToast('Alt + F7', 'Пошук файлів за назвою та текстом')
-      openSearchModal()
-    } else if (e.shiftKey) {
-      showShortcutToast('Shift + F7', 'Створення нового файлу')
-      handleBottomAction('newfile')
-    } else {
-      showShortcutToast('F7', 'Створення нової папки')
-      handleBottomAction('mkdir')
-    }
-    return
-  }
-
-  // Permanent Delete (Shift+Delete or Shift+F8)
-  if (e.shiftKey && (e.key === 'Delete' || e.key === 'F8')) {
-    e.preventDefault()
-    showShortcutToast('Shift + Del', 'Безповоротне видалення файлів (без Смітника)')
-    handleBottomAction('permanent-delete')
-    return
-  }
-
-  // F8 or Delete or Cmd+Backspace - Move to Trash
-  if (e.key === 'F8' || e.key === 'Delete' || ((e.metaKey || e.ctrlKey) && e.key === 'Backspace')) {
-    if (isInputActive && e.key !== 'F8') return
-    e.preventDefault()
-    const badge = e.key === 'F8' ? 'F8' : (e.key === 'Delete' ? 'Delete' : 'Cmd + ⌫')
-    showShortcutToast(badge, 'Переміщення у macOS Смітник')
-    handleBottomAction('delete')
-    return
-  }
-
-  // F9 - Terminal
-  if (e.key === 'F9') {
-    e.preventDefault()
-    showShortcutToast('F9', 'Відкриття термінала macOS у поточній папці')
-    handleBottomAction('terminal')
-    return
-  }
-
-  // F10 - Search
-  if (e.key === 'F10') {
-    e.preventDefault()
-    showShortcutToast('F10', 'Пошук файлів за назвою та текстом')
-    openSearchModal()
-    return
-  }
-
-  // Alt+Enter - Show in macOS Finder
-  if (e.altKey && e.key === 'Enter') {
-    e.preventDefault()
-    const item = getActiveCursorItem()
-    if (item) {
-      window.electronAPI.showInFolder(item.path)
-      showShortcutToast('Alt + ↵', `Показано у Finder: ${item.name}`)
-    }
-    return
-  }
-
-  // Alt+Left - History Back
-  if (e.altKey && e.key === 'ArrowLeft') {
-    if (canGoBack(activePaneId.value)) {
-      e.preventDefault()
-      goBack(activePaneId.value)
-      showShortcutToast('Alt + ←', 'Назад по історії папок')
-    }
-    return
-  }
-
-  // Alt+Right - History Forward
-  if (e.altKey && e.key === 'ArrowRight') {
-    if (canGoForward(activePaneId.value)) {
-      e.preventDefault()
-      goForward(activePaneId.value)
-      showShortcutToast('Alt + →', 'Вперед по історії папок')
-    }
-    return
-  }
-
-  // Alt+Up - Parent directory
-  if (e.altKey && e.key === 'ArrowUp') {
-    e.preventDefault()
-    goUp(activePaneId.value)
-    showShortcutToast('Alt + ↑', 'Батьківська папка (..)')
-    return
-  }
-
-  // Invert Selection with Numeric Keypad *
-  if (!isInputActive && (e.key === '*' || e.code === 'NumpadMultiply')) {
-    e.preventDefault()
-    invertSelectionInActivePane()
-    return
-  }
-
-  // Select All with Numeric Keypad +
-  if (!isInputActive && !e.metaKey && !e.ctrlKey && (e.key === '+' || e.code === 'NumpadAdd')) {
-    e.preventDefault()
-    selectAllInActivePane()
-    return
-  }
-
-  // Deselect All with Numeric Keypad -
-  if (!isInputActive && !e.metaKey && !e.ctrlKey && (e.key === '-' || e.code === 'NumpadSubtract')) {
-    e.preventDefault()
-    deselectAllInActivePane()
-    return
-  }
-
-  // Cmd+R - Refresh
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'r' || e.key === 'R')) {
-    e.preventDefault()
-    showShortcutToast('Cmd + R', 'Оновлення вмісту обох панелей')
-    refreshAllPanes()
-    return
-  }
-
-  // Cmd+Shift+. or Cmd+H - Toggle Hidden Files
-  if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '.') || (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'h' || e.key === 'H'))) {
-    e.preventDefault()
-    toggleHiddenFiles()
-    return
-  }
-
-  // Cmd+D - Quick drives info
-  if (!isInputActive && (e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
-    e.preventDefault()
-    const driveList = drives.value.map(d => d.name).join(', ')
-    showShortcutToast('Cmd + D', `Диски: ${driveList || '/'}`)
-    return
-  }
-
-  // Cmd+T - New Tab
-  if ((e.metaKey || e.ctrlKey) && (e.key === 't' || e.key === 'T')) {
-    e.preventDefault()
-    newTab(activePaneId.value)
-    showShortcutToast('Cmd + T', 'Відкрито нову вкладку')
-    return
-  }
-
-  // Cmd+W - Close Tab
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'w' || e.key === 'W')) {
-    e.preventDefault()
-    closeTab(activePaneId.value, activePaneState.value.activeTabId)
-    showShortcutToast('Cmd + W', 'Закрито поточну вкладку')
-    return
-  }
-
-  // Cmd+A - Select All
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
-    if (isInputActive) return
-    e.preventDefault()
-    selectAllInActivePane()
-    return
-  }
-
-  // Cmd+C / Ctrl+C - Copy selected files to clipboard
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
-    if (isInputActive) {
-      const input = activeEl as HTMLInputElement | HTMLTextAreaElement
-      if (input.selectionStart !== input.selectionEnd) return
-    }
-    e.preventDefault()
-    copySelectedToClipboard('copy')
-    return
-  }
-
-  // Cmd+X / Ctrl+X - Cut selected files to clipboard
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'x' || e.key === 'X')) {
-    if (isInputActive) {
-      const input = activeEl as HTMLInputElement | HTMLTextAreaElement
-      if (input.selectionStart !== input.selectionEnd) return
-    }
-    e.preventDefault()
-    copySelectedToClipboard('cut')
-    return
-  }
-
-  // Cmd+V / Ctrl+V - Paste files from clipboard
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'V')) {
-    if (isInputActive) return
-    e.preventDefault()
-    pasteFromClipboard()
-    return
-  }
-
-  // Cmd+Shift+T - Toggle Light/Dark Theme
-  if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'T' || e.key === 't')) {
-    e.preventDefault()
-    toggleTheme()
-    return
-  }
-
-  // Backspace - Parent directory
-  if (e.key === 'Backspace' && !e.metaKey && !e.ctrlKey) {
-    if (isInputActive) return
-    e.preventDefault()
-    goUp(activePaneId.value)
-    showShortcutToast('Backspace', 'Перехід у батьківську директорію (..)')
-    return
-  }
-}
-
-const homeDir = ref('/')
-let lastCopyTime = 0
-
-async function copySelectedToClipboard(action: 'copy' | 'cut' = 'copy') {
-  const now = Date.now()
-  if (now - lastCopyTime < 150) return
-  lastCopyTime = now
-
-  const paths = getSelectedOrCursorPaths()
-  if (paths.length === 0) {
-    showToast('Не вибрано жодного файлу для копіювання', 'error')
-    return
-  }
-
-  try {
-    const res = await window.electronAPI.copyFilesToClipboard(paths, action)
-    if (res.success) {
-      const count = paths.length
-      const badge = action === 'copy' ? 'Cmd + C' : 'Cmd + X'
-      if (count === 1) {
-        const fileName = paths[0].split('/').filter(Boolean).pop() || paths[0]
-        const text = action === 'copy'
-          ? `Файл скопійовано у буфер: ${fileName}`
-          : `Файл вирізано у буфер: ${fileName}`
-        showShortcutToast(badge, text)
-      } else {
-        const text = action === 'copy'
-          ? `Скопійовано ${count} файлів у буфер`
-          : `Вирізано ${count} файлів у буфер`
-        showShortcutToast(badge, text)
-      }
-    } else {
-      showToast(res.error || 'Помилка копіювання у буфер', 'error')
-    }
-  } catch (err: any) {
-    showToast(err.message || 'Помилка копіювання у буфер', 'error')
-  }
-}
-
-async function pasteFromClipboard() {
-  try {
-    const res = await window.electronAPI.getClipboardFiles()
-    if (!res.success || !res.paths || res.paths.length === 0) {
-      showToast('Буфер обміну не містить файлів для вставки', 'error')
-      return
-    }
-
-    const targetDir = activePaneState.value.currentPath
-    const count = res.paths.length
-    const action = res.action || 'copy'
-
-    let opRes
-    if (action === 'cut') {
-      opRes = await window.electronAPI.movePaths(res.paths, targetDir)
-      await window.electronAPI.clearClipboard()
-    } else {
-      opRes = await window.electronAPI.copyPaths(res.paths, targetDir)
-    }
-
-    if (opRes.success) {
-      await Promise.all([
+const activePaneCurrentPath = computed(() => activePaneState.value.currentPath);
+const activePaneActiveTabId = computed(() => activePaneState.value.activeTabId);
+
+const { handleGlobalShortcuts } = useShortcuts({
+  contextMenuState,
+  isAnyModalOpen,
+  closeAllModals,
+  activePaneId,
+  activePaneCurrentPath,
+  activePaneActiveTabId,
+  getActiveCursorItem,
+  getSelectedOrCursorPaths,
+  switchNextTab,
+  swapPanes,
+  handleBottomAction,
+  openLargeFilesModal,
+  openCreateArchiveModal,
+  openArchiveInViewer,
+  openSearchModal,
+  selectAllInActivePane,
+  invertSelectionInActivePane,
+  deselectAllInActivePane,
+  refreshAllPanes,
+  toggleHiddenFiles,
+  toggleTheme,
+  goUp,
+  canGoBack,
+  canGoForward,
+  goBack,
+  goForward,
+  newTab,
+  closeTab,
+  copySelectedToClipboard: (action) =>
+    copySelectedToClipboard(getSelectedOrCursorPaths(), action),
+  pasteFromClipboard: () =>
+    pasteFromClipboard(activePaneState.value.currentPath, () =>
+      Promise.all([
         loadDirectory(leftPane, leftPane.currentPath),
         loadDirectory(rightPane, rightPane.currentPath),
-      ])
-      const dirName = targetDir.split('/').filter(Boolean).pop() || 'директорію'
-      const verb = action === 'cut' ? 'Переміщено' : 'Вставлено'
-      const itemsWord = count === 1 ? 'елемент' : (count < 5 ? 'елементи' : 'елементів')
-      showShortcutToast('Cmd + V', `${verb} ${count} ${itemsWord} у ${dirName}`)
-    } else {
-      showToast(opRes.error || 'Помилка вставки файлів', 'error')
-    }
-  } catch (err: any) {
-    showToast(err.message || 'Помилка вставки файлів', 'error')
-  }
-}
-
-async function loadDrivesList() {
-  try {
-    const drivesRes = await window.electronAPI.getDrives()
-    if (drivesRes.success && drivesRes.data) {
-      drives.value = drivesRes.data
-    }
-  } catch (err) {
-    console.error('Failed to load drives:', err)
-  }
-}
-
-async function ejectDrive(path: string) {
-  try {
-    const home = homeDir.value || '/'
-    let navigated = false
-
-    // 1. Release active file locks: navigate away from this drive if currently open in either pane
-    if (leftPane.currentPath.startsWith(path)) {
-      await navigatePane('left', home)
-      navigated = true
-    }
-    if (rightPane.currentPath.startsWith(path)) {
-      await navigatePane('right', home)
-      navigated = true
-    }
-
-    for (const tab of leftPane.tabs) {
-      if (tab.path.startsWith(path)) {
-        tab.path = home
-        tab.title = 'Home'
-      }
-    }
-    for (const tab of rightPane.tabs) {
-      if (tab.path.startsWith(path)) {
-        tab.path = home
-        tab.title = 'Home'
-      }
-    }
-
-    if (navigated) {
-      await new Promise((r) => setTimeout(r, 200))
-    }
-
-    const res = await window.electronAPI.ejectVolume(path)
-    if (res.success) {
-      drives.value = drives.value.filter((d) => !d.path.startsWith(path))
-      showToast('Носій безпечно вилучено', 'success')
-      await loadDrivesList()
-    } else {
-      showToast(res.error || 'Не вдалося вилучити носій', 'error')
-    }
-  } catch (err: any) {
-    showToast(err.message || 'Помилка вилучення носія', 'error')
-  }
-}
+      ]).then(() => {}),
+    ),
+  drives,
+  showToast,
+  showShortcutToast,
+});
 
 function preventDragDefault(e: DragEvent) {
-  e.preventDefault()
+  e.preventDefault();
 }
 
 onMounted(async () => {
   try {
-    document.documentElement.setAttribute('data-theme', currentTheme.value)
-    const sys = await window.electronAPI.getSystemInfo()
-    homeDir.value = sys.homeDir || '/'
-    const defaultRoot = '/'
+    document.documentElement.setAttribute("data-theme", currentTheme.value);
+    const sys = await window.electronAPI.getSystemInfo();
+    homeDir.value = sys.homeDir || "/";
+    const defaultRoot = "/";
     await Promise.all([
       loadDirectory(leftPane, homeDir.value),
       loadDirectory(rightPane, defaultRoot),
       loadDrivesList(),
-    ])
+    ]);
 
-    // Prevent browser window from navigating away on dropped files
-    window.addEventListener('dragover', preventDragDefault)
-    window.addEventListener('drop', preventDragDefault)
+    window.addEventListener("dragover", preventDragDefault);
+    window.addEventListener("drop", preventDragDefault);
+    window.addEventListener("keydown", handleGlobalShortcuts);
 
-    // Global keyboard listener to catch Cmd+C, Cmd+V, etc. across the window
-    window.addEventListener('keydown', handleGlobalShortcuts)
-
-    // Listen to native macOS Edit Menu commands
     window.electronAPI.onAppCommand((cmd) => {
-      const activeEl = document.activeElement as HTMLElement
-      const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')
+      const activeEl = document.activeElement as HTMLElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA");
 
-      if (cmd === 'copy') {
+      if (cmd === "copy") {
         if (isInput) {
-          document.execCommand('copy')
+          document.execCommand("copy");
         } else {
-          copySelectedToClipboard('copy')
+          copySelectedToClipboard(getSelectedOrCursorPaths(), "copy");
         }
-      } else if (cmd === 'cut') {
+      } else if (cmd === "cut") {
         if (isInput) {
-          document.execCommand('cut')
+          document.execCommand("cut");
         } else {
-          copySelectedToClipboard('cut')
+          copySelectedToClipboard(getSelectedOrCursorPaths(), "cut");
         }
-      } else if (cmd === 'paste') {
+      } else if (cmd === "paste") {
         if (isInput) {
-          document.execCommand('paste')
+          document.execCommand("paste");
         } else {
-          pasteFromClipboard()
+          pasteFromClipboard(activePaneState.value.currentPath, () =>
+            Promise.all([
+              loadDirectory(leftPane, leftPane.currentPath),
+              loadDirectory(rightPane, rightPane.currentPath),
+            ]).then(() => {}),
+          );
         }
-      } else if (cmd === 'selectAll') {
+      } else if (cmd === "selectAll") {
         if (isInput) {
-          document.execCommand('selectAll')
+          document.execCommand("selectAll");
         } else {
-          selectAllInActivePane()
+          selectAllInActivePane();
         }
       }
-    })
+    });
 
-    // Watch for USB insertion/removal and mounted volumes in real-time
     window.electronAPI.onDrivesChanged(async () => {
-      await loadDrivesList()
-      showShortcutToast('USB', 'Оновлено підключені USB-носії та диски')
-    })
+      await loadDrivesList();
+      showShortcutToast("USB", "Оновлено підключені USB-носії та диски");
+    });
   } catch (err: any) {
-    console.error('Initialization error:', err)
+    console.error("Initialization error:", err);
   }
-})
+});
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleGlobalShortcuts)
-  window.removeEventListener('dragover', preventDragDefault)
-  window.removeEventListener('drop', preventDragDefault)
-})
+  window.removeEventListener("keydown", handleGlobalShortcuts);
+  window.removeEventListener("dragover", preventDragDefault);
+  window.removeEventListener("drop", preventDragDefault);
+});
 </script>

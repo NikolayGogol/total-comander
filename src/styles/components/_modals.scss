@@ -1,5 +1,5 @@
-@use '../variables' as *;
-@use '../mixins' as *;
+@use "../variables" as *;
+@use "../mixins" as *;
 
 .modal-overlay {
   position: fixed;
@@ -36,11 +36,21 @@
     align-items: center;
     gap: $size-space-md;
 
-    .icon-cyan { color: $color-accent-cyan; }
-    .icon-amber { color: $color-accent-amber; }
-    .icon-blue { color: $color-accent-blue; }
-    .icon-emerald { color: $color-accent-emerald; }
-    .icon-rose { color: $color-accent-rose; }
+    .icon-cyan {
+      color: $color-accent-cyan;
+    }
+    .icon-amber {
+      color: $color-accent-amber;
+    }
+    .icon-blue {
+      color: $color-accent-blue;
+    }
+    .icon-emerald {
+      color: $color-accent-emerald;
+    }
+    .icon-rose {
+      color: $color-accent-rose;
+    }
   }
 
   .modal-close-btn,
@@ -51,22 +61,38 @@
     height: $size-btn-icon;
     border-radius: $radius-sm;
     color: $color-text-muted;
-    background: var(--bg-pill);
-    border: 1px solid var(--border-pill);
+    background: transparent;
+    border: 1px solid transparent;
     cursor: pointer;
     transition: all 0.15s ease;
 
     &:hover {
-      background: rgba(244, 63, 94, 0.16);
-      color: #fda4af;
-      border-color: rgba(244, 63, 94, 0.35);
-      transform: scale(1.05);
+      background: rgba(255, 255, 255, 0.08);
+      color: $color-text-main;
+      border-color: var(--border-pill);
     }
 
     &:active {
       transform: scale(0.95);
     }
   }
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: $size-space-xs;
+  margin-bottom: $size-space-lg;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.form-label {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  color: $color-text-muted;
 }
 
 .modal-body {
@@ -153,7 +179,9 @@
   color: $color-text-main;
   font-size: $font-size-md;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:focus {
     border-color: $color-accent-blue;
@@ -483,9 +511,16 @@
         font-size: $font-size-xs;
       }
 
-      .search-col-name { width: 35%; }
-      .search-col-path { width: 45%; }
-      .search-col-size { width: 20%; text-align: right; }
+      .search-col-name {
+        width: 35%;
+      }
+      .search-col-path {
+        width: 45%;
+      }
+      .search-col-size {
+        width: 20%;
+        text-align: right;
+      }
 
       .search-row {
         border-bottom: 1px solid var(--row-border);

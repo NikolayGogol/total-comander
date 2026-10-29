@@ -6,7 +6,11 @@
           <Search :size="16" class="icon-blue" title="Search" />
           <span>Search Files (Total Commander Search)</span>
         </div>
-        <button class="modal-close-btn" title="Close (Esc)" @click="$emit('close')">
+        <button
+          class="modal-close-btn"
+          title="Close (Esc)"
+          @click="$emit('close')"
+        >
           <X :size="15" title="Close" />
         </button>
       </div>
@@ -21,11 +25,11 @@
           <div class="form-row-grid">
             <div class="form-row">
               <label class="form-label">File name / Pattern:</label>
-              <input 
+              <input
                 ref="nameInputRef"
-                v-model="nameQuery" 
-                type="text" 
-                class="form-input" 
+                v-model="nameQuery"
+                type="text"
+                class="form-input"
                 placeholder="e.g. *.ts or config"
                 @keydown.enter="runSearch"
               />
@@ -33,10 +37,10 @@
 
             <div class="form-row">
               <label class="form-label">Containing text:</label>
-              <input 
-                v-model="contentQuery" 
-                type="text" 
-                class="form-input" 
+              <input
+                v-model="contentQuery"
+                type="text"
+                class="form-input"
                 placeholder="Find text inside files..."
                 @keydown.enter="runSearch"
               />
@@ -49,9 +53,13 @@
               <span>Search subdirectories (recursive)</span>
             </label>
 
-            <button class="btn-primary" :disabled="searching" @click="runSearch">
+            <button
+              class="btn-primary"
+              :disabled="searching"
+              @click="runSearch"
+            >
               <Search :size="13" />
-              <span>{{ searching ? 'Searching...' : 'Start Search' }}</span>
+              <span>{{ searching ? "Searching..." : "Start Search" }}</span>
             </button>
           </div>
         </div>
@@ -67,8 +75,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr 
-                v-for="item in results" 
+              <tr
+                v-for="item in results"
                 :key="item.path"
                 class="search-row"
                 :title="'Double-click to open in pane: ' + item.path"
@@ -76,16 +84,30 @@
               >
                 <td>
                   <div class="search-item-name">
-                    <component :is="item.isDirectory ? Folder : File" :size="13" class="icon-cyan" :title="item.isDirectory ? 'Folder' : 'File'" />
+                    <component
+                      :is="item.isDirectory ? Folder : File"
+                      :size="13"
+                      class="icon-cyan"
+                      :title="item.isDirectory ? 'Folder' : 'File'"
+                    />
                     <span>{{ item.name }}</span>
                   </div>
-                  <div v-if="item.matchLine" class="match-line-snippet" :title="'Matched content: ' + item.matchLine">
+                  <div
+                    v-if="item.matchLine"
+                    class="match-line-snippet"
+                    :title="'Matched content: ' + item.matchLine"
+                  >
                     "{{ item.matchLine }}"
                   </div>
                 </td>
-                <td class="search-item-path" :title="item.path">{{ item.path }}</td>
+                <td class="search-item-path" :title="item.path">
+                  {{ item.path }}
+                </td>
                 <td class="search-size-cell">
-                  {{ item.isDirectory ? '<DIR>' : formatBytes(item.size) }}
+                  <span v-if="item.isDirectory" class="dir-badge"
+                    >&lt;DIR&gt;</span
+                  >
+                  <span v-else>{{ formatBytes(item.size) }}</span>
                 </td>
               </tr>
             </tbody>
@@ -103,9 +125,7 @@
       </div>
 
       <div class="modal-footer">
-        <span class="search-stats">
-          {{ results.length }} result(s) found
-        </span>
+        <span class="search-stats"> {{ results.length }} result(s) found </span>
         <button class="btn-secondary" @click="$emit('close')">Close</button>
       </div>
     </div>
@@ -113,60 +133,60 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
-import type { SearchResult } from '../types'
-import { formatBytes } from '../utils/formatters'
-import { Search, X, Folder, File } from 'lucide-vue-next'
+import { ref, onMounted, nextTick } from "vue";
+import type { SearchResult } from "@/types";
+import { formatBytes } from "@/utils/formatters";
+import { Search, X, Folder, File } from "lucide-vue-next";
 
 const props = defineProps<{
-  initialDir: string
-}>()
+  initialDir: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'jump-to', filePath: string): void
-}>()
+  (e: "close"): void;
+  (e: "jump-to", filePath: string): void;
+}>();
 
-const searchDir = ref('')
-const nameQuery = ref('')
-const contentQuery = ref('')
-const recursive = ref(true)
-const searching = ref(false)
-const hasSearched = ref(false)
-const results = ref<SearchResult[]>([])
-const nameInputRef = ref<HTMLInputElement | null>(null)
+const searchDir = ref("");
+const nameQuery = ref("");
+const contentQuery = ref("");
+const recursive = ref(true);
+const searching = ref(false);
+const hasSearched = ref(false);
+const results = ref<SearchResult[]>([]);
+const nameInputRef = ref<HTMLInputElement | null>(null);
 
 async function runSearch() {
-  if (!searchDir.value.trim()) return
-  searching.value = true
-  hasSearched.value = true
-  results.value = []
+  if (!searchDir.value.trim()) return;
+  searching.value = true;
+  hasSearched.value = true;
+  results.value = [];
 
   try {
     const res = await window.electronAPI.search(
       searchDir.value.trim(),
       nameQuery.value.trim(),
       recursive.value,
-      contentQuery.value.trim() || undefined
-    )
+      contentQuery.value.trim() || undefined,
+    );
     if (res.success && res.results) {
-      results.value = res.results
+      results.value = res.results;
     }
   } catch (err: any) {
-    console.error(err)
+    console.error(err);
   } finally {
-    searching.value = false
+    searching.value = false;
   }
 }
 
 function jumpToFile(item: SearchResult) {
-  emit('jump-to', item.path)
+  emit("jump-to", item.path);
 }
 
 onMounted(() => {
-  searchDir.value = props.initialDir
+  searchDir.value = props.initialDir;
   nextTick(() => {
-    nameInputRef.value?.focus()
-  })
-})
+    nameInputRef.value?.focus();
+  });
+});
 </script>

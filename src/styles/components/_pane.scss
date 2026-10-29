@@ -1,5 +1,5 @@
-@use '../variables' as *;
-@use '../mixins' as *;
+@use "../variables" as *;
+@use "../mixins" as *;
 
 .pane-card {
   display: flex;
@@ -10,7 +10,9 @@
   overflow: hidden;
   min-height: 0;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 
   &.is-active {
     border-color: $color-border-active;
@@ -133,7 +135,9 @@
     font-size: $font-size-sm;
     min-width: 0;
     cursor: text;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
 
     &:focus-within {
       border-color: $color-accent-blue;

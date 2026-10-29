@@ -53,8 +53,15 @@ $light-accent-rose: #e11d48;
 $light-accent-purple: #7c3aed;
 
 // --- Typography Tokens ---
-$font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-$font-family-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+$font-family-sans:
+  "Plus Jakarta Sans",
+  -apple-system,
+  BlinkMacSystemFont,
+  "Segoe UI",
+  Roboto,
+  sans-serif;
+$font-family-mono:
+  "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
 // --- Font Sizes Tokens ---
 $font-size-2xs: 10px;
@@ -112,9 +119,13 @@ $blur-modal: blur(8px);
 
 // --- CSS Variables per Theme ---
 :root,
-[data-theme='dark'] {
+[data-theme="dark"] {
   --bg-app: #{$dark-bg-app};
-  --bg-app-gradient: radial-gradient(circle at 50% 0%, #151c2c 0%, #{$dark-bg-app} 75%);
+  --bg-app-gradient: radial-gradient(
+    circle at 50% 0%,
+    #151c2c 0%,
+    #{$dark-bg-app} 75%
+  );
   --bg-card: #{$dark-bg-card};
   --bg-panel: #{$dark-bg-panel};
   --bg-panel-header: #{$dark-bg-panel-header};
@@ -150,7 +161,8 @@ $blur-modal: blur(8px);
   --row-cursor: rgba(255, 255, 255, 0.06);
   --row-cursor-border: rgba(59, 130, 246, 0.6);
   --row-border: rgba(255, 255, 255, 0.04);
-  --shadow-glow-active: 0 0 0 1.5px #{$dark-accent-blue}, 0 4px 20px rgba(0, 0, 0, 0.45);
+  --shadow-glow-active:
+    0 0 0 1.5px #{$dark-accent-blue}, 0 4px 20px rgba(0, 0, 0, 0.45);
   --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.7);
   --bg-modal-overlay: rgba(0, 0, 0, 0.7);
   --bg-loading: rgba(18, 22, 32, 0.65);
@@ -173,7 +185,7 @@ $blur-modal: blur(8px);
   --color-system: #94a3b8;
 }
 
-[data-theme='light'] {
+[data-theme="light"] {
   --bg-app: #{$light-bg-app};
   --bg-app-gradient: linear-gradient(180deg, #dde4ee 0%, #{$light-bg-app} 100%);
   --bg-card: #{$light-bg-card};
@@ -211,7 +223,8 @@ $blur-modal: blur(8px);
   --row-cursor: rgba(37, 99, 235, 0.07);
   --row-cursor-border: #2563eb;
   --row-border: #e2e8f0;
-  --shadow-glow-active: 0 0 0 2px #{$light-accent-blue}, 0 4px 16px rgba(37, 99, 235, 0.2);
+  --shadow-glow-active:
+    0 0 0 2px #{$light-accent-blue}, 0 4px 16px rgba(37, 99, 235, 0.2);
   --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.18);
   --bg-modal-overlay: rgba(15, 23, 42, 0.45);
   --bg-loading: rgba(248, 250, 252, 0.75);
@@ -238,6 +251,7 @@ $blur-modal: blur(8px);
 $color-bg-app: var(--bg-app);
 $color-bg-card: var(--bg-card);
 $color-bg-panel: var(--bg-panel);
+$color-bg-table: var(--bg-panel);
 $color-bg-panel-header: var(--bg-panel-header);
 $color-bg-subtle: var(--bg-subtle);
 $color-bg-active-tab: var(--bg-active-tab);
@@ -248,6 +262,7 @@ $color-bg-viewer: var(--bg-viewer);
 $color-border-subtle: var(--border-subtle);
 $color-border-hover: var(--border-hover);
 $color-border-active: var(--border-active);
+$color-border-focus: var(--border-active);
 $color-text-main: var(--text-main);
 $color-text-secondary: var(--text-secondary);
 $color-text-muted: var(--text-muted);
@@ -261,8 +276,10 @@ $color-accent-purple: var(--accent-purple);
 $color-accent-blue-hover: var(--accent-blue);
 $color-accent-blue-glow: rgba(59, 130, 246, 0.2);
 $color-row-hover: var(--row-hover);
+$color-bg-row-hover: var(--row-hover);
 $color-row-alt: var(--row-alt);
 $color-row-selected: var(--row-selected);
+$color-bg-row-selected: var(--row-selected);
 $color-row-cursor: var(--row-cursor);
 $color-row-cursor-border: var(--row-cursor-border);
 $shadow-glow-active: var(--shadow-glow-active);

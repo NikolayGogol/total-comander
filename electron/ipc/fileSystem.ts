@@ -1,0 +1,387 @@
+import { app, ipcMain, shell } from 'electron'
+import path from 'path'
+import fsPromises from 'fs/promises'
+import { exec } from 'child_process'
+import { isProtectedSystemFile } from './disk'
+
+export function formatPermissions(mode: number, isDirectory: boolean): string {
+  const type = isDirectory ? 'd' : '-'
+  const perms = [
+    mode & 0o400 ? 'r' : '-',
+    mode & 0o200 ? 'w' : '-',
+    mode & 0o100 ? 'x' : '-',
+    mode & 0o040 ? 'r' : '-',
+    mode & 0o020 ? 'w' : '-',
+    mode & 0o010 ? 'x' : '-',
+    mode & 0o004 ? 'r' : '-',
+    mode & 0o002 ? 'w' : '-',
+    mode & 0o001 ? 'x' : '-',
+  ].join('')
+  return type + perms
+}
+
+const appIconCache = new Map<string, string>()
+
+export async function getAppIcon(appPath: string): Promise<string | undefined> {
+  if (appIconCache.has(appPath)) {
+    return appIconCache.get(appPath)
+  }
+  try {
+    const icon = await app.getFileIcon(appPath, { size: 'normal' })
+    const dataUrl = icon.toDataURL()
+    appIconCache.set(appPath, dataUrl)
+    return dataUrl
+  } catch {
+    return undefined
+  }
+}
+
+export function setupFileSystemIpc() {
+  // Read Directory
+  ipcMain.handle('fs:readDir', async (_, dirPath: string, showHidden = false) => {
+    try {
+      const resolvedPath = path.resolve(dirPath)
+      const entries = await fsPromises.readdir(resolvedPath, { withFileTypes: true })
+      const items = []
+
+      for (const entry of entries) {
+        const isHidden = entry.name.startsWith('.')
+        if (isHidden && !showHidden) {
+          continue
+        }
+
+        const itemPath = path.join(resolvedPath, entry.name)
+        const isApp = entry.isDirectory() && entry.name.endsWith('.app')
+
+        try {
+          const stats = await fsPromises.lstat(itemPath)
+          const isDir = stats.isDirectory()
+          const ext = isApp
+            ? 'app'
+            : isDir
+              ? ''
+              : path.extname(entry.name).toLowerCase().replace('.', '')
+
+          items.push({
+            name: entry.name,
+            path: itemPath,
+            isDirectory: isDir,
+            isFile: stats.isFile(),
+            isSymlink: stats.isSymbolicLink(),
+            isApp,
+            size: isDir ? 0 : stats.size,
+            mtime: stats.mtimeMs,
+            birthtime: stats.birthtimeMs,
+            mode: stats.mode,
+            permissions: formatPermissions(stats.mode, isDir),
+            extension: ext,
+            isHidden,
+          })
+        } catch {
+          // If stat fails (e.g. broken symlink or protected system file)
+          items.push({
+            name: entry.name,
+            path: itemPath,
+            isDirectory: entry.isDirectory(),
+            isFile: entry.isFile(),
+            isSymlink: entry.isSymbolicLink(),
+            isApp,
+            size: 0,
+            mtime: 0,
+            birthtime: 0,
+            mode: 0,
+            permissions: entry.isDirectory() ? 'drwxr-xr-x' : '-rw-r--r--',
+            extension: isApp ? 'app' : path.extname(entry.name).toLowerCase(),
+            isHidden,
+          })
+        }
+      }
+
+      // Extract native macOS icons for all application bundles (.app)
+      const appItems = items.filter((i) => i.isApp)
+      if (appItems.length > 0) {
+        await Promise.all(
+          appItems.map(async (item: any) => {
+            item.appIcon = await getAppIcon(item.path)
+          })
+        )
+      }
+
+      return { success: true, data: items }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to read directory' }
+    }
+  })
+
+  // Create Folder
+  ipcMain.handle('fs:createFolder', async (_, targetPath: string) => {
+    try {
+      await fsPromises.mkdir(targetPath, { recursive: true })
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Create File
+  ipcMain.handle('fs:createFile', async (_, targetPath: string) => {
+    try {
+      await fsPromises.writeFile(targetPath, '', { flag: 'wx' })
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Delete Paths (Move to Trash by default, or permanent with fallback)
+  ipcMain.handle('fs:deletePaths', async (_, paths: string[], moveToTrash = true) => {
+    try {
+      for (const itemPath of paths) {
+        const base = path.basename(itemPath)
+        if (isProtectedSystemFile(base, itemPath)) {
+          return {
+            success: false,
+            error: `Захищений системний файл або віртуальний диск: "${base}" не можна видаляти`,
+          }
+        }
+        if (moveToTrash) {
+          try {
+            await shell.trashItem(itemPath)
+          } catch {
+            // Fallback to permanent removal if macOS Trash rejects path (e.g. external volumes or protected temp)
+            await fsPromises.rm(itemPath, { recursive: true, force: true })
+          }
+        } else {
+          await fsPromises.rm(itemPath, { recursive: true, force: true })
+        }
+      }
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Copy Paths
+  ipcMain.handle('fs:copyPaths', async (_, sources: string[], destinationDir: string) => {
+    try {
+      for (const src of sources) {
+        const baseName = path.basename(src)
+        const dest = path.join(destinationDir, baseName)
+        if (src === dest) {
+          // If copying to same directory, create copy name: filename - Copy.ext
+          const ext = path.extname(baseName)
+          const nameWithoutExt = path.basename(baseName, ext)
+          const copyDest = path.join(destinationDir, `${nameWithoutExt} - Copy${ext}`)
+          await fsPromises.cp(src, copyDest, { recursive: true })
+        } else {
+          await fsPromises.cp(src, dest, { recursive: true })
+        }
+      }
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Move Paths
+  ipcMain.handle('fs:movePaths', async (_, sources: string[], destinationDir: string) => {
+    try {
+      for (const src of sources) {
+        const baseName = path.basename(src)
+        const dest = path.join(destinationDir, baseName)
+        if (src === dest) continue
+
+        try {
+          await fsPromises.rename(src, dest)
+        } catch (renameErr: any) {
+          // EXDEV fallback for cross-filesystem moves
+          if (renameErr.code === 'EXDEV') {
+            await fsPromises.cp(src, dest, { recursive: true })
+            await fsPromises.rm(src, { recursive: true, force: true })
+          } else {
+            throw renameErr
+          }
+        }
+      }
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Rename Single Path
+  ipcMain.handle('fs:renamePath', async (_, oldPath: string, newPath: string) => {
+    try {
+      await fsPromises.rename(oldPath, newPath)
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Read File Content (for F3 Viewer and F4 Editor)
+  ipcMain.handle('fs:readFile', async (_, filePath: string, maxBytes = 2 * 1024 * 1024) => {
+    try {
+      const stats = await fsPromises.stat(filePath)
+      if (stats.size > maxBytes) {
+        return {
+          success: false,
+          error: `File is too large to display directly (${(stats.size / (1024 * 1024)).toFixed(1)} MB). Limit is 2 MB.`,
+        }
+      }
+
+      const buffer = await fsPromises.readFile(filePath)
+      // Check if binary (null bytes test)
+      let isBinary = false
+      const checkLength = Math.min(buffer.length, 1024)
+      for (let i = 0; i < checkLength; i++) {
+        if (buffer[i] === 0) {
+          isBinary = true
+          break
+        }
+      }
+
+      if (isBinary) {
+        return {
+          success: true,
+          isBinary: true,
+          content: buffer.toString('base64'),
+        }
+      }
+
+      return {
+        success: true,
+        isBinary: false,
+        content: buffer.toString('utf-8'),
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Write File Content (for F4 Editor)
+  ipcMain.handle('fs:writeFile', async (_, filePath: string, content: string) => {
+    try {
+      await fsPromises.writeFile(filePath, content, 'utf-8')
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Open with system default app
+  ipcMain.handle('fs:openPath', async (_, filePath: string) => {
+    try {
+      const result = await shell.openPath(filePath)
+      if (result) {
+        return { success: false, error: result }
+      }
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Show file in native macOS Finder
+  ipcMain.handle('fs:showInFolder', async (_, targetPath: string) => {
+    try {
+      shell.showItemInFolder(targetPath)
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Open Directory in macOS Terminal
+  ipcMain.handle('fs:openInTerminal', async (_, dirPath: string) => {
+    try {
+      exec(`open -a Terminal "${dirPath}"`, (err) => {
+        if (err) console.error('Failed to open Terminal:', err)
+      })
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // macOS QuickLook (`qlmanage -p`)
+  ipcMain.handle('fs:quickLook', async (_, filePath: string) => {
+    try {
+      exec(`qlmanage -p "${filePath}" >/dev/null 2>&1 &`)
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // File Search (Total Commander Alt+F7)
+  ipcMain.handle('fs:search', async (_, dirPath: string, query: string, recursive = true, contentSearch?: string) => {
+    try {
+      const results: any[] = []
+      const lowerQuery = query.toLowerCase()
+      const maxResults = 300
+
+      async function searchDir(current: string, depth = 0) {
+        if (results.length >= maxResults) return
+        if (depth > 8) return
+
+        let entries
+        try {
+          entries = await fsPromises.readdir(current, { withFileTypes: true })
+        } catch {
+          return
+        }
+
+        for (const entry of entries) {
+          if (results.length >= maxResults) break
+          const fullPath = path.join(current, entry.name)
+          const nameMatches = !query || entry.name.toLowerCase().includes(lowerQuery)
+
+          let contentMatchLine: string | undefined
+
+          if (contentSearch && entry.isFile()) {
+            try {
+              const fileContent = await fsPromises.readFile(fullPath, 'utf8')
+              const lines = fileContent.split('\n')
+              const foundLine = lines.find((l) => l.toLowerCase().includes(contentSearch.toLowerCase()))
+              if (foundLine) {
+                contentMatchLine = foundLine.trim().slice(0, 100)
+              } else {
+                continue
+              }
+            } catch {
+              continue
+            }
+          }
+
+          if (nameMatches || contentMatchLine) {
+            let size = 0
+            try {
+              if (entry.isFile()) {
+                const st = await fsPromises.lstat(fullPath)
+                size = st.size
+              }
+            } catch {}
+
+            results.push({
+              name: entry.name,
+              path: fullPath,
+              isDirectory: entry.isDirectory(),
+              size,
+              matchLine: contentMatchLine,
+            })
+          }
+
+          if (recursive && entry.isDirectory() && !entry.name.startsWith('.')) {
+            await searchDir(fullPath, depth + 1)
+          }
+        }
+      }
+
+      await searchDir(dirPath)
+      return { success: true, results }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+}

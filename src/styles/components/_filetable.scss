@@ -1,5 +1,5 @@
-@use '../variables' as *;
-@use '../mixins' as *;
+@use "../variables" as *;
+@use "../mixins" as *;
 
 .file-table-wrapper {
   flex: 1;
@@ -37,10 +37,29 @@
     z-index: 2;
     cursor: pointer;
     user-select: none;
-    transition: color 0.12s ease, background-color 0.12s ease;
+    transition:
+      color 0.12s ease,
+      background-color 0.12s ease;
 
     &:hover {
       color: var(--accent-blue);
+    }
+
+    .col-resizer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 7px;
+      cursor: col-resize;
+      z-index: 5;
+      user-select: none;
+      transition: background-color 0.12s ease;
+
+      &:hover,
+      &.is-resizing {
+        background-color: var(--accent-blue);
+      }
     }
   }
 
@@ -54,31 +73,42 @@
 
 // Columns definition
 .col-name {
-  width: auto;
+  width: var(--col-name-w, auto);
 }
 
 .col-ext {
   color: var(--text-muted);
-  width: 70px;
+  width: var(--col-ext-w, 70px);
   font-weight: $font-weight-medium;
 }
 
 .col-size {
   text-align: right;
   color: var(--text-secondary);
-  width: 90px;
+  width: var(--col-size-w, 90px);
   font-variant-numeric: tabular-nums;
+
+  .calculated-size {
+    color: var(--accent-cyan);
+    font-weight: $font-weight-bold;
+  }
+
+  .calculating-size {
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 .col-date {
   color: var(--text-muted);
-  width: 140px;
+  width: var(--col-date-w, 140px);
   font-variant-numeric: tabular-nums;
 }
 
 .col-perms {
   color: var(--text-dim);
-  width: 95px;
+  width: var(--col-perms-w, 95px);
   font-size: $font-size-xs;
   letter-spacing: 0.5px;
 }
@@ -187,14 +217,30 @@
       fill: currentColor;
       fill-opacity: 0.16;
     }
-    &.icon-image { color: var(--color-image); }
-    &.icon-video { color: var(--color-video); }
-    &.icon-audio { color: var(--color-audio); }
-    &.icon-code { color: var(--color-code); }
-    &.icon-doc { color: var(--color-doc); }
-    &.icon-archive { color: var(--color-archive); }
-    &.icon-system { color: var(--color-system); }
-    &.icon-default { color: var(--text-muted); }
+    &.icon-image {
+      color: var(--color-image);
+    }
+    &.icon-video {
+      color: var(--color-video);
+    }
+    &.icon-audio {
+      color: var(--color-audio);
+    }
+    &.icon-code {
+      color: var(--color-code);
+    }
+    &.icon-doc {
+      color: var(--color-doc);
+    }
+    &.icon-archive {
+      color: var(--color-archive);
+    }
+    &.icon-system {
+      color: var(--color-system);
+    }
+    &.icon-default {
+      color: var(--text-muted);
+    }
   }
 
   .item-name {
@@ -266,15 +312,29 @@
   }
 }
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   .col-icon-name .item-icon {
-    &.icon-folder { color: #3b82f6; }
-    &.icon-image { color: #10b981; }
-    &.icon-video { color: #f43f5e; }
-    &.icon-audio { color: #ec4899; }
-    &.icon-code { color: #a855f7; }
-    &.icon-doc { color: #06b6d4; }
-    &.icon-archive { color: #f59e0b; }
+    &.icon-folder {
+      color: #3b82f6;
+    }
+    &.icon-image {
+      color: #10b981;
+    }
+    &.icon-video {
+      color: #f43f5e;
+    }
+    &.icon-audio {
+      color: #ec4899;
+    }
+    &.icon-code {
+      color: #a855f7;
+    }
+    &.icon-doc {
+      color: #06b6d4;
+    }
+    &.icon-archive {
+      color: #f59e0b;
+    }
   }
 
   .dir-badge {
