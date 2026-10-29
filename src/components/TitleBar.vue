@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { APP_VERSION, BUILD_NUMBER, BUILD_DATE } from '../buildInfo'
+import { APP_VERSION, BUILD_NUMBER, BUILD_DATE } from '@/buildInfo'
 import { Search, PieChart, Eye, EyeOff, ArrowLeftRight, Terminal, RotateCw, Sun, Moon } from 'lucide-vue-next'
 
 defineProps<{

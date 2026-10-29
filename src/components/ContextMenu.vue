@@ -155,7 +155,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import type { FileItem } from '../types'
+import type { FileItem } from '@/types'
 import {
   FolderOpen,
   Eye,

@@ -86,7 +86,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { formatBytes } from '../utils/formatters'
+import { formatBytes } from '@/utils/formatters'
 import { Eye, X, ExternalLink } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -95,7 +95,7 @@ const props = defineProps<{
   fileSize: number
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void
 }>()
 

@@ -63,11 +63,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { PaneState, FileItem, SortField } from '../../types'
-import PaneTabs from './PaneTabs.vue'
-import PaneNavHeader from './PaneNavHeader.vue'
-import FileTable from './FileTable.vue'
-import PaneFooter from './PaneFooter.vue'
+import type { PaneState, FileItem, SortField } from '@/types'
+import PaneTabs from '@/components/pane/PaneTabs.vue'
+import PaneNavHeader from '@/components/pane/PaneNavHeader.vue'
+import FileTable from '@/components/pane/FileTable.vue'
+import PaneFooter from '@/components/pane/PaneFooter.vue'
 
 const props = defineProps<{
   pane: PaneState
@@ -77,7 +77,7 @@ const props = defineProps<{
   canGoForward: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'activate'): void
   (e: 'navigate', path: string): void
   (e: 'go-up'): void

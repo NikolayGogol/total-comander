@@ -6,3 +6,4 @@ release
 *.local
 
 powershell.cmd
+/.idea/

@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { HardDrive } from 'lucide-vue-next'
-import { formatBytes } from '../../utils/formatters'
+import { formatBytes } from '@/utils/formatters'
 
 defineProps<{
   selectedCount: number

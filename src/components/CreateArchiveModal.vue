@@ -133,9 +133,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { Archive, Lock, X } from 'lucide-vue-next'
-import type { CreateArchiveOptions } from '../types'
 
 const props = defineProps<{
   sources: string[]
@@ -213,8 +212,7 @@ onMounted(() => {
     const s = props.sources[0].split(/[/\\]/).filter(Boolean).pop() || 'archive'
     archiveName.value = s.replace(/\.[^.]+$/, '')
   } else if (props.sources.length > 1) {
-    const parentFolder = props.currentDir.split(/[/\\]/).filter(Boolean).pop() || 'archive'
-    archiveName.value = parentFolder
+    archiveName.value = props.currentDir.split(/[/\\]/).filter(Boolean).pop() || 'archive'
   }
 
   nextTick(() => {

@@ -263,8 +263,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { DriveItem, LargeFileItem } from '../types'
-import { formatBytes, formatDate } from '../utils/formatters'
+import type { DriveItem, LargeFileItem } from '@/types'
+import { formatBytes, formatDate } from '@/utils/formatters'
 import {
   PieChart,
   X,

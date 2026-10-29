@@ -135,8 +135,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { FolderSizeItem } from '../types'
-import { formatBytes, formatNumber } from '../utils/formatters'
+import type { FolderSizeItem } from '@/types'
+import { formatBytes, formatNumber } from '@/utils/formatters'
 import { FolderArchive, Folder, FolderOpen, X, RotateCw, Loader2, ExternalLink } from 'lucide-vue-next'
 
 const props = defineProps<{

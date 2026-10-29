@@ -47,6 +47,23 @@
 9. **Версіонування та автоматичний білд**:
    - Версія програми задається в `package.json`.
    - Скрипт `scripts/update-build-info.js` автоматично генерує `src/buildInfo.ts` з номером версії, номером збірки (`BUILD_NUMBER`) та точною датою збірки (`BUILD_DATE`).
+10. **Імпорти виключно через аліас `@/`**:
+10. **Імпорти виключно через аліас `@/`**:
+   - Усі внутрішні імпорти компонентів, утиліт, сервісів та TypeScript-типів у папці `src/` суворо **мають використовувати аліас `@/`** замість відносних шляхів (`./`, `../`, `../../`).
+   - Наприклад:
+     - `import TitleBar from '@/components/TitleBar.vue'`
+     - `import type { FileItem } from '@/types'`
+     - `import { formatBytes } from '@/utils/formatters'`
+     - `import FileTable from '@/components/pane/FileTable.vue'`
+   - Використання відносних шляхів для внутрішніх модулів проєкту суворо заборонено.
+
+- Усі внутрішні імпорти компонентів, утиліт, сервісів та TypeScript-типів у папці `src/` суворо **мають використовувати аліас `@/`** замість відносних шляхів (`./`, `../`, `../../`).
+- Наприклад:
+  - `import TitleBar from '@/components/TitleBar.vue'`
+  - `import type { FileItem } from '@/types'`
+  - `import { formatBytes } from '@/utils/formatters'`
+  - `import FileTable from '@/components/pane/FileTable.vue'`
+- Використання відносних шляхів для внутрішніх модулів проєкту суворо заборонено.
 
 ---
 
@@ -63,6 +80,10 @@
 | `npm run build:win:portable` | Створює портативну версію Windows без встановлення.                                         |
 | `npm run build:win:arm64`    | Створює Windows інсталятор для пристроїв ARM64.                                             |
 | `npm run run:prod`           | Збирає бандл та запускає його у продакшн режимі Electron.                                   |
+| `npm run lint`               | Перевірка всього проєкту лінтером ESLint.                                                   |
+| `npm run lint:fix`           | Автоматичне виправлення помилок лінтера ESLint.                                             |
+| `npm run format`             | Форматування кодової бази через Prettier.                                                   |
+| `npm run fix`                | **Головна команда для виправлення**: одночасний фікс ESLint та форматування Prettier.       |
 
 ---
 

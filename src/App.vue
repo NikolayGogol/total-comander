@@ -202,21 +202,20 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import type { PaneState, DriveItem, FileItem, SortField } from './types'
-import TitleBar from './components/TitleBar.vue'
-import DriveBar from './components/DriveBar.vue'
-import PaneView from './components/pane/PaneView.vue'
-import BottomActionBar from './components/BottomActionBar.vue'
-import ViewerModal from './components/ViewerModal.vue'
-import EditorModal from './components/EditorModal.vue'
-import OperationModal from './components/OperationModal.vue'
-import SearchModal from './components/SearchModal.vue'
-import ContextMenu from './components/ContextMenu.vue'
-import CreateArchiveModal from './components/CreateArchiveModal.vue'
-import ArchiveViewModal from './components/ArchiveViewModal.vue'
-import LargeFilesModal from './components/LargeFilesModal.vue'
-import FolderSizeModal from './components/FolderSizeModal.vue'
-import { formatBytes, formatNumber } from './utils/formatters'
+import type { PaneState, DriveItem, FileItem, SortField } from '@/types'
+import TitleBar from '@/components/TitleBar.vue'
+import DriveBar from '@/components/DriveBar.vue'
+import PaneView from '@/components/pane/PaneView.vue'
+import BottomActionBar from '@/components/BottomActionBar.vue'
+import ViewerModal from '@/components/ViewerModal.vue'
+import EditorModal from '@/components/EditorModal.vue'
+import OperationModal from '@/components/OperationModal.vue'
+import SearchModal from '@/components/SearchModal.vue'
+import ContextMenu from '@/components/ContextMenu.vue'
+import CreateArchiveModal from '@/components/CreateArchiveModal.vue'
+import ArchiveViewModal from '@/components/ArchiveViewModal.vue'
+import LargeFilesModal from '@/components/LargeFilesModal.vue'
+import FolderSizeModal from '@/components/FolderSizeModal.vue'
 
 const activePaneId = ref<'left' | 'right'>('left')
 const showHidden = ref(false)
@@ -999,10 +998,6 @@ function openFolderSizeModal(targetPath: string) {
   folderSizeModal.open = true
 }
 
-function calculateFolderSize(item: FileItem) {
-  openFolderSizeModal(item.path)
-}
-
 function jumpToSearchFile(filePath: string) {
   searchModal.open = false
   const lastSlashIdx = Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/'))
@@ -1123,61 +1118,6 @@ async function handleDragDrop(sourcePaths: string[], targetDir: string, isMove: 
     }
   } catch (err: any) {
     showToast(`Помилка drag & drop: ${err.message}`, 'error')
-  }
-}
-
-// ZIP Archiving & Extraction (Alt+F5 / Alt+F6)
-async function archivePathsToZip(sources: string[]) {
-  if (!sources || sources.length === 0) return
-  const curDir = activePaneState.value.currentPath
-  const sep = curDir.includes('/') ? '/' : '\\'
-
-  let baseName = 'archive'
-  if (sources.length === 1) {
-    const sName = sources[0].split(/[/\\]/).filter(Boolean).pop() || 'archive'
-    baseName = sName.replace(/\.[^.]+$/, '')
-  } else {
-    baseName = curDir.split(/[/\\]/).filter(Boolean).pop() || 'archive'
-  }
-
-  const zipName = `${baseName}.zip`
-  const targetZip = `${curDir.replace(/[/\\]+$/, '')}${sep}${zipName}`
-
-  showShortcutToast('Alt + F5', `Створення архіву "${zipName}"...`)
-
-  try {
-    const res = await window.electronAPI.createZip(sources, targetZip)
-    if (res.success) {
-      showToast(`Архів успішно створено: ${zipName}`, 'success')
-      refreshAllPanes()
-    } else {
-      showToast(`Помилка архівування: ${res.error}`, 'error')
-    }
-  } catch (err: any) {
-    showToast(`Помилка архівування: ${err.message}`, 'error')
-  }
-}
-
-async function extractZipFile(zipPath: string) {
-  if (!zipPath) return
-  const curDir = activePaneState.value.currentPath
-  const sep = curDir.includes('/') ? '/' : '\\'
-  const zipName = zipPath.split(/[/\\]/).filter(Boolean).pop() || 'Archive.zip'
-  const folderName = zipName.replace(/\.[^.]+$/, '')
-  const targetDir = `${curDir.replace(/[/\\]+$/, '')}${sep}${folderName}`
-
-  showShortcutToast('Alt + F6', `Розархівування "${zipName}"...`)
-
-  try {
-    const res = await window.electronAPI.extractZip(zipPath, targetDir)
-    if (res.success) {
-      showToast(`Архів розпаковано у папку "${folderName}"`, 'success')
-      refreshAllPanes()
-    } else {
-      showToast(`Помилка розархівування: ${res.error}`, 'error')
-    }
-  } catch (err: any) {
-    showToast(`Помилка розархівування: ${err.message}`, 'error')
   }
 }
 

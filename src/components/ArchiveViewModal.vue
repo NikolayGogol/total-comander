@@ -217,8 +217,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Archive, Lock, X, Search, Folder, File, FolderArchive, CornerLeftUp } from 'lucide-vue-next'
-import type { ArchiveEntry } from '../types'
-import { formatBytes } from '../utils/formatters'
+import type { ArchiveEntry } from '@/types'
+import { formatBytes } from '@/utils/formatters'
 
 interface VirtualArchiveItem {
   name: string

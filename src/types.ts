@@ -139,9 +139,7 @@ export interface ElectronAPI {
     password?: string
   ) => Promise<{ success: boolean; error?: string }>
   getDirSize: (dirPath: string) => Promise<{ success: boolean; size?: number; count?: number; error?: string }>
-  analyzeFolderSizes: (
-    targetPath: string
-  ) => Promise<{
+  analyzeFolderSizes: (targetPath: string) => Promise<{
     success: boolean
     parentPath?: string
     folders?: FolderSizeItem[]
@@ -149,11 +147,7 @@ export interface ElectronAPI {
     totalFiles?: number
     error?: string
   }>
-  findLargeFiles: (options: {
-    targetDir: string
-    minSizeBytes: number
-    limit?: number
-  }) => Promise<{
+  findLargeFiles: (options: { targetDir: string; minSizeBytes: number; limit?: number }) => Promise<{
     success: boolean
     files?: LargeFileItem[]
     totalSize?: number

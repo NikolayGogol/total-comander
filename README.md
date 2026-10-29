@@ -146,6 +146,22 @@ npm run build:win:arm64
 - `release/Total Commander-Setup-1.0.8-x64.exe`
 - `release/Total Commander-1.0.8-portable.exe`
 
+### 🧹 Лінтер та автоматичне форматування
+
+```bash
+# Перевірка проєкту лінтером ESLint
+npm run lint
+
+# Автоматичне виправлення помилок ESLint
+npm run lint:fix
+
+# Форматування файлів через Prettier
+npm run format
+
+# Головна команда автофіксу (ESLint fix + Prettier format)
+npm run fix
+```
+
 ---
 
 ## 📐 Правила кодової бази
@@ -153,6 +169,7 @@ npm run build:win:arm64
 - **Стилі**: виключно у SCSS файлах (`src/styles/`), жодних інлайн-стилів `style="..."` у Vue шаблонах.
 - **Токени**: кольори, розміри шрифтів, відступи через SCSS змінні (`_variables.scss`).
 - **Форматування**: дати через `dayjs`, байти та розміри файлів через `numeral`.
+- **Імпорти**: виключно через аліас `@/` (наприклад, `@/components/TitleBar.vue`, `@/types`), жодних відносних шляхів `../`.
 - **Безпека**: очищення реактивних об'єктів перед IPC (`JSON.parse(JSON.stringify())` / `toPlain()`).
 
 ---

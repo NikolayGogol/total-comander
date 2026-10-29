@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TabItem } from '../../types'
+import type { TabItem } from '@/types'
 import { Folder, Plus, X } from 'lucide-vue-next'
 
 defineProps<{

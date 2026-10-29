@@ -194,10 +194,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
-import type { FileItem, SortField } from '../../types'
-import { formatBytes, formatDate, formatNumber, getFileCategory, getFileTypeDescription } from '../../utils/formatters'
-import { Folder, File, Code, Image, Film, Music, FileText, Archive, CornerLeftUp } from 'lucide-vue-next'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import type { FileItem, SortField } from '@/types'
+import { formatBytes, formatDate, formatNumber, getFileCategory, getFileTypeDescription } from '@/utils/formatters'
+import { Archive, Code, CornerLeftUp, File, FileText, Film, Folder, Image, Music } from 'lucide-vue-next'
 
 const props = defineProps<{
   items: FileItem[]
@@ -290,8 +290,7 @@ function startColResize(colKey: keyof ColumnWidths, e: MouseEvent) {
 
   function onMouseMove(moveEvent: MouseEvent) {
     const deltaX = moveEvent.clientX - startX
-    const newWidth = Math.max(minWidths[colKey], Math.min(1200, startWidth + deltaX))
-    colWidths[colKey] = newWidth
+    colWidths[colKey] = Math.max(minWidths[colKey], Math.min(1200, startWidth + deltaX))
     applyColWidthsToDOM()
   }
 
@@ -515,7 +514,7 @@ function scrollToCursor() {
 // Drag & Drop
 function onDragStart(e: DragEvent, item: FileItem) {
   if (!e.dataTransfer) return
-  let paths: string[] = []
+  let paths: string[]
   if (isSelected(item.path)) {
     paths = Array.from(props.selectedPaths)
   } else {

@@ -38,8 +38,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { DriveItem } from '../types'
-import { formatBytes } from '../utils/formatters'
+import type { DriveItem } from '@/types'
+import { formatBytes } from '@/utils/formatters'
 import {
   HardDrive,
   Home,
