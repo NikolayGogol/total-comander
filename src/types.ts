@@ -68,6 +68,7 @@ export interface SystemInfo {
 }
 
 export interface ElectronAPI {
+  getPathForFile?: (file: File) => string
   readDir: (dirPath: string, showHidden?: boolean) => Promise<{ success: boolean; data?: FileItem[]; error?: string }>
   getDrives: () => Promise<{ success: boolean; data?: DriveItem[]; error?: string }>
   getDiskSpace: (dirPath: string) => Promise<{ success: boolean; free?: number; total?: number; error?: string }>

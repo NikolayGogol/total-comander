@@ -83,8 +83,23 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
   }
 }
 
+function getAppIcon(): string | undefined {
+  const possiblePaths = [
+    path.join(__dirname, '../build/icon.ico'),
+    path.join(__dirname, '../public/icon.ico'),
+    path.join(process.env.DIST || '', 'icon.ico'),
+    path.join(__dirname, 'icon.ico'),
+    path.join(process.resourcesPath || '', 'build/icon.ico'),
+    path.join(process.resourcesPath || '', 'icon.ico'),
+  ]
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p
+  }
+  return undefined
+}
+
 function createWindow() {
-  const iconPath = path.join(__dirname, '../build/icon.ico')
+  const iconPath = getAppIcon()
 
   win = new BrowserWindow({
     width: 1280,
@@ -92,7 +107,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'Total Commander',
-    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    icon: iconPath,
     titleBarStyle: 'default',
     autoHideMenuBar: true,
     backgroundColor: '#0c0f16',

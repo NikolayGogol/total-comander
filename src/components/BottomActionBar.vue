@@ -13,32 +13,6 @@
       <span>Rename</span>
     </button>
 
-    <!-- F3 View -->
-    <button 
-      class="fn-button" 
-      :disabled="!hasCursorItem"
-      data-tooltip="Швидкий перегляд файлу (F3)"
-      data-tooltip-pos="top"
-      title="Швидкий перегляд файлу (F3)"
-      @click="$emit('action', 'view')"
-    >
-      <span class="fn-key">F3</span>
-      <span>View</span>
-    </button>
-
-    <!-- F4 Edit -->
-    <button 
-      class="fn-button" 
-      :disabled="!hasCursorItem"
-      data-tooltip="Редагувати файл (F4)"
-      data-tooltip-pos="top"
-      title="Редагувати файл у вбудованому редакторі (F4)"
-      @click="$emit('action', 'edit')"
-    >
-      <span class="fn-key">F4</span>
-      <span>Edit</span>
-    </button>
-
     <!-- F5 Copy -->
     <button 
       class="fn-button" 
@@ -63,18 +37,6 @@
     >
       <span class="fn-key">F6</span>
       <span>Move</span>
-    </button>
-
-    <!-- F7 New Folder -->
-    <button 
-      class="fn-button" 
-      data-tooltip="Створити нову папку (F7)"
-      data-tooltip-pos="top"
-      title="Створити нову папку (F7)"
-      @click="$emit('action', 'mkdir')"
-    >
-      <span class="fn-key">F7</span>
-      <span>Folder</span>
     </button>
 
     <!-- Shift+F4 / New File -->
@@ -112,18 +74,6 @@
     >
       <span class="fn-key">F9</span>
       <span>Terminal</span>
-    </button>
-
-    <!-- F10 Search -->
-    <button 
-      class="fn-button" 
-      data-tooltip="Пошук файлів (Alt+F7 / F10)"
-      data-tooltip-pos="top"
-      title="Пошук файлів за назвою та текстом усередині (Alt+F7 або F10)"
-      @click="$emit('action', 'search')"
-    >
-      <span class="fn-key">F10</span>
-      <span>Search</span>
     </button>
   </footer>
 </template>

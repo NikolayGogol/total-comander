@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 function toPlain<T>(obj: T): T {
   if (obj === undefined || obj === null) return obj
@@ -10,6 +10,16 @@ function toPlain<T>(obj: T): T {
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  getPathForFile: (file: File) => {
+    try {
+      if (webUtils && typeof webUtils.getPathForFile === 'function') {
+        return webUtils.getPathForFile(file)
+      }
+      return (file as any).path || ''
+    } catch {
+      return (file as any).path || ''
+    }
+  },
   readDir: (dirPath: string, showHidden?: boolean) => ipcRenderer.invoke('fs:readDir', dirPath, showHidden),
   getDrives: () => ipcRenderer.invoke('fs:getDrives'),
   getDiskSpace: (dirPath: string) => ipcRenderer.invoke('fs:getDiskSpace', dirPath),

@@ -118,6 +118,7 @@
         <button class="btn-secondary" @click="$emit('cancel')">Cancel (Esc)</button>
         <button 
           v-if="opType === 'delete'" 
+          ref="confirmBtnRef"
           class="btn-danger" 
           :disabled="isProcessing"
           @click="submit"
@@ -126,6 +127,7 @@
         </button>
         <button 
           v-else 
+          ref="confirmBtnRef"
           class="btn-primary" 
           :disabled="isProcessing || (opType !== 'delete' && !inputText.trim())"
           @click="submit"
@@ -138,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { FolderPlus, FilePlus, Copy, Move, Trash2, Edit3, X } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -153,6 +155,7 @@ const emit = defineEmits<{
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
+const confirmBtnRef = ref<HTMLButtonElement | null>(null)
 const inputText = ref('')
 const isProcessing = ref(false)
 
@@ -190,12 +193,23 @@ const modalIconClass = computed(() => {
 })
 
 function submit() {
+  if (isProcessing.value) return
   if (props.opType !== 'delete' && !inputText.value.trim()) return
   isProcessing.value = true
   emit('confirm', {
     opType: props.opType,
     target: inputText.value.trim(),
   })
+}
+
+function handleModalKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    submit()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    emit('cancel')
+  }
 }
 
 onMounted(() => {
@@ -210,8 +224,18 @@ onMounted(() => {
   }
 
   nextTick(() => {
-    inputRef.value?.focus()
-    inputRef.value?.select()
+    if (props.opType === 'delete') {
+      confirmBtnRef.value?.focus()
+    } else {
+      inputRef.value?.focus()
+      inputRef.value?.select()
+    }
   })
+
+  window.addEventListener('keydown', handleModalKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleModalKeyDown)
 })
 </script>

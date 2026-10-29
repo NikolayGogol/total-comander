@@ -4,9 +4,10 @@
     :class="{ 'is-drag-over': isDragOverTable }"
     ref="wrapperRef"
     tabindex="0"
+    @click="handleWrapperClick"
     @keydown="handleKeyDown"
     @dragover.prevent="onTableDragOver"
-    @dragleave="isDragOverTable = false"
+    @dragleave="onTableDragLeave"
     @drop.prevent="onTableDrop"
     @contextmenu.prevent="handleTableContextMenu($event)"
   >
@@ -34,7 +35,7 @@
           class="file-row is-parent"
           :class="{ 'is-cursor': cursorIndex === -1 }"
           title="⤴ Перейти у батьківську директорію (Backspace або подвійний клік)"
-          @click="setCursor(-1)"
+          @click="handleParentClick"
           @dblclick="$emit('go-up')"
           @contextmenu.prevent.stop="handleTableContextMenu($event)"
         >
@@ -150,8 +151,10 @@ const emit = defineEmits<{
   (e: 'update-cursor', index: number): void
   (e: 'toggle-select', path: string): void
   (e: 'select-range', fromIndex: number, toIndex: number): void
+  (e: 'select-all'): void
+  (e: 'clear-selection'): void
   (e: 'sort', field: SortField): void
-  (e: 'drop-items', sourcePaths: string[], targetDir: string): void
+  (e: 'drop-items', sourcePaths: string[], targetDir: string, isMove?: boolean): void
   (e: 'context-menu', payload: { x: number; y: number; item: FileItem | null }): void
 }>()
 
@@ -172,6 +175,20 @@ function setCursor(idx: number) {
   emit('update-cursor', idx)
 }
 
+function handleParentClick() {
+  setCursor(-1)
+  emit('clear-selection')
+}
+
+function handleWrapperClick(e: MouseEvent) {
+  const target = e.target as HTMLElement | null
+  if (!target) return
+  if (target.closest('th')) return
+  if (!target.closest('.file-row')) {
+    emit('clear-selection')
+  }
+}
+
 function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
   if (e.shiftKey) {
     emit('select-range', props.cursorIndex >= 0 ? props.cursorIndex : 0, index)
@@ -179,6 +196,9 @@ function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
     emit('toggle-select', item.path)
     setCursor(index)
   } else {
+    if (props.selectedPaths.size > 0) {
+      emit('clear-selection')
+    }
     setCursor(index)
   }
 }
@@ -207,6 +227,22 @@ function handleTableContextMenu(e: MouseEvent) {
 // Keyboard navigation
 function handleKeyDown(e: KeyboardEvent) {
   const len = props.items.length
+
+  // Ctrl+A - Select All
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+    e.preventDefault()
+    emit('select-all')
+    return
+  }
+
+  // Escape - Clear selection
+  if (e.key === 'Escape') {
+    if (props.selectedPaths.size > 0) {
+      e.preventDefault()
+      emit('clear-selection')
+      return
+    }
+  }
 
   if (e.key === 'ArrowDown') {
     e.preventDefault()
@@ -297,31 +333,94 @@ function onDragStart(e: DragEvent, item: FileItem) {
   }
 
   e.dataTransfer.setData('application/json', JSON.stringify(paths))
+  e.dataTransfer.setData('text/plain', paths.join('\r\n'))
   e.dataTransfer.effectAllowed = 'copyMove'
 }
 
+function isDragSupported(e: DragEvent): boolean {
+  if (!e.dataTransfer) return false
+  const types = Array.from(e.dataTransfer.types || [])
+  return types.includes('application/json') || types.includes('Files') || types.includes('text/plain')
+}
+
+function extractDroppedPaths(e: DragEvent): string[] {
+  if (!e.dataTransfer) return []
+
+  // 1. Total Commander internal payload
+  const json = e.dataTransfer.getData('application/json')
+  if (json) {
+    try {
+      const parsed = JSON.parse(json)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed
+      }
+    } catch {}
+  }
+
+  // 2. Windows Explorer / Native files
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    const list: string[] = []
+    for (let i = 0; i < e.dataTransfer.files.length; i++) {
+      const file = e.dataTransfer.files[i]
+      let p = ''
+      if (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function') {
+        p = window.electronAPI.getPathForFile(file)
+      }
+      if (!p) {
+        p = (file as any).path || ''
+      }
+      if (p) {
+        list.push(p)
+      }
+    }
+    if (list.length > 0) {
+      return list
+    }
+  }
+
+  // 3. Plain text paths fallback
+  const text = e.dataTransfer.getData('text/plain')
+  if (text) {
+    const lines = text
+      .split(/[\r\n]+/)
+      .map((l) => l.trim().replace(/^["']|["']$/g, ''))
+      .filter((l) => /^[a-zA-Z]:[/\\]/.test(l) || l.startsWith('\\\\'))
+    if (lines.length > 0) {
+      return lines
+    }
+  }
+
+  return []
+}
+
 function onTableDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('application/json')) {
+  if (isDragSupported(e)) {
     isDragOverTable.value = true
-    e.dataTransfer.dropEffect = 'copy'
+    e.dataTransfer!.dropEffect = e.shiftKey ? 'move' : 'copy'
+  }
+}
+
+function onTableDragLeave(e: DragEvent) {
+  const related = e.relatedTarget as HTMLElement | null
+  if (!related || !wrapperRef.value?.contains(related)) {
+    isDragOverTable.value = false
   }
 }
 
 function onTableDrop(e: DragEvent) {
   isDragOverTable.value = false
   dragTargetItemPath.value = null
-  const data = e.dataTransfer?.getData('application/json')
-  if (!data) return
-  try {
-    const sources: string[] = JSON.parse(data)
-    emit('drop-items', sources, props.currentPath)
-  } catch {}
+  const sources = extractDroppedPaths(e)
+  if (sources.length > 0) {
+    const isMove = e.shiftKey
+    emit('drop-items', sources, props.currentPath, isMove)
+  }
 }
 
 function onItemDragOver(e: DragEvent, item: FileItem) {
-  if (item.isDirectory && e.dataTransfer?.types.includes('application/json')) {
+  if (item.isDirectory && isDragSupported(e)) {
     dragTargetItemPath.value = item.path
-    e.dataTransfer.dropEffect = 'copy'
+    e.dataTransfer!.dropEffect = e.shiftKey ? 'move' : 'copy'
   }
 }
 
@@ -334,13 +433,12 @@ function onItemDragLeave(item: FileItem) {
 function onItemDrop(e: DragEvent, item: FileItem) {
   dragTargetItemPath.value = null
   isDragOverTable.value = false
-  const data = e.dataTransfer?.getData('application/json')
-  if (!data) return
-  try {
-    const sources: string[] = JSON.parse(data)
+  const sources = extractDroppedPaths(e)
+  if (sources.length > 0) {
     const target = item.isDirectory ? item.path : props.currentPath
-    emit('drop-items', sources, target)
-  } catch {}
+    const isMove = e.shiftKey
+    emit('drop-items', sources, target, isMove)
+  }
 }
 
 // Icons & Modifiers

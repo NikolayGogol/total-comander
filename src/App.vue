@@ -41,6 +41,8 @@
         @update-cursor="(idx) => updateCursor('left', idx)"
         @toggle-select="(p) => toggleSelect('left', p)"
         @select-range="(from, to) => selectRange('left', from, to)"
+        @select-all="selectAllInActivePane"
+        @clear-selection="() => clearSelection('left')"
         @sort="(field) => setSort('left', field)"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
@@ -66,6 +68,8 @@
         @update-cursor="(idx) => updateCursor('right', idx)"
         @toggle-select="(p) => toggleSelect('right', p)"
         @select-range="(from, to) => selectRange('right', from, to)"
+        @select-all="selectAllInActivePane"
+        @clear-selection="() => clearSelection('right')"
         @sort="(field) => setSort('right', field)"
         @open-native="openFileNative"
         @drag-drop-items="handleDragDrop"
@@ -639,31 +643,43 @@ function updateCursor(paneKey: 'left' | 'right', idx: number) {
 
 function toggleSelect(paneKey: 'left' | 'right', path: string) {
   const p = paneKey === 'left' ? leftPane : rightPane
-  if (p.selectedPaths.has(path)) {
-    p.selectedPaths.delete(path)
+  const newSet = new Set(p.selectedPaths)
+  if (newSet.has(path)) {
+    newSet.delete(path)
     showShortcutToast('Space / Ins', 'Знято виділення')
   } else {
-    p.selectedPaths.add(path)
+    newSet.add(path)
     showShortcutToast('Space / Ins', 'Виділено елемент')
   }
+  p.selectedPaths = newSet
 }
 
 function selectRange(paneKey: 'left' | 'right', from: number, to: number) {
   const p = paneKey === 'left' ? leftPane : rightPane
   const start = Math.min(from, to)
   const end = Math.max(from, to)
+  const newSet = new Set(p.selectedPaths)
   for (let i = start; i <= end; i++) {
     if (p.items[i]) {
-      p.selectedPaths.add(p.items[i].path)
+      newSet.add(p.items[i].path)
     }
   }
+  p.selectedPaths = newSet
   p.cursorIndex = to
   showShortcutToast('Shift + Click', `Виділено діапазон (${p.selectedPaths.size} елементів)`)
 }
 
+function clearSelection(paneKey: 'left' | 'right') {
+  const p = paneKey === 'left' ? leftPane : rightPane
+  if (p.selectedPaths.size > 0) {
+    p.selectedPaths = new Set()
+  }
+}
+
 function selectAllInActivePane() {
   const p = activePaneState.value
-  p.items.forEach((item) => p.selectedPaths.add(item.path))
+  p.selectedPaths = new Set(p.items.map((item) => item.path))
+  window.getSelection()?.removeAllRanges()
   showShortcutToast('Ctrl + A', `Виділено всі файли (${p.items.length})`)
 }
 
@@ -681,8 +697,8 @@ function invertSelectionInActivePane() {
 
 function deselectAllInActivePane() {
   const p = activePaneState.value
-  p.selectedPaths.clear()
-  showShortcutToast('-', 'Знято виділення з усіх файлів')
+  p.selectedPaths = new Set()
+  showShortcutToast('Esc / -', 'Знято виділення з усіх файлів')
 }
 
 // Global Actions
@@ -911,19 +927,34 @@ function onFileSaved() {
   refreshAllPanes()
 }
 
-// Drag and drop between panes & folders
-async function handleDragDrop(sourcePaths: string[], targetDir: string) {
+// Drag and drop between panes & folders (and external Explorer files)
+async function handleDragDrop(sourcePaths: string[], targetDir: string, isMove: boolean = false) {
   try {
+    if (!sourcePaths || sourcePaths.length === 0) return
     const rawPaths: string[] = JSON.parse(JSON.stringify(sourcePaths))
-    const res = await window.electronAPI.copyPaths(rawPaths, targetDir)
+    const targetName = targetDir.split(/[/\\]/).filter(Boolean).pop() || targetDir
+
+    // Avoid dropping onto the exact same folder if single item is already in it
+    const firstParent = rawPaths[0].replace(/[/\\][^/\\]+$/, '')
+    if (rawPaths.length === 1 && firstParent.toLowerCase() === targetDir.toLowerCase().replace(/[/\\]$/, '')) {
+      showToast('Цільова папка збігається з вихідною', 'error')
+      return
+    }
+
+    const res = isMove
+      ? await window.electronAPI.movePaths(rawPaths, targetDir)
+      : await window.electronAPI.copyPaths(rawPaths, targetDir)
+
     if (res.success) {
-      showToast(`Copied ${rawPaths.length} item(s) to ${targetDir.split(/[/\\]/).filter(Boolean).pop() || 'target'}`, 'success')
+      const actionWord = isMove ? 'Переміщено' : 'Скопійовано'
+      const itemsWord = rawPaths.length === 1 ? 'елемент' : (rawPaths.length < 5 ? 'елементи' : 'елементів')
+      showToast(`${actionWord} ${rawPaths.length} ${itemsWord} у "${targetName}"`, 'success')
       refreshAllPanes()
     } else {
-      showToast(`Drag & drop error: ${res.error}`, 'error')
+      showToast(`Drag & drop помилка: ${res.error}`, 'error')
     }
   } catch (err: any) {
-    showToast(`Error: ${err.message}`, 'error')
+    showToast(`Помилка drag & drop: ${err.message}`, 'error')
   }
 }
 
@@ -1386,6 +1417,10 @@ onMounted(async () => {
       loadDrivesList(),
     ])
 
+    // Prevent browser from navigating away on dropped files
+    window.addEventListener('dragover', preventDragDefault)
+    window.addEventListener('drop', preventDragDefault)
+
     // Global keyboard listener to catch TC hotkeys across the window
     window.addEventListener('keydown', handleGlobalShortcuts)
 
@@ -1431,7 +1466,13 @@ onMounted(async () => {
   }
 })
 
+function preventDragDefault(e: DragEvent) {
+  e.preventDefault()
+}
+
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalShortcuts)
+  window.removeEventListener('dragover', preventDragDefault)
+  window.removeEventListener('drop', preventDragDefault)
 })
 </script>

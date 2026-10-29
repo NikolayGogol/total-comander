@@ -5,6 +5,4 @@ release
 .DS_Store
 *.local
 
-# Project exclude paths
-/build/
 powershell.cmd
