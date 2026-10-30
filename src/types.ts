@@ -139,7 +139,10 @@ export interface ElectronAPI {
     password?: string
   ) => Promise<{ success: boolean; error?: string }>
   getDirSize: (dirPath: string) => Promise<{ success: boolean; size?: number; count?: number; error?: string }>
-  analyzeFolderSizes: (targetPath: string) => Promise<{
+  analyzeFolderSizes: (
+    targetPath: string,
+    scanId?: string
+  ) => Promise<{
     success: boolean
     parentPath?: string
     folders?: FolderSizeItem[]
@@ -147,6 +150,13 @@ export interface ElectronAPI {
     totalFiles?: number
     error?: string
   }>
+  onFolderSizeItem: (
+    callback: (data: { scanId: string; folder: FolderSizeItem; current: number; total: number }) => void
+  ) => () => void
+  onFolderSizeProgress: (
+    callback: (data: { scanId: string; current: number; total: number; folderName?: string; isDone?: boolean }) => void
+  ) => () => void
+  cancelAnalyzeFolderSizes: (scanId?: string) => Promise<{ success: boolean }>
   findLargeFiles: (options: { targetDir: string; minSizeBytes: number; limit?: number }) => Promise<{
     success: boolean
     files?: LargeFileItem[]

@@ -172,62 +172,42 @@ const confirmBtnRef = ref<HTMLButtonElement | null>(null)
 const inputText = ref('')
 const isProcessing = ref(false)
 
+const TITLE_MAP: Record<string, string> = {
+  mkdir: 'Create Directory (F7)',
+  newfile: 'Create File (Shift+F4)',
+  copy: 'Copy Files (F5)',
+  move: 'Move / Rename (F6)',
+  rename: 'Rename (F2)',
+}
+
 const modalTitle = computed(() => {
-  switch (props.opType) {
-    case 'mkdir':
-      return 'Create Directory (F7)'
-    case 'newfile':
-      return 'Create File (Shift+F4)'
-    case 'copy':
-      return 'Copy Files (F5)'
-    case 'move':
-      return 'Move / Rename (F6)'
-    case 'delete':
-      return props.targetDir === 'PERMANENT' ? 'Permanent Delete (Shift+Del)' : 'Delete Files (F8)'
-    case 'rename':
-      return 'Rename (F2)'
-    default:
-      return 'Operation'
+  if (props.opType === 'delete') {
+    return props.targetDir === 'PERMANENT' ? 'Permanent Delete (Shift+Del)' : 'Delete Files (F8)'
   }
+  return TITLE_MAP[props.opType] || 'Operation'
 })
 
-const modalIcon = computed(() => {
-  switch (props.opType) {
-    case 'mkdir':
-      return FolderPlus
-    case 'newfile':
-      return FilePlus
-    case 'copy':
-      return Copy
-    case 'move':
-      return Move
-    case 'delete':
-      return Trash2
-    case 'rename':
-      return Edit3
-    default:
-      return FolderPlus
-  }
-})
+const ICON_MAP: Record<string, any> = {
+  mkdir: FolderPlus,
+  newfile: FilePlus,
+  copy: Copy,
+  move: Move,
+  delete: Trash2,
+  rename: Edit3,
+}
 
-const modalIconClass = computed(() => {
-  switch (props.opType) {
-    case 'mkdir':
-      return 'icon-emerald'
-    case 'newfile':
-      return 'icon-cyan'
-    case 'copy':
-      return 'icon-blue'
-    case 'move':
-      return 'icon-amber'
-    case 'delete':
-      return 'icon-rose'
-    case 'rename':
-      return 'icon-cyan'
-    default:
-      return 'icon-blue'
-  }
-})
+const modalIcon = computed(() => ICON_MAP[props.opType] || FolderPlus)
+
+const CLASS_MAP: Record<string, string> = {
+  mkdir: 'icon-emerald',
+  newfile: 'icon-cyan',
+  copy: 'icon-blue',
+  move: 'icon-amber',
+  delete: 'icon-rose',
+  rename: 'icon-cyan',
+}
+
+const modalIconClass = computed(() => CLASS_MAP[props.opType] || 'icon-blue')
 
 function submit() {
   if (isProcessing.value) return

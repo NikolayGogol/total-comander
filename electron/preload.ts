@@ -52,7 +52,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   extractArchive: (archivePath: string, targetDir: string, password?: string) =>
     ipcRenderer.invoke('fs:extractArchive', archivePath, targetDir, password),
   getDirSize: (dirPath: string) => ipcRenderer.invoke('fs:getDirSize', dirPath),
-  analyzeFolderSizes: (targetPath: string) => ipcRenderer.invoke('fs:analyzeFolderSizes', targetPath),
+  analyzeFolderSizes: (targetPath: string, scanId?: string) =>
+    ipcRenderer.invoke('fs:analyzeFolderSizes', targetPath, scanId),
+  onFolderSizeItem: (callback: (data: { scanId: string; folder: any; current: number; total: number }) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('folderSize:item', listener)
+    return () => ipcRenderer.removeListener('folderSize:item', listener)
+  },
+  onFolderSizeProgress: (
+    callback: (data: { scanId: string; current: number; total: number; folderName?: string; isDone?: boolean }) => void
+  ) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('folderSize:progress', listener)
+    return () => ipcRenderer.removeListener('folderSize:progress', listener)
+  },
+  cancelAnalyzeFolderSizes: (scanId?: string) => ipcRenderer.invoke('fs:cancelAnalyzeFolderSizes', scanId),
   findLargeFiles: (options: any) => ipcRenderer.invoke('fs:findLargeFiles', toPlain(options)),
   search: (dirPath: string, query: string, recursive: boolean, contentSearch?: string) =>
     ipcRenderer.invoke('fs:search', dirPath, query, recursive, contentSearch),

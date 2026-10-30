@@ -6,6 +6,8 @@ import { setupAppMenu } from './menu'
 import { registerFileSystemIpc } from './ipc/fileSystem'
 import { registerArchiveIpc } from './ipc/archive'
 import { registerDiskIpc, refreshDriveTypes, setupVolumeWatcher } from './ipc/disk'
+import { registerFolderSizeIpc } from './ipc/folderSize'
+import { registerSearchIpc } from './ipc/search'
 import { registerClipboardIpc } from './ipc/clipboard'
 
 app.setName('Total Commander')
@@ -70,6 +72,8 @@ function setupIpcHandlers(): void {
   registerFileSystemIpc()
   registerArchiveIpc()
   registerDiskIpc(() => win)
+  registerFolderSizeIpc()
+  registerSearchIpc()
   registerClipboardIpc()
 }
 

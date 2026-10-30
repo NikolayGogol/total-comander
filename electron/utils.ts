@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
-import { exec } from 'child_process'
+import { exec, execSync } from 'child_process'
 
 export function formatPermissions(mode: number, isDirectory: boolean): string {
   const type = isDirectory ? 'd' : '-'
@@ -103,6 +103,50 @@ export function getUnrarPath(): string | null {
     if (fs.existsSync(p)) return p
   }
   return null
+}
+
+export function getWindowsLockedFiles(driveRoot: string): Array<{
+  path: string
+  name: string
+  size: number
+  mtime: number
+  extension: string
+  dir: string
+}> {
+  const list: Array<{
+    path: string
+    name: string
+    size: number
+    mtime: number
+    extension: string
+    dir: string
+  }> = []
+  if (process.platform !== 'win32') return list
+
+  const cleanRoot = driveRoot.replace(/[/\\]+$/, '') + '\\'
+  const lockedCandidates = ['hiberfil.sys', 'pagefile.sys', 'swapfile.sys', 'MEMORY.DMP']
+
+  for (const fileName of lockedCandidates) {
+    const full = path.join(cleanRoot, fileName)
+    try {
+      const out = execSync(`cmd /c dir /-c /a "${full}"`, { encoding: 'utf8', timeout: 800 })
+      const match = out.match(/File\(s\)\s+(\d+)\s+bytes/i)
+      if (match) {
+        const sz = parseInt(match[1], 10)
+        if (sz > 0) {
+          list.push({
+            path: full,
+            name: fileName,
+            size: sz,
+            mtime: Date.now(),
+            extension: fileName.split('.').pop() || 'sys',
+            dir: cleanRoot,
+          })
+        }
+      }
+    } catch {}
+  }
+  return list
 }
 
 export async function safeEnsureDir(dirPath: string): Promise<void> {
