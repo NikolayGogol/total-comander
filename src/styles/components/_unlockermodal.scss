@@ -1,0 +1,396 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.unlocker-modal-card {
+  width: 660px;
+  max-width: 95vw;
+}
+
+.text-amber {
+  color: var(--accent-amber);
+}
+
+.text-red {
+  color: var(--accent-rose);
+}
+
+.text-blue {
+  color: var(--accent-blue);
+}
+
+.text-green {
+  color: var(--accent-emerald);
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Target Object Card
+.unlocker-target-card {
+  display: flex;
+  align-items: center;
+  gap: $size-space-md;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  padding: $size-space-md $size-space-lg;
+  margin-bottom: $size-space-lg;
+
+  .target-icon-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .icon-folder {
+      color: var(--color-dir);
+    }
+
+    .icon-file {
+      color: var(--accent-blue);
+    }
+  }
+
+  .target-details {
+    flex: 1;
+    min-width: 0;
+
+    .target-name {
+      font-weight: $font-weight-semibold;
+      font-size: $font-size-base;
+      color: var(--text-main);
+      @include truncate-text;
+    }
+
+    .target-path {
+      font-size: $font-size-xs;
+      color: var(--text-dim);
+      font-family: $font-family-mono;
+      @include truncate-text;
+      margin-top: $size-space-2xs;
+    }
+  }
+}
+
+// Section styling
+.unlocker-section {
+  margin-bottom: $size-space-lg;
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: $size-space-xs;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: $size-space-sm;
+
+    .section-title-icon {
+      color: var(--accent-cyan);
+    }
+  }
+}
+
+// Status Box
+.unlocker-status-box {
+  border-radius: $radius-md;
+  padding: $size-space-md $size-space-lg;
+  font-size: $font-size-sm;
+
+  &.is-loading {
+    display: flex;
+    align-items: center;
+    gap: $size-space-md;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+  }
+
+  &.is-clean {
+    display: flex;
+    align-items: center;
+    gap: $size-space-md;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: var(--accent-emerald);
+
+    .clean-icon {
+      flex-shrink: 0;
+    }
+  }
+
+  &.is-warning {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    padding: $size-space-md;
+
+    .status-warning-header {
+      display: flex;
+      align-items: center;
+      gap: $size-space-xs;
+      color: var(--accent-amber);
+      font-weight: $font-weight-medium;
+      margin-bottom: $size-space-md;
+
+      .warning-icon {
+        flex-shrink: 0;
+      }
+    }
+  }
+}
+
+// Process Table
+.process-table-wrap {
+  max-height: 160px;
+  overflow-y: auto;
+  border-radius: $radius-sm;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  @include custom-scrollbar;
+
+  .process-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: $font-size-xs;
+    text-align: left;
+
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--bg-table-header);
+      padding: $size-space-xs $size-space-sm;
+      color: var(--text-dim);
+      font-weight: $font-weight-semibold;
+      border-bottom: 1px solid var(--border-subtle);
+      z-index: 1;
+    }
+
+    td {
+      padding: $size-space-xs $size-space-sm;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+      color: var(--text-main);
+    }
+
+    .th-chk,
+    .td-chk {
+      width: 28px;
+      text-align: center;
+
+      input[type='checkbox'] {
+        cursor: pointer;
+      }
+    }
+
+    .th-pid,
+    .td-pid {
+      width: 65px;
+
+      code {
+        font-family: $font-family-mono;
+        background: var(--bg-subtle);
+        padding: 1px 4px;
+        border-radius: $radius-xs;
+      }
+    }
+
+    .th-name,
+    .td-name {
+      width: 140px;
+      @include truncate-text;
+    }
+
+    .th-app,
+    .td-app {
+      color: var(--text-muted);
+      @include truncate-text;
+    }
+
+    .th-act,
+    .td-act {
+      width: 75px;
+      text-align: right;
+    }
+
+    .btn-kill-proc {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 6px;
+      font-size: $font-size-2xs;
+      border-radius: $radius-xs;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--accent-rose);
+      cursor: pointer;
+      transition: all 0.12s ease;
+
+      &:hover:not(:disabled) {
+        background: var(--accent-rose);
+        color: #ffffff;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+// Action Option Cards
+.action-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $size-space-sm;
+
+  .action-option-card {
+    display: flex;
+    align-items: flex-start;
+    gap: $size-space-sm;
+    padding: $size-space-md;
+    border-radius: $radius-md;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-subtle);
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    input[type='radio'] {
+      margin-top: 3px;
+      cursor: pointer;
+    }
+
+    .action-card-content {
+      flex: 1;
+      min-width: 0;
+
+      .action-card-header {
+        display: flex;
+        align-items: center;
+        gap: $size-space-xs;
+        margin-bottom: 2px;
+
+        .action-name {
+          font-size: $font-size-xs;
+          font-weight: $font-weight-semibold;
+          color: var(--text-main);
+        }
+      }
+
+      .action-desc {
+        font-size: $font-size-2xs;
+        color: var(--text-muted);
+        line-height: 1.3;
+      }
+    }
+
+    &:hover {
+      border-color: var(--border-hover);
+      background: var(--row-hover);
+    }
+
+    &.is-selected {
+      border-color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.08);
+      box-shadow: 0 0 0 1px var(--accent-blue);
+    }
+  }
+}
+
+// Extra field for Move/Copy path & Delete option
+.action-extra-field {
+  margin-top: $size-space-md;
+
+  .extra-label {
+    display: block;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    color: var(--text-secondary);
+    margin-bottom: $size-space-xs;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: $size-space-xs $size-space-md;
+    border-radius: $radius-sm;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-input);
+    color: var(--text-main);
+    font-size: $font-size-sm;
+    font-family: $font-family-mono;
+    outline: none;
+
+    &:focus {
+      border-color: var(--accent-blue);
+    }
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: $size-space-sm;
+    font-size: $font-size-xs;
+    color: var(--text-secondary);
+    cursor: pointer;
+
+    input[type='checkbox'] {
+      cursor: pointer;
+    }
+  }
+}
+
+// Error Box
+.unlocker-error-box {
+  display: flex;
+  align-items: center;
+  gap: $size-space-xs;
+  padding: $size-space-sm $size-space-md;
+  border-radius: $radius-sm;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: var(--accent-rose);
+  font-size: $font-size-xs;
+  margin-top: $size-space-md;
+}
+
+// Footer
+.unlocker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .btn-refresh-scan {
+    display: inline-flex;
+    align-items: center;
+    gap: $size-space-xs;
+  }
+
+  .footer-actions {
+    display: flex;
+    align-items: center;
+    gap: $size-space-sm;
+  }
+
+  .btn-danger {
+    background-color: var(--accent-rose) !important;
+    border-color: var(--accent-rose) !important;
+    color: #ffffff !important;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+  }
+}
+

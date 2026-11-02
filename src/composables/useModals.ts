@@ -94,6 +94,24 @@ export function useModals(options: {
     currentDir: '',
   })
 
+  // Unlocker Modal
+  const unlockerModal = reactive({
+    open: false,
+    targetPath: '',
+    targetName: '',
+    isDirectory: false,
+    oppositePath: '',
+  })
+
+  function openUnlockerModal(item: FileItem) {
+    if (!item) return
+    unlockerModal.targetPath = item.path
+    unlockerModal.targetName = item.name
+    unlockerModal.isDirectory = item.isDirectory
+    unlockerModal.oppositePath = oppositePaneState.value?.currentPath || ''
+    unlockerModal.open = true
+  }
+
   // Right-Click Context Menu
   const contextMenu = reactive({
     open: false,
@@ -412,6 +430,12 @@ export function useModals(options: {
         }
         break
 
+      case 'unlocker':
+        if (item) {
+          openUnlockerModal(item)
+        }
+        break
+
       case 'show-in-folder':
         if (item) {
           window.electronAPI.showInFolder(item.path)
@@ -518,6 +542,20 @@ export function useModals(options: {
     refreshAllPanes()
   }
 
+  function onUnlockerActionCompleted(payload: { action: string; targetPath: string }) {
+    refreshAllPanes()
+    const name = payload.targetPath.split(/[/\\]/).filter(Boolean).pop() || payload.targetPath
+    if (payload.action === 'delete') {
+      showToast(`Об'єкт "${name}" успішно розблоковано та видалено`, 'success')
+    } else if (payload.action === 'move') {
+      showToast(`Об'єкт "${name}" успішно розблоковано та переміщено`, 'success')
+    } else if (payload.action === 'copy') {
+      showToast(`Об'єкт "${name}" успішно скопійовано`, 'success')
+    } else {
+      showToast(`Процеси успішно завершено, об'єкт "${name}" розблоковано`, 'success')
+    }
+  }
+
   async function handleDragDrop(sourcePaths: string[], targetDir: string, isMove: boolean = false) {
     try {
       if (!sourcePaths || sourcePaths.length === 0) return
@@ -558,6 +596,7 @@ export function useModals(options: {
     folderSizeModal,
     createArchiveModal,
     archiveViewModal,
+    unlockerModal,
     contextMenu,
     openContextMenu,
     openViewer,
@@ -567,6 +606,7 @@ export function useModals(options: {
     openCreateArchiveModal,
     openArchiveViewer,
     openFolderSizeModal,
+    openUnlockerModal,
     jumpToSearchFile,
     openActiveTerminal,
     openFileNative,
@@ -576,6 +616,7 @@ export function useModals(options: {
     onArchiveCreated,
     onArchiveExtracted,
     onFileSaved,
+    onUnlockerActionCompleted,
     handleDragDrop,
   }
 }

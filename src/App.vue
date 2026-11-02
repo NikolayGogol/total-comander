@@ -173,6 +173,17 @@
       @toast="showToast"
     />
 
+    <!-- Unlocker Utility Modal (Right-Click Menu) -->
+    <UnlockerModal
+      v-if="unlockerModal.open"
+      :target-path="unlockerModal.targetPath"
+      :target-name="unlockerModal.targetName"
+      :is-directory="unlockerModal.isDirectory"
+      :opposite-path="unlockerModal.oppositePath"
+      @close="unlockerModal.open = false"
+      @action-completed="onUnlockerActionCompleted"
+    />
+
     <!-- Right-Click Context Menu -->
     <ContextMenu
       v-if="contextMenu.open"
@@ -209,6 +220,7 @@ import CreateArchiveModal from '@/components/CreateArchiveModal.vue'
 import ArchiveViewModal from '@/components/ArchiveViewModal.vue'
 import LargeFilesModal from '@/components/LargeFilesModal.vue'
 import FolderSizeModal from '@/components/FolderSizeModal.vue'
+import UnlockerModal from '@/components/UnlockerModal.vue'
 
 import { useToast } from '@/composables/useToast'
 import { usePanes } from '@/composables/usePanes'
@@ -292,6 +304,7 @@ const {
   folderSizeModal,
   createArchiveModal,
   archiveViewModal,
+  unlockerModal,
   contextMenu,
   openContextMenu,
   openSearchModal,
@@ -308,6 +321,7 @@ const {
   onArchiveCreated,
   onArchiveExtracted,
   onFileSaved,
+  onUnlockerActionCompleted,
   handleDragDrop,
 } = useModals({
   activePaneId,

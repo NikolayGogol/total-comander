@@ -9,6 +9,8 @@ import { registerDiskIpc, refreshDriveTypes, setupVolumeWatcher } from './ipc/di
 import { registerFolderSizeIpc } from './ipc/folderSize'
 import { registerSearchIpc } from './ipc/search'
 import { registerClipboardIpc } from './ipc/clipboard'
+import { registerIconsIpc } from './ipc/icons'
+import { registerUnlockerIpc } from './ipc/unlocker'
 
 app.setName('Total Commander')
 app.name = 'Total Commander'
@@ -75,6 +77,8 @@ function setupIpcHandlers(): void {
   registerFolderSizeIpc()
   registerSearchIpc()
   registerClipboardIpc()
+  registerIconsIpc()
+  registerUnlockerIpc()
 }
 
 app.whenReady().then(() => {

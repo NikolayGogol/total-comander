@@ -126,20 +126,20 @@
         >
           <td class="col-name">
             <div class="col-icon-name">
+              <img
+                v-if="!item.isDirectory && getNativeIcon(item)"
+                :src="getNativeIcon(item)"
+                class="item-icon-native"
+                alt=""
+                draggable="false"
+                :title="getItemIconTitle(item)"
+              />
               <component
                 :is="getIconComponent(item)"
+                v-else
                 :size="15"
                 :class="['item-icon', getIconModifier(item)]"
-                :title="
-                  item.isDirectory
-                    ? 'Папка: ' + item.name
-                    : (item.extension ? item.extension.toUpperCase() + ' ' : '') +
-                      'Файл: ' +
-                      item.name +
-                      ' (' +
-                      formatBytes(item.size) +
-                      ')'
-                "
+                :title="getItemIconTitle(item)"
               />
               <span
                 class="item-name"
@@ -194,10 +194,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import type { FileItem, SortField } from '@/types'
 import { formatBytes, formatDate, formatNumber, getFileCategory, getFileTypeDescription } from '@/utils/formatters'
 import { Archive, Code, CornerLeftUp, File, FileText, Film, Folder, Image, Music } from 'lucide-vue-next'
+import { useFileIcons } from '@/composables/useFileIcons'
 
 const props = defineProps<{
   items: FileItem[]
@@ -229,6 +230,18 @@ const wrapperRef = ref<HTMLElement | null>(null)
 const tableRef = ref<HTMLTableElement | null>(null)
 const isDragOverTable = ref(false)
 const dragTargetItemPath = ref<string | null>(null)
+
+const { getNativeIcon, fetchIconsForItems } = useFileIcons()
+
+watch(
+  () => props.items,
+  (newItems) => {
+    if (newItems && newItems.length > 0) {
+      fetchIconsForItems(newItems)
+    }
+  },
+  { immediate: true }
+)
 
 interface ColumnWidths {
   name: number
@@ -389,12 +402,24 @@ function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
   }
 }
 
-function handleRowDblClick(item: FileItem) {
+async function handleRowDblClick(item: FileItem) {
   if (item.isDirectory) {
     emit('navigate', item.path)
-  } else {
-    emit('open-native', item)
+    return
   }
+
+  // Windows Shortcut (.lnk) support: navigate into target directory if it points to a folder
+  if (item.extension?.toLowerCase() === 'lnk' && window.electronAPI?.resolveShortcut) {
+    try {
+      const linkInfo = await window.electronAPI.resolveShortcut(item.path)
+      if (linkInfo && linkInfo.isDirectory && linkInfo.target) {
+        emit('navigate', linkInfo.target)
+        return
+      }
+    } catch {}
+  }
+
+  emit('open-native', item)
 }
 
 function handleRowContextMenu(e: MouseEvent, item: FileItem, index: number) {
@@ -499,11 +524,7 @@ function handleKeyDown(e: KeyboardEvent) {
       emit('go-up')
     } else if (props.cursorIndex >= 0 && props.cursorIndex < len) {
       const item = props.items[props.cursorIndex]
-      if (item.isDirectory) {
-        emit('navigate', item.path)
-      } else {
-        emit('open-native', item)
-      }
+      handleRowDblClick(item)
     }
   }
 }
@@ -704,9 +725,17 @@ function getIconComponent(item: FileItem) {
       return FileText
     case 'archive':
       return Archive
+    case 'shortcut':
+      return CornerLeftUp
     default:
       return File
   }
+}
+
+function getItemIconTitle(item: FileItem): string {
+  if (item.isDirectory) return `Папка: ${item.name}`
+  const ext = item.extension ? `${item.extension.toUpperCase()} ` : ''
+  return `${ext}Файл: ${item.name} (${formatBytes(item.size)})`
 }
 
 function getIconModifier(item: FileItem): string {

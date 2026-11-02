@@ -19,7 +19,7 @@ export function formatDate(timestamp?: number | null, format = 'YYYY-MM-DD HH:mm
 }
 
 export type FileCategory =
-  'folder' | 'exe' | 'archive' | 'image' | 'video' | 'audio' | 'code' | 'doc' | 'system' | 'default'
+  'folder' | 'exe' | 'archive' | 'image' | 'video' | 'audio' | 'code' | 'doc' | 'system' | 'shortcut' | 'default'
 
 export interface CategoryInfo {
   category: FileCategory
@@ -34,6 +34,11 @@ export function getFileCategory(nameOrExt?: string | null, isDir?: boolean): Cat
 
   const str = (typeof nameOrExt === 'string' ? nameOrExt : '').toLowerCase()
   const cleanExt = str.includes('.') ? str.split('.').filter(Boolean).pop()! : str.replace('.', '').trim()
+
+  // Shortcuts and Links
+  if (['lnk', 'url'].includes(cleanExt)) {
+    return { category: 'shortcut', icon: 'CornerLeftUp', classModifier: 'icon-shortcut' }
+  }
 
   // Executables / Binaries / Scripts for Windows
   if (['exe', 'msi', 'bat', 'cmd', 'ps1', 'com', 'scr', 'vbs', 'wsf'].includes(cleanExt)) {
@@ -112,6 +117,9 @@ export function getFileTypeDescription(nameOrExt?: string | null, isDir?: boolea
   const str = (typeof nameOrExt === 'string' ? nameOrExt : '').toLowerCase()
   const cleanExt = str.includes('.') ? str.split('.').filter(Boolean).pop()! : str.replace('.', '').trim()
 
+  if (cleanExt === 'lnk') return 'Ярлик Windows (.lnk)'
+  if (cleanExt === 'url') return 'Інтернет-ярлик (.url)'
+  if (cleanExt === 'ico') return 'Значок / Іконка Windows (.ico)'
   if (cleanExt === 'exe') return 'Виконуваний файл Windows (.exe)'
   if (cleanExt === 'msi') return 'Інсталятор Windows (.msi)'
   if (cleanExt === 'bat' || cleanExt === 'cmd') return 'Пакетний файл Windows'

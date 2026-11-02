@@ -199,6 +199,16 @@ body.is-resizing-columns {
   align-items: center;
   gap: $size-space-md;
 
+  .item-icon-native {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    flex-shrink: 0;
+    image-rendering: -webkit-optimize-contrast;
+    pointer-events: none;
+    user-select: none;
+  }
+
   .item-icon {
     flex-shrink: 0;
 
@@ -238,6 +248,10 @@ body.is-resizing-columns {
 
     &.icon-system {
       color: var(--color-system);
+    }
+
+    &.icon-shortcut {
+      color: $color-accent-blue;
     }
 
     &.icon-default {

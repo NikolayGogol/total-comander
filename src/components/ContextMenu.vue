@@ -90,6 +90,11 @@
 
         <div class="context-menu-separator"></div>
 
+        <button class="context-menu-item is-unlocker" @click="trigger('unlocker')">
+          <Unlock :size="14" class="item-icon" />
+          <span class="item-label">Unlocker (Розблокувати...)</span>
+        </button>
+
         <button class="context-menu-item" @click="trigger('show-in-folder')">
           <ExternalLink :size="14" class="item-icon" />
           <span class="item-label">Показати у Провіднику</span>
@@ -178,6 +183,7 @@ import {
   FolderArchive,
   HardDrive,
   PieChart,
+  Unlock,
 } from 'lucide-vue-next'
 
 const props = defineProps<{

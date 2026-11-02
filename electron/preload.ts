@@ -74,6 +74,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('clipboard:copyFiles', toPlain(paths), action),
   getClipboardFiles: () => ipcRenderer.invoke('clipboard:getFiles'),
   clearClipboard: () => ipcRenderer.invoke('clipboard:clear'),
+  getFileIcon: (filePath: string) => ipcRenderer.invoke('fs:getFileIcon', filePath),
+  getFileIcons: (items: any[]) => ipcRenderer.invoke('fs:getFileIcons', toPlain(items)),
+  resolveShortcut: (filePath: string) => ipcRenderer.invoke('fs:resolveShortcut', filePath),
+  findLockingProcesses: (targetPath: string) => ipcRenderer.invoke('unlocker:findLockingProcesses', targetPath),
+  killProcesses: (pids: number[]) => ipcRenderer.invoke('unlocker:killProcesses', toPlain(pids)),
+  unlockAndExecute: (options: any) => ipcRenderer.invoke('unlocker:unlockAndExecute', toPlain(options)),
   onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll' | 'refresh') => void) => {
     const listener = (_: any, cmd: any) => callback(cmd)
     ipcRenderer.on('app:command', listener)

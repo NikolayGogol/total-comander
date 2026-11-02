@@ -11,6 +11,7 @@ export interface FileItem {
   permissions: string
   extension: string
   isHidden: boolean
+  icon?: string
 }
 
 export interface DriveItem {
@@ -85,6 +86,20 @@ export interface FolderSizeItem {
   size: number
   fileCount: number
   dirCount: number
+}
+
+export interface LockingProcess {
+  pid: number
+  name: string
+  appName: string
+}
+
+export interface UnlockerExecuteOptions {
+  targetPath: string
+  action: 'delete' | 'move' | 'copy' | 'unlock'
+  pidsToKill?: number[]
+  destinationDir?: string
+  permanentDelete?: boolean
 }
 
 export interface CreateArchiveOptions {
@@ -176,6 +191,24 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; count?: number; error?: string }>
   getClipboardFiles: () => Promise<{ success: boolean; paths?: string[]; action?: 'copy' | 'cut'; error?: string }>
   clearClipboard: () => Promise<{ success: boolean }>
+  getFileIcon: (filePath: string) => Promise<string | null>
+  getFileIcons: (
+    items: Array<{ path: string; name?: string; isDirectory: boolean; extension: string }>
+  ) => Promise<Record<string, string>>
+  resolveShortcut: (filePath: string) => Promise<{
+    target: string
+    arguments?: string
+    isDirectory: boolean
+    description?: string
+    iconPath?: string
+  } | null>
+  findLockingProcesses: (
+    targetPath: string
+  ) => Promise<{ success: boolean; processes?: LockingProcess[]; error?: string }>
+  killProcesses: (pids: number[]) => Promise<{ success: boolean; killedCount: number; errors?: string[] }>
+  unlockAndExecute: (
+    options: UnlockerExecuteOptions
+  ) => Promise<{ success: boolean; killedCount?: number; actionExecuted?: string; error?: string }>
   onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll' | 'refresh') => void) => () => void
   getSystemInfo: () => Promise<SystemInfo>
 }
