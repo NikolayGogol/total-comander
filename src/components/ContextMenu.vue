@@ -53,6 +53,7 @@ import {
   Archive,
   PieChart,
   HardDrive,
+  Unlock,
 } from "lucide-vue-next";
 
 interface ContextItemDef {
@@ -210,13 +211,13 @@ const itemsList = computed<ContextItemDef[]>(() => {
     list.push({ isDivider: true });
     list.push({
       action: "copy",
-      label: "Копіювати у ціль",
+      label: "Копіювати",
       icon: Copy,
       shortcut: "F5",
     });
     list.push({
       action: "move",
-      label: "Перемістити у ціль",
+      label: "Перемістити",
       icon: Move,
       shortcut: "F6",
     });
@@ -260,6 +261,11 @@ const itemsList = computed<ContextItemDef[]>(() => {
     });
 
     list.push({ isDivider: true });
+    list.push({
+      action: "unlocker",
+      label: "Розблокувати (Unlocker)...",
+      icon: Unlock,
+    });
     list.push({
       action: "delete",
       label: "Видалити у Смітник",

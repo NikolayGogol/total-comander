@@ -236,6 +236,8 @@ export function getFileTypeDescription(
 
 export function getShortItemTooltip(item?: any): string {
   if (!item) return "";
+  if (item.isAlias)
+    return `↗ ${item.name} • Ярлик до ${item.aliasTarget || item.path}`;
   if (item.isApp) return `🚀 ${item.name} • Програма macOS`;
   if (item.isDirectory) return `📁 ${item.name} • Папка`;
   const ext = item.extension
@@ -246,6 +248,16 @@ export function getShortItemTooltip(item?: any): string {
 
 export function getItemTooltip(item?: any): string {
   if (!item) return "";
+  if (item.isAlias) {
+    return [
+      `↗ Ярлик: ${item.name || ""}`,
+      `Тип: Ярлик macOS (Alias / Shortcut)`,
+      `Ціль: ${item.aliasTarget || item.path || ""}`,
+      `Шлях: ${item.path || ""}`,
+      `Змінено: ${formatDate(item.mtime)}`,
+      `💡 Подвійний клік або Enter — відкрити цільовий об'єкт`,
+    ].join("\n");
+  }
   if (item.isApp) {
     return [
       `🚀 Програма: ${item.name || ""}`,

@@ -1,0 +1,296 @@
+@use "../variables" as *;
+@use "../mixins" as *;
+
+.virtual-disks-modal {
+  width: 780px;
+  max-width: 94vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-lg;
+  box-shadow: $shadow-modal;
+  overflow: hidden;
+  user-select: none;
+}
+
+.virtual-disks-title-box {
+  display: flex;
+  align-items: center;
+  gap: $size-space-md;
+
+  .modal-icon {
+    color: var(--accent-cyan);
+    flex-shrink: 0;
+  }
+
+  .modal-title-text {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: var(--text-main);
+  }
+
+  .badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: $radius-full;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: var(--accent-blue);
+    font-size: $font-size-2xs;
+    font-weight: $font-weight-bold;
+  }
+}
+
+.virtual-disks-body {
+  display: flex;
+  flex-direction: column;
+  padding: $size-space-lg $size-space-xl;
+  gap: $size-space-md;
+  overflow: hidden;
+  flex: 1;
+}
+
+.virtual-disks-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $size-space-md;
+
+  .toolbar-info {
+    font-size: $font-size-xs;
+    color: var(--text-dim);
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: $size-space-sm;
+  }
+}
+
+.virtual-disks-list-container {
+  min-height: 200px;
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-sm;
+  background-color: var(--bg-panel);
+  padding: $size-space-md;
+  @include custom-scrollbar;
+}
+
+.virtual-disks-cards {
+  display: flex;
+  flex-direction: column;
+  gap: $size-space-sm;
+}
+
+.virtual-disk-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $size-space-md $size-space-lg;
+  border-radius: $radius-sm;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.12s ease;
+
+  &:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .card-main-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .card-header-row {
+    display: flex;
+    align-items: center;
+    gap: $size-space-sm;
+
+    .disk-icon {
+      color: var(--accent-cyan);
+      flex-shrink: 0;
+    }
+
+    .disk-name {
+      font-weight: $font-weight-semibold;
+      font-size: $font-size-sm;
+      color: var(--text-main);
+    }
+
+    .disk-badge-type {
+      font-size: $font-size-2xs;
+      padding: 1px 6px;
+      border-radius: $radius-xs;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: $font-weight-bold;
+    }
+
+    .disk-space-text {
+      font-size: $font-size-xs;
+      font-family: $font-family-mono;
+      color: var(--accent-cyan);
+      margin-left: auto;
+      padding-right: $size-space-md;
+    }
+  }
+
+  .card-meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: $font-size-2xs;
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .meta-label {
+      color: var(--text-dim);
+      font-weight: $font-weight-medium;
+      flex-shrink: 0;
+    }
+
+    .meta-value {
+      color: var(--text-main);
+      @include truncate-text;
+
+      &.mono {
+        font-family: $font-family-mono;
+        color: var(--text-dim);
+      }
+    }
+  }
+
+  .card-actions-col {
+    display: flex;
+    align-items: center;
+    gap: $size-space-xs;
+    margin-left: $size-space-md;
+    flex-shrink: 0;
+
+    .btn-action-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px $size-space-sm;
+      border-radius: $radius-sm;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      color: var(--text-main);
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+      cursor: pointer;
+      transition: all 0.12s ease;
+
+      &:hover {
+        background: rgba(59, 130, 246, 0.18);
+        border-color: rgba(59, 130, 246, 0.5);
+        color: var(--accent-blue);
+      }
+    }
+
+    .btn-action-eject {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px $size-space-sm;
+      border-radius: $radius-sm;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: var(--accent-amber);
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+      cursor: pointer;
+      transition: all 0.12s ease;
+
+      &:hover:not(:disabled) {
+        background: var(--accent-amber);
+        color: #ffffff;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .btn-action-trash {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px $size-space-sm;
+      border-radius: $radius-sm;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      color: var(--accent-rose);
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+      cursor: pointer;
+      transition: all 0.12s ease;
+
+      &:hover:not(:disabled) {
+        background: var(--accent-rose);
+        color: #ffffff;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+.btn-danger-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: $size-space-xs;
+  padding: 5px $size-space-md;
+  border-radius: $radius-sm;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: var(--accent-rose);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: all 0.12s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-rose);
+    color: #ffffff;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.footer-hint {
+  display: flex;
+  align-items: center;
+  gap: $size-space-xs;
+  font-size: $font-size-2xs;
+  color: var(--text-dim);
+  max-width: 70%;
+}
+

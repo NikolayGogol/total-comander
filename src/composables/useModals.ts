@@ -68,6 +68,24 @@ export function useModals() {
     folderPath: "",
   });
 
+  const unlockerModal = reactive<{
+    open: boolean;
+    targetPath: string;
+    targetName: string;
+    isDirectory: boolean;
+    oppositePath: string;
+  }>({
+    open: false,
+    targetPath: "",
+    targetName: "",
+    isDirectory: false,
+    oppositePath: "",
+  });
+
+  const virtualDisksModal = reactive({
+    open: false,
+  });
+
   const contextMenuState = reactive<{
     visible: boolean;
     x: number;
@@ -91,7 +109,9 @@ export function useModals() {
       createArchiveModal.open ||
       archiveViewModal.open ||
       largeFilesModal.open ||
-      folderSizeModal.open
+      folderSizeModal.open ||
+      unlockerModal.open ||
+      virtualDisksModal.open
     );
   });
 
@@ -104,6 +124,8 @@ export function useModals() {
     archiveViewModal.open = false;
     largeFilesModal.open = false;
     folderSizeModal.open = false;
+    unlockerModal.open = false;
+    virtualDisksModal.open = false;
   }
 
   return {
@@ -115,6 +137,8 @@ export function useModals() {
     archiveViewModal,
     largeFilesModal,
     folderSizeModal,
+    unlockerModal,
+    virtualDisksModal,
     contextMenuState,
     isAnyModalOpen,
     closeAllModals,

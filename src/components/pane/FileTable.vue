@@ -137,38 +137,39 @@
         >
           <td class="col-name">
             <div class="col-icon-name">
-              <img
-                v-if="item.appIcon"
-                :src="item.appIcon"
-                class="item-icon app-icon-img"
-                :alt="item.name"
-              />
-              <component
-                v-else
-                :is="getIconComponent(item)"
-                :size="14"
-                :class="['item-icon', getIconModifier(item)]"
-                :title="
-                  item.isApp
-                    ? 'Програма macOS: ' + item.name
-                    : item.isDirectory
-                      ? 'Папка: ' + item.name
-                      : (item.extension
-                          ? item.extension.toUpperCase() + ' '
-                          : '') +
-                        'Файл: ' +
-                        item.name +
-                        ' (' +
-                        formatBytes(item.size) +
-                        ')'
-                "
-              />
+              <div class="item-icon-wrapper">
+                <img
+                  v-if="item.appIcon || getNativeIcon(item)"
+                  :src="item.appIcon || getNativeIcon(item)"
+                  class="item-icon item-icon-native"
+                  :alt="item.name"
+                  draggable="false"
+                  :title="getItemIconTitle(item)"
+                />
+                <component
+                  v-else
+                  :is="getIconComponent(item)"
+                  :size="14"
+                  :class="['item-icon', getIconModifier(item)]"
+                  :title="getItemIconTitle(item)"
+                />
+                <span
+                  v-if="item.isAlias || item.isSymlink"
+                  class="alias-arrow-badge"
+                  title="Ярлик"
+                >
+                  ↗
+                </span>
+              </div>
               <span
                 class="item-name"
-                :class="{ 'name-dir': item.isDirectory }"
+                :class="{
+                  'name-dir': item.isDirectory,
+                  'name-alias': item.isAlias || item.isSymlink,
+                }"
                 :data-tooltip="getShortItemTooltip(item)"
                 data-tooltip-pos="right"
-                :title="item.path"
+                :title="getItemTooltip(item)"
               >
                 {{ item.name }}
               </span>
@@ -177,14 +178,17 @@
           <td
             class="col-ext"
             :title="
-              item.isApp
-                ? 'Програма macOS'
-                : item.isDirectory
-                  ? 'Папка'
-                  : item.extension || 'Без розширення'
+              item.isAlias
+                ? 'Ярлик до: ' + (item.aliasTarget || item.path)
+                : item.isApp
+                  ? 'Програма macOS'
+                  : item.isDirectory
+                    ? 'Папка'
+                    : item.extension || 'Без розширення'
             "
           >
-            <span v-if="item.isApp" class="app-badge">&lt;APP&gt;</span>
+            <span v-if="item.isAlias" class="lnk-badge">&lt;LNK&gt;</span>
+            <span v-else-if="item.isApp" class="app-badge">&lt;APP&gt;</span>
             <span
               v-else-if="!item.isDirectory && item.extension"
               class="ext-badge"
@@ -196,11 +200,13 @@
           <td
             class="col-size"
             :title="
-              item.isApp
-                ? 'Програма macOS (.app)'
-                : item.isDirectory
-                  ? 'Папка: клікніть Space для розрахунку розміру'
-                  : formatNumber(item.size) + ' байт'
+              item.isAlias
+                ? 'Ярлик до: ' + (item.aliasTarget || item.path)
+                : item.isApp
+                  ? 'Програма macOS (.app)'
+                  : item.isDirectory
+                    ? 'Папка: клікніть Space для розрахунку розміру'
+                    : formatNumber(item.size) + ' байт'
             "
           >
             <span
@@ -215,6 +221,7 @@
             >
               <Loader2 :size="12" class="spin" />
             </span>
+            <span v-else-if="item.isAlias" class="lnk-badge">&lt;LNK&gt;</span>
             <span v-else-if="item.isApp" class="app-badge">&lt;APP&gt;</span>
             <span v-else-if="item.isDirectory" class="dir-badge"
               >&lt;DIR&gt;</span
@@ -254,7 +261,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from "vue";
+import { ref, reactive, watch, onMounted, nextTick } from "vue";
 import type { FileItem, SortField, SortOrder } from "@/types";
 import {
   formatBytes,
@@ -265,6 +272,8 @@ import {
   getShortItemTooltip,
 } from "@/utils/formatters";
 import { useTableColumns } from "@/composables/useTableColumns";
+import { useFileIcons } from "@/composables/useFileIcons";
+import { extractDroppedPaths } from "@/utils/paths";
 import {
   Folder,
   File,
@@ -319,6 +328,25 @@ const calculatingDirs = reactive<Set<string>>(new Set());
 
 const { startResize, resetColWidth, loadSavedColWidths } =
   useTableColumns(wrapperRef);
+
+const { getNativeIcon, fetchIconsForItems } = useFileIcons();
+
+watch(
+  () => props.items,
+  (newItems) => {
+    if (newItems && newItems.length > 0) {
+      fetchIconsForItems(newItems);
+    }
+  },
+  { immediate: true },
+);
+
+function getItemIconTitle(item: FileItem): string {
+  if (item.isAlias) return `Ярлик до: ${item.aliasTarget || item.name}`;
+  if (item.isDirectory) return `Папка: ${item.name}`;
+  const ext = item.extension ? `${item.extension.toUpperCase()} ` : "";
+  return `${ext}Файл: ${item.name} (${formatBytes(item.size)})`;
+}
 
 function isArchive(item: FileItem): boolean {
   if (item.isDirectory) return false;
@@ -387,6 +415,18 @@ function handleRowClick(e: MouseEvent, item: FileItem, index: number) {
 }
 
 function handleRowDblClick(item: FileItem) {
+  if (item.isAlias && item.aliasTarget) {
+    if (item.aliasTarget.endsWith(".app")) {
+      emit("open-native", item);
+      return;
+    }
+    if (item.isDirectory) {
+      emit("navigate", item.aliasTarget);
+      return;
+    }
+    emit("open-native", item);
+    return;
+  }
   if (item.isApp) {
     emit("open-native", item);
   } else if (isArchive(item)) {
@@ -438,7 +478,7 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault();
     if (props.cursorIndex >= 0 && props.cursorIndex < len) {
       const item = props.items[props.cursorIndex];
-      if (e.key === " " && item.isDirectory && !item.isApp) {
+      if (e.key === " " && item.isDirectory && !item.isApp && !item.isAlias) {
         calculateDirectorySize(item.path);
       } else {
         emit("toggle-select", item.path);
@@ -454,7 +494,15 @@ function handleKeyDown(e: KeyboardEvent) {
       emit("go-up");
     } else if (props.cursorIndex >= 0 && props.cursorIndex < len) {
       const item = props.items[props.cursorIndex];
-      if (item.isApp) {
+      if (item.isAlias && item.aliasTarget) {
+        if (item.aliasTarget.endsWith(".app")) {
+          emit("open-native", item);
+        } else if (item.isDirectory) {
+          emit("navigate", item.aliasTarget);
+        } else {
+          emit("open-native", item);
+        }
+      } else if (item.isApp) {
         emit("open-native", item);
       } else if (isArchive(item)) {
         emit("open-archive", item);
@@ -477,93 +525,6 @@ function scrollToCursor() {
       el.scrollIntoView({ block: "nearest" });
     }
   });
-}
-
-function extractDroppedPaths(e: DragEvent): string[] {
-  if (!e.dataTransfer) return [];
-
-  // 1. In-app drag between panes
-  const tcData = e.dataTransfer.getData("tc/paths");
-  if (tcData) {
-    try {
-      const parsed = JSON.parse(tcData);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    } catch {}
-  }
-
-  const json = e.dataTransfer.getData("application/json");
-  if (json) {
-    try {
-      const parsed = JSON.parse(json);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    } catch {}
-  }
-
-  // 2. Native Electron items (Finder drag-and-drop)
-  if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-    const list: string[] = [];
-    for (let i = 0; i < e.dataTransfer.items.length; i++) {
-      const item = e.dataTransfer.items[i];
-      if (item.kind === "file") {
-        const file = item.getAsFile();
-        if (file) {
-          let p = "";
-          if (
-            window.electronAPI &&
-            typeof window.electronAPI.getPathForFile === "function"
-          ) {
-            p = window.electronAPI.getPathForFile(file);
-          }
-          if (!p) p = (file as any).path || "";
-          if (p) list.push(p);
-        }
-      }
-    }
-    if (list.length > 0) return list;
-  }
-
-  // 3. Fallback to dataTransfer.files
-  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-    const list: string[] = [];
-    for (let i = 0; i < e.dataTransfer.files.length; i++) {
-      const file = e.dataTransfer.files[i];
-      let p = "";
-      if (
-        window.electronAPI &&
-        typeof window.electronAPI.getPathForFile === "function"
-      ) {
-        p = window.electronAPI.getPathForFile(file);
-      }
-      if (!p) {
-        p = (file as any).path || "";
-      }
-      if (p) list.push(p);
-    }
-    if (list.length > 0) return list;
-  }
-
-  // 4. URI list (macOS file:// urls)
-  const uriList = e.dataTransfer.getData("text/uri-list");
-  if (uriList) {
-    const uris = uriList
-      .split(/[\r\n]+/)
-      .map((u) => u.trim())
-      .filter((u) => u.startsWith("file://"))
-      .map((u) => decodeURIComponent(u.replace(/^file:\/\//, "")));
-    if (uris.length > 0) return uris;
-  }
-
-  // 5. Plain text paths
-  const text = e.dataTransfer.getData("text/plain");
-  if (text) {
-    const lines = text
-      .split(/[\r\n]+/)
-      .map((l) => decodeURIComponent(l.trim().replace(/^["']|["']$/g, "")))
-      .filter((l) => l.startsWith("/"));
-    if (lines.length > 0) return lines;
-  }
-
-  return [];
 }
 
 // Drag and drop handlers

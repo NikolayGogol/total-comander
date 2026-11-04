@@ -1,134 +1,220 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-card folder-size-card">
-      <div class="modal-header">
-        <div class="modal-title">
-          <HardDrive
-            :size="16"
-            class="icon-blue"
-            title="Folder Size Breakdown"
-          />
-          <span>Аналіз розміру папки: {{ folderName }}</span>
+  <div
+    class="modal-overlay"
+    @click.self="$emit('close')"
+    @keydown.esc="$emit('close')"
+  >
+    <div class="folder-size-modal" tabindex="0" @keydown="handleKeyDown">
+      <!-- Header -->
+      <div class="folder-size-header">
+        <div class="folder-size-title-box">
+          <HardDrive :size="18" class="modal-icon" />
+          <div class="modal-title-text">
+            Аналіз розміру папки: {{ folderName }}
+          </div>
         </div>
         <button
           class="modal-close-btn"
           title="Закрити (Esc)"
           @click="$emit('close')"
         >
-          <X :size="15" />
+          <X :size="16" />
         </button>
       </div>
 
-      <div class="modal-body folder-size-body">
-        <div class="folder-size-toolbar">
-          <div class="path-display" :title="folderPath">
-            <span class="path-label">Шлях:</span>
-            <code>{{ folderPath }}</code>
+      <!-- Body -->
+      <div class="folder-size-body">
+        <!-- Subbar: Path Pill & Refresh Button -->
+        <div class="folder-size-subbar">
+          <div class="subbar-left">
+            <div class="path-pill" :title="activePath">
+              <span class="path-label">Шлях:</span>
+              <span class="path-value">{{ activePath }}</span>
+            </div>
+            <div v-if="isLoading" class="scanning-status-pill">
+              <Loader2 :size="12" class="spinning-icon" />
+              <span>
+                {{
+                  scanProgress.total > 0
+                    ? `Сканування ${scanProgress.current}/${scanProgress.total}`
+                    : "Сканування..."
+                }}
+              </span>
+              <span v-if="scanProgress.folderName" class="scanning-name"
+                >({{ scanProgress.folderName }})</span
+              >
+            </div>
           </div>
           <button
-            class="btn-rescan"
-            :disabled="loading"
-            title="Оновити підрахунок"
-            @click="fetchData"
+            class="btn-refresh"
+            :disabled="isLoading"
+            title="Оновити дані"
+            @click="loadData"
           >
-            <RotateCw :size="13" :class="{ spin: loading }" />
+            <RotateCw :size="13" :class="{ 'spinning-icon': isLoading }" />
             <span>Оновити</span>
           </button>
         </div>
 
-        <div v-if="loading" class="folder-size-loading">
-          <Loader2 :size="24" class="spin icon-blue" />
-          <span>Підрахунок розмірів підпапок...</span>
-        </div>
-
-        <div v-else-if="error" class="folder-size-error">
-          <AlertCircle :size="20" class="icon-rose" />
-          <span>{{ error }}</span>
-        </div>
-
-        <div v-else class="folder-size-content">
-          <!-- Summary Header -->
-          <div class="folder-summary-bar">
-            <div class="summary-pill">
-              <span class="pill-title">Загальний розмір:</span>
-              <span class="pill-value text-accent">{{
-                formatBytes(data?.totalSize)
-              }}</span>
-            </div>
-            <div class="summary-pill">
-              <span class="pill-title">Всього файлів:</span>
-              <span class="pill-value">{{ data?.totalFiles || 0 }}</span>
-            </div>
-            <div class="summary-pill">
-              <span class="pill-title">Підпапок:</span>
-              <span class="pill-value">{{ data?.subfolders.length || 0 }}</span>
+        <!-- 3 Summary Stats Cards -->
+        <div class="folder-size-stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Загальний розмір:</div>
+            <div class="stat-value text-accent">
+              {{ formatBytes(totalSize) }}
             </div>
           </div>
-
-          <!-- Subfolders List -->
-          <div class="subfolders-list-wrapper">
-            <table class="subfolders-table">
-              <thead>
-                <tr>
-                  <th class="col-name">Папка</th>
-                  <th class="col-share">Частка</th>
-                  <th class="col-size">Розмір</th>
-                  <th class="col-count">Файлів</th>
-                  <th class="col-action">Дія</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="sub in data?.subfolders"
-                  :key="sub.path"
-                  class="subfolder-row"
-                  @dblclick="navigateTo(sub.path)"
-                >
-                  <td class="col-name">
-                    <Folder :size="14" class="item-icon icon-folder" />
-                    <span class="subfolder-name" :title="sub.path">{{
-                      sub.name
-                    }}</span>
-                  </td>
-                  <td class="col-share">
-                    <div class="share-bar-container">
-                      <div
-                        class="share-bar-fill"
-                        :ref="
-                          (el) => setBarWidth(el as HTMLElement, sub.percentage)
-                        "
-                      />
-                      <span class="share-percent">{{ sub.percentage }}%</span>
-                    </div>
-                  </td>
-                  <td class="col-size">
-                    <span class="subfolder-size">{{
-                      formatBytes(sub.size)
-                    }}</span>
-                  </td>
-                  <td class="col-count">
-                    <span>{{ sub.count }}</span>
-                  </td>
-                  <td class="col-action">
-                    <button
-                      class="btn-open-folder"
-                      title="Перейти у цю папку"
-                      @click="navigateTo(sub.path)"
-                    >
-                      <span>Відкрити</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="stat-card">
+            <div class="stat-label">Всього файлів:</div>
+            <div class="stat-value">{{ formatNumber(totalFiles) }}</div>
           </div>
+          <div class="stat-card">
+            <div class="stat-label">Підпапок:</div>
+            <div class="stat-value">{{ folders.length }}</div>
+          </div>
+        </div>
+
+        <!-- Quick Filter Input -->
+        <div class="folder-filter-toolbar">
+          <div class="search-input-wrapper">
+            <Search :size="14" class="search-icon" />
+            <input
+              v-model="filterQuery"
+              type="text"
+              class="folder-filter-input"
+              placeholder="Швидкий фільтр папок за назвою..."
+              @keydown.enter="jumpToSelected"
+            />
+            <button
+              v-if="filterQuery"
+              class="clear-filter-btn"
+              title="Очистити фільтр"
+              @click="filterQuery = ''"
+            >
+              <X :size="12" />
+            </button>
+          </div>
+          <span v-if="filterQuery" class="filter-count-badge">
+            Знайдено: {{ filteredFolders.length }} з {{ folders.length }}
+          </span>
+        </div>
+
+        <!-- Table of Folders -->
+        <div class="folder-size-table-container">
+          <table class="folder-size-table">
+            <thead>
+              <tr>
+                <th class="th-name" @click="changeSort('name')">
+                  Папка {{ sortField === "name" ? (sortAsc ? "▲" : "▼") : "" }}
+                </th>
+                <th class="th-share" @click="changeSort('size')">
+                  Частка {{ sortField === "size" ? (sortAsc ? "▲" : "▼") : "" }}
+                </th>
+                <th class="th-size" @click="changeSort('size')">
+                  Розмір {{ sortField === "size" ? (sortAsc ? "▲" : "▼") : "" }}
+                </th>
+                <th class="th-files" @click="changeSort('fileCount')">
+                  Файлів
+                  {{ sortField === "fileCount" ? (sortAsc ? "▲" : "▼") : "" }}
+                </th>
+                <th class="th-action">Дія</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="isLoading && folders.length === 0" class="empty-row">
+                <td colspan="5" class="empty-state-cell">
+                  <Loader2 :size="20" class="spinning-icon" />
+                  <div>
+                    Триває розрахунок розміру папок... Зачекайте будь ласка.
+                  </div>
+                </td>
+              </tr>
+
+              <tr v-else-if="filteredFolders.length === 0" class="empty-row">
+                <td colspan="5" class="empty-state-cell">
+                  {{
+                    filterQuery
+                      ? `Не знайдено папок за запитом "${filterQuery}"`
+                      : "У цій папці немає вкладених директорій"
+                  }}
+                </td>
+              </tr>
+
+              <tr
+                v-for="folder in filteredFolders"
+                :key="folder.path"
+                class="folder-size-row"
+                :class="{ 'is-selected': selectedPath === folder.path }"
+                @click="selectedPath = folder.path"
+                @dblclick="jumpToFolder(folder.path)"
+              >
+                <td class="td-name">
+                  <div class="folder-name-cell" :title="folder.path">
+                    <Folder :size="15" class="item-icon" />
+                    <span class="folder-name-text">{{ folder.name }}</span>
+                  </div>
+                </td>
+
+                <td class="td-share">
+                  <div class="share-cell">
+                    <progress
+                      class="folder-progress-bar"
+                      :value="folder.size"
+                      :max="totalSize || 1"
+                    ></progress>
+                    <span class="share-label">{{
+                      getPercentLabel(folder.size)
+                    }}</span>
+                  </div>
+                </td>
+
+                <td class="td-size">
+                  {{ formatBytes(folder.size) }}
+                </td>
+
+                <td class="td-files">
+                  {{ formatNumber(folder.fileCount) }}
+                </td>
+
+                <td class="td-action">
+                  <button
+                    class="btn-row-action"
+                    title="Перейти в цю папку на панелі"
+                    @click.stop="jumpToFolder(folder.path)"
+                  >
+                    Перейти
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn-secondary" @click="$emit('close')">
-          Закрити (Esc)
+      <!-- Footer -->
+      <div class="folder-size-footer">
+        <button
+          class="btn-secondary"
+          :disabled="!selectedPath"
+          title="Показати виділену папку в macOS Finder (Alt+Enter)"
+          @click="showInFinder"
+        >
+          <ExternalLink :size="14" />
+          <span>Показати у Finder</span>
         </button>
+
+        <div class="footer-actions">
+          <button class="btn-secondary" @click="$emit('close')">
+            Закрити (Esc)
+          </button>
+          <button
+            class="btn-primary"
+            :disabled="!selectedPath"
+            @click="jumpToSelected"
+          >
+            <span>Перейти до вибраної папки</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -136,76 +222,227 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import type { FolderSizeBreakdown } from "@/types";
-import { formatBytes } from "@/utils/formatters";
 import {
   HardDrive,
   X,
   RotateCw,
-  Loader2,
-  AlertCircle,
+  Search,
   Folder,
+  Loader2,
+  ExternalLink,
 } from "lucide-vue-next";
+import type { FolderSizeItem } from "@/types";
+import { formatBytes, formatNumber } from "@/utils/formatters";
 
-const props = defineProps<{
-  folderPath: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    folderPath?: string;
+    targetPath?: string;
+  }>(),
+  {
+    folderPath: "",
+    targetPath: "",
+  },
+);
 
 const emit = defineEmits<{
-  (e: "navigate", path: string): void;
   (e: "close"): void;
+  (e: "jump-to", path: string): void;
+  (e: "navigate", path: string): void;
+  (e: "toast", msg: string, type?: "success" | "error" | "info"): void;
 }>();
 
-const folderName = computed(
-  () => props.folderPath.split("/").filter(Boolean).pop() || "Папка",
-);
-const loading = ref(true);
-const error = ref<string | null>(null);
-const data = ref<FolderSizeBreakdown | null>(null);
+const activePath = computed(() => props.targetPath || props.folderPath || "");
 
-function setBarWidth(el: HTMLElement | null, pct: number) {
-  if (el) {
-    el.style.setProperty("--bar-width", `${Math.max(2, Math.min(100, pct))}%`);
+const folders = ref<FolderSizeItem[]>([]);
+const totalSize = ref(0);
+const totalFiles = ref(0);
+const isLoading = ref(true);
+const filterQuery = ref("");
+const selectedPath = ref<string | null>(null);
+const currentScanId = ref<string | null>(null);
+const scanProgress = ref({ current: 0, total: 0, folderName: "" });
+let unsubs: Array<() => void> = [];
+
+const sortField = ref<"size" | "name" | "fileCount">("size");
+const sortAsc = ref(false);
+
+const folderName = computed(() => {
+  if (!activePath.value) return "";
+  const clean = activePath.value.replace(/[/\\]+$/, "");
+  return clean.split(/[/\\]/).filter(Boolean).pop() || clean;
+});
+
+const filteredFolders = computed(() => {
+  let list = [...folders.value];
+  if (filterQuery.value.trim()) {
+    const q = filterQuery.value.trim().toLowerCase();
+    list = list.filter((f) => f.name.toLowerCase().includes(q));
+  }
+
+  const field = sortField.value;
+  const asc = sortAsc.value;
+
+  list.sort((a, b) => {
+    let valA = a[field];
+    let valB = b[field];
+    if (typeof valA === "string") valA = (valA as string).toLowerCase();
+    if (typeof valB === "string") valB = (valB as string).toLowerCase();
+
+    if (valA < valB) return asc ? -1 : 1;
+    if (valA > valB) return asc ? 1 : -1;
+    return 0;
+  });
+
+  return list;
+});
+
+function getPercentLabel(size: number): string {
+  if (!totalSize.value || totalSize.value === 0) return "0%";
+  const pct = Math.round((size / totalSize.value) * 100);
+  return `${pct}%`;
+}
+
+function changeSort(field: "size" | "name" | "fileCount") {
+  if (sortField.value === field) {
+    sortAsc.value = !sortAsc.value;
+  } else {
+    sortField.value = field;
+    sortAsc.value = field !== "size";
   }
 }
 
-async function fetchData() {
-  loading.value = true;
-  error.value = null;
+function cancelCurrentScan() {
+  if (currentScanId.value) {
+    window.electronAPI
+      .cancelAnalyzeFolderSizes(currentScanId.value)
+      .catch(() => {});
+  }
+}
+
+async function loadData() {
+  if (!activePath.value) return;
+
+  cancelCurrentScan();
+
+  const scanId = Math.random().toString(36).slice(2);
+  currentScanId.value = scanId;
+
+  isLoading.value = true;
+  folders.value = [];
+  totalSize.value = 0;
+  totalFiles.value = 0;
+  selectedPath.value = null;
+  scanProgress.value = { current: 0, total: 0, folderName: "" };
+
   try {
-    const res = await window.electronAPI.getFolderSizeBreakdown(
-      props.folderPath,
+    const res = await window.electronAPI.analyzeFolderSizes(
+      activePath.value,
+      scanId,
     );
-    if (res.success && res.data) {
-      data.value = res.data;
+    if (currentScanId.value !== scanId) return;
+
+    if (res.success && res.folders) {
+      folders.value = res.folders;
+      totalSize.value = res.totalSize || 0;
+      totalFiles.value = res.totalFiles || 0;
+      if (res.folders.length > 0) {
+        selectedPath.value = res.folders[0].path;
+      }
     } else {
-      error.value = res.error || "Не вдалося розрахувати розмір папки";
+      emit("toast", res.error || "Не вдалося порахувати розмір папок", "error");
     }
   } catch (err: any) {
-    error.value = err.message || "Помилка";
+    if (currentScanId.value === scanId) {
+      emit("toast", err.message || "Помилка аналізу папок", "error");
+    }
   } finally {
-    loading.value = false;
+    if (currentScanId.value === scanId) {
+      isLoading.value = false;
+    }
   }
 }
 
-function navigateTo(path: string) {
+function jumpToFolder(path: string) {
+  emit("jump-to", path);
   emit("navigate", path);
   emit("close");
 }
 
-function onKey(e: KeyboardEvent) {
+function jumpToSelected() {
+  if (selectedPath.value) {
+    jumpToFolder(selectedPath.value);
+  }
+}
+
+async function showInFinder() {
+  if (selectedPath.value) {
+    await window.electronAPI.showInFolder(selectedPath.value);
+  }
+}
+
+function handleKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape") {
-    e.preventDefault();
     emit("close");
+  } else if (e.key === "Enter") {
+    jumpToSelected();
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    const list = filteredFolders.value;
+    if (list.length === 0) return;
+    const curIdx = list.findIndex((f) => f.path === selectedPath.value);
+    const nextIdx = curIdx < list.length - 1 ? curIdx + 1 : 0;
+    selectedPath.value = list[nextIdx].path;
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    const list = filteredFolders.value;
+    if (list.length === 0) return;
+    const curIdx = list.findIndex((f) => f.path === selectedPath.value);
+    const prevIdx = curIdx > 0 ? curIdx - 1 : list.length - 1;
+    selectedPath.value = list[prevIdx].path;
   }
 }
 
 onMounted(() => {
-  fetchData();
-  window.addEventListener("keydown", onKey);
+  const unsubItem = window.electronAPI.onFolderSizeItem((data) => {
+    if (data.scanId !== currentScanId.value) return;
+
+    const item = data.folder;
+    const exists = folders.value.some((f) => f.path === item.path);
+    if (!exists) {
+      folders.value.push(item);
+      totalSize.value += item.size;
+      totalFiles.value += item.fileCount;
+
+      if (!selectedPath.value) {
+        selectedPath.value = item.path;
+      }
+    }
+  });
+
+  const unsubProgress = window.electronAPI.onFolderSizeProgress((data) => {
+    if (data.scanId !== currentScanId.value) return;
+
+    scanProgress.value = {
+      current: data.current,
+      total: data.total,
+      folderName: data.folderName || "",
+    };
+    if (data.isDone) {
+      isLoading.value = false;
+    }
+  });
+
+  unsubs.push(unsubItem, unsubProgress);
+
+  loadData();
+  window.addEventListener("keydown", handleKeyDown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("keydown", onKey);
+  cancelCurrentScan();
+  unsubs.forEach((fn) => fn());
+  unsubs = [];
+  window.removeEventListener("keydown", handleKeyDown);
 });
 </script>

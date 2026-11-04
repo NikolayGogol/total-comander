@@ -31,9 +31,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   createFolder: (targetPath: string) => ipcRenderer.invoke('fs:createFolder', targetPath),
   createFile: (targetPath: string) => ipcRenderer.invoke('fs:createFile', targetPath),
-  deletePaths: (paths: string[], moveToTrash?: boolean) => ipcRenderer.invoke('fs:deletePaths', toPlain(paths), moveToTrash),
-  copyPaths: (sources: string[], destinationDir: string) => ipcRenderer.invoke('fs:copyPaths', toPlain(sources), destinationDir),
-  movePaths: (sources: string[], destinationDir: string) => ipcRenderer.invoke('fs:movePaths', toPlain(sources), destinationDir),
+  deletePaths: (paths: string[], moveToTrash?: boolean) =>
+    ipcRenderer.invoke('fs:deletePaths', toPlain(paths), moveToTrash),
+  copyPaths: (sources: string[], destinationDir: string) =>
+    ipcRenderer.invoke('fs:copyPaths', toPlain(sources), destinationDir),
+  movePaths: (sources: string[], destinationDir: string) =>
+    ipcRenderer.invoke('fs:movePaths', toPlain(sources), destinationDir),
   renamePath: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:renamePath', oldPath, newPath),
   readFile: (filePath: string, maxBytes?: number) => ipcRenderer.invoke('fs:readFile', filePath, maxBytes),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),
@@ -43,11 +46,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   quickLook: (filePath: string) => ipcRenderer.invoke('fs:quickLook', filePath),
   getDirSize: (dirPath: string) => ipcRenderer.invoke('fs:getDirSize', dirPath),
   getFolderSizeBreakdown: (dirPath: string) => ipcRenderer.invoke('fs:getFolderSizeBreakdown', dirPath),
-  createArchive: (sources: string[], targetZipPath: string) =>
-    ipcRenderer.invoke('fs:createArchive', toPlain(sources), targetZipPath),
-  listArchive: (archivePath: string) => ipcRenderer.invoke('fs:listArchive', archivePath),
-  extractArchive: (archivePath: string, destinationDir: string, selectedFiles?: string[]) =>
-    ipcRenderer.invoke('fs:extractArchive', archivePath, destinationDir, toPlain(selectedFiles)),
+  analyzeFolderSizes: (targetPath: string, scanId?: string) =>
+    ipcRenderer.invoke('fs:analyzeFolderSizes', targetPath, scanId),
+  onFolderSizeItem: (callback: (data: { scanId: string; folder: any; current: number; total: number }) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('folderSize:item', listener)
+    return () => ipcRenderer.removeListener('folderSize:item', listener)
+  },
+  onFolderSizeProgress: (
+    callback: (data: { scanId: string; current: number; total: number; folderName?: string; isDone?: boolean }) => void
+  ) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('folderSize:progress', listener)
+    return () => ipcRenderer.removeListener('folderSize:progress', listener)
+  },
+  cancelAnalyzeFolderSizes: (scanId?: string) => ipcRenderer.invoke('fs:cancelAnalyzeFolderSizes', scanId),
+  findLargeFiles: (options: any) => ipcRenderer.invoke('fs:findLargeFiles', toPlain(options)),
+  createArchive: (optionsOrSources: any, targetZipPath?: string) =>
+    ipcRenderer.invoke('fs:createArchive', toPlain(optionsOrSources), targetZipPath),
+  listArchive: (archivePath: string, password?: string) =>
+    ipcRenderer.invoke('fs:listArchive', archivePath, password),
+  extractArchive: (archivePath: string, destinationDir: string, passwordOrSelected?: string | string[]) =>
+    ipcRenderer.invoke('fs:extractArchive', archivePath, destinationDir, toPlain(passwordOrSelected)),
   analyzeDisk: (dirPath: string, maxItems?: number) =>
     ipcRenderer.invoke('fs:analyzeDisk', dirPath, maxItems),
   getBuildInfo: () => ipcRenderer.invoke('app:getBuildInfo'),
@@ -57,6 +77,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('clipboard:copyFiles', toPlain(paths), action),
   getClipboardFiles: () => ipcRenderer.invoke('clipboard:getFiles'),
   clearClipboard: () => ipcRenderer.invoke('clipboard:clear'),
+  getFileIcon: (filePath: string) => ipcRenderer.invoke('fs:getFileIcon', filePath),
+  getFileIcons: (items: any[]) => ipcRenderer.invoke('fs:getFileIcons', toPlain(items)),
+  resolveShortcut: (filePath: string) => ipcRenderer.invoke('fs:resolveShortcut', filePath),
+  findLockingProcesses: (targetPath: string) => ipcRenderer.invoke('unlocker:findLockingProcesses', targetPath),
+  killProcesses: (pids: number[]) => ipcRenderer.invoke('unlocker:killProcesses', toPlain(pids)),
+  unlockAndExecute: (options: any) => ipcRenderer.invoke('unlocker:unlockAndExecute', toPlain(options)),
+  getVirtualDisks: () => ipcRenderer.invoke('fs:getVirtualDisks'),
+  ejectVirtualDisk: (target: string) => ipcRenderer.invoke('fs:ejectVirtualDisk', target),
+  ejectAllVirtualDisks: () => ipcRenderer.invoke('fs:ejectAllVirtualDisks'),
+  deleteVirtualDiskSource: (payload: { imagePath: string; mountPoint?: string }) =>
+    ipcRenderer.invoke('fs:deleteVirtualDiskSource', toPlain(payload)),
   onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll') => void) => {
     const listener = (_: any, cmd: any) => callback(cmd)
     ipcRenderer.on('app:command', listener)

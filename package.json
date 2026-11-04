@@ -1,16 +1,18 @@
 {
   "name": "total-commander-macos",
   "productName": "Total Commander",
-  "version": "1.0.0",
+  "version": "1.0.14",
   "description": "Total Commander for macOS built with Node.js, Electron, Vue 3, and SCSS",
   "main": "dist-electron/main.js",
   "scripts": {
     "start": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
     "dev": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
     "app": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite",
-    "build": "node scripts/update-build-info.mjs && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build",
-    "build:dmg": "node scripts/update-build-info.mjs && vite build && electron-builder --mac dmg",
-    "build:dmg:arm64": "node scripts/update-build-info.mjs && vite build && electron-builder --mac dmg --arm64",
+    "build": "node scripts/update-build-info.mjs --bump && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build",
+    "build:dmg": "node scripts/update-build-info.mjs --bump && vite build && electron-builder --mac dmg --universal",
+    "build:dmg:arm64": "node scripts/update-build-info.mjs --bump && vite build && electron-builder --mac dmg --arm64",
+    "build:dmg:x64": "node scripts/update-build-info.mjs --bump && vite build && electron-builder --mac dmg --x64",
+    "build:dmg:universal": "node scripts/update-build-info.mjs --bump && vite build && electron-builder --mac dmg --universal",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{vue,ts,scss}\"",
@@ -31,6 +33,7 @@
   "build": {
     "appId": "com.totalcommander.macos",
     "productName": "Total Commander",
+    "afterPack": "scripts/after-pack.mjs",
     "directories": {
       "output": "release"
     },
@@ -71,7 +74,8 @@
         "width": 540,
         "height": 380
       }
-    }
+    },
+    "buildVersion": "2026.11.04.16"
   },
   "dependencies": {
     "@lucide/vue": "^1.62.0",

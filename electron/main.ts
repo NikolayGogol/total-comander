@@ -7,6 +7,10 @@ import { setupDiskIpc } from './ipc/disk'
 import { setupArchiveIpc } from './ipc/archive'
 import { setupClipboardIpc } from './ipc/clipboard'
 import { setupUtilsIpc } from './ipc/utils'
+import { registerIconsIpc } from './ipc/icons'
+import { registerUnlockerIpc } from './ipc/unlocker'
+import { registerFolderSizeIpc } from './ipc/folderSize'
+import { registerVirtualDisksIpc } from './ipc/virtualDisks'
 
 app.setName('Total Commander')
 app.name = 'Total Commander'
@@ -84,6 +88,10 @@ function setupIpcHandlers() {
   setupArchiveIpc()
   setupClipboardIpc()
   setupUtilsIpc()
+  registerIconsIpc()
+  registerUnlockerIpc()
+  registerFolderSizeIpc()
+  registerVirtualDisksIpc()
 }
 
 app.whenReady().then(() => {

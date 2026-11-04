@@ -1,8 +1,15 @@
-import { app, ipcMain, shell } from 'electron'
+import { ipcMain, shell } from 'electron'
 import path from 'path'
+import fs from 'fs'
 import fsPromises from 'fs/promises'
 import { exec } from 'child_process'
 import { isProtectedSystemFile } from './disk'
+import { extractAppIcon, resolveAliasInfo } from './icons'
+
+function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any) {
+  ipcMain.removeHandler(channel)
+  ipcMain.handle(channel, listener)
+}
 
 export function formatPermissions(mode: number, isDirectory: boolean): string {
   const type = isDirectory ? 'd' : '-'
@@ -20,89 +27,128 @@ export function formatPermissions(mode: number, isDirectory: boolean): string {
   return type + perms
 }
 
-const appIconCache = new Map<string, string>()
-
 export async function getAppIcon(appPath: string): Promise<string | undefined> {
-  if (appIconCache.has(appPath)) {
-    return appIconCache.get(appPath)
-  }
-  try {
-    const icon = await app.getFileIcon(appPath, { size: 'normal' })
-    const dataUrl = icon.toDataURL()
-    appIconCache.set(appPath, dataUrl)
-    return dataUrl
-  } catch {
-    return undefined
-  }
+  return extractAppIcon(appPath)
 }
 
 export function setupFileSystemIpc() {
-  // Read Directory
-  ipcMain.handle('fs:readDir', async (_, dirPath: string, showHidden = false) => {
+  // Read Directory (with macOS transparent aggregation of /System/Applications and /System/Applications/Utilities)
+  safeHandle('fs:readDir', async (_, dirPath: string, showHidden = false) => {
     try {
       const resolvedPath = path.resolve(dirPath)
-      const entries = await fsPromises.readdir(resolvedPath, { withFileTypes: true })
-      const items = []
+      const scanDirs = [resolvedPath]
 
-      for (const entry of entries) {
-        const isHidden = entry.name.startsWith('.')
-        if (isHidden && !showHidden) {
-          continue
-        }
-
-        const itemPath = path.join(resolvedPath, entry.name)
-        const isApp = entry.isDirectory() && entry.name.endsWith('.app')
-
-        try {
-          const stats = await fsPromises.lstat(itemPath)
-          const isDir = stats.isDirectory()
-          const ext = isApp
-            ? 'app'
-            : isDir
-              ? ''
-              : path.extname(entry.name).toLowerCase().replace('.', '')
-
-          items.push({
-            name: entry.name,
-            path: itemPath,
-            isDirectory: isDir,
-            isFile: stats.isFile(),
-            isSymlink: stats.isSymbolicLink(),
-            isApp,
-            size: isDir ? 0 : stats.size,
-            mtime: stats.mtimeMs,
-            birthtime: stats.birthtimeMs,
-            mode: stats.mode,
-            permissions: formatPermissions(stats.mode, isDir),
-            extension: ext,
-            isHidden,
-          })
-        } catch {
-          // If stat fails (e.g. broken symlink or protected system file)
-          items.push({
-            name: entry.name,
-            path: itemPath,
-            isDirectory: entry.isDirectory(),
-            isFile: entry.isFile(),
-            isSymlink: entry.isSymbolicLink(),
-            isApp,
-            size: 0,
-            mtime: 0,
-            birthtime: 0,
-            mode: 0,
-            permissions: entry.isDirectory() ? 'drwxr-xr-x' : '-rw-r--r--',
-            extension: isApp ? 'app' : path.extname(entry.name).toLowerCase(),
-            isHidden,
-          })
+      // Transparently aggregate macOS native system applications into /Applications and Utilities
+      if (process.platform === 'darwin') {
+        if (resolvedPath === '/Applications' && fs.existsSync('/System/Applications')) {
+          scanDirs.push('/System/Applications')
+        } else if (
+          (resolvedPath === '/Applications/Utilities' || resolvedPath === '/System/Applications/Utilities') &&
+          fs.existsSync('/System/Applications/Utilities')
+        ) {
+          if (!scanDirs.includes('/System/Applications/Utilities')) {
+            scanDirs.push('/System/Applications/Utilities')
+          }
         }
       }
 
-      // Extract native macOS icons for all application bundles (.app)
-      const appItems = items.filter((i) => i.isApp)
+      const items: any[] = []
+      const seenNames = new Set<string>()
+
+      for (const currentDir of scanDirs) {
+        let entries: fs.Dirent[] = []
+        try {
+          entries = await fsPromises.readdir(currentDir, { withFileTypes: true })
+        } catch {
+          continue
+        }
+
+        for (const entry of entries) {
+          const isHidden = entry.name.startsWith('.')
+          if (isHidden && !showHidden) {
+            continue
+          }
+
+          if (seenNames.has(entry.name)) {
+            continue
+          }
+          seenNames.add(entry.name)
+
+          const itemPath = path.join(currentDir, entry.name)
+          let isApp = entry.name.endsWith('.app')
+          let isAlias = false
+          let aliasTarget: string | undefined = undefined
+
+          try {
+            const stats = await fsPromises.lstat(itemPath)
+            let isDir = stats.isDirectory()
+
+            const aliasInfo = resolveAliasInfo(itemPath, stats)
+            if (aliasInfo) {
+              isAlias = true
+              aliasTarget = aliasInfo.target
+              if (aliasInfo.isApp) {
+                isApp = true
+              }
+              if (aliasInfo.isDir) {
+                isDir = true
+              }
+            }
+
+            const ext = isAlias
+              ? 'lnk'
+              : isApp
+                ? 'app'
+                : isDir
+                  ? ''
+                  : path.extname(entry.name).toLowerCase().replace('.', '')
+
+            items.push({
+              name: entry.name,
+              path: itemPath,
+              isDirectory: isDir,
+              isFile: stats.isFile(),
+              isSymlink: stats.isSymbolicLink() || isAlias,
+              isApp,
+              isAlias,
+              aliasTarget,
+              size: isDir && !isAlias ? 0 : stats.size,
+              mtime: stats.mtimeMs,
+              birthtime: stats.birthtimeMs,
+              mode: stats.mode,
+              permissions: formatPermissions(stats.mode, isDir),
+              extension: ext,
+              isHidden,
+            })
+          } catch {
+            // If stat fails (e.g. broken symlink or protected system file)
+            items.push({
+              name: entry.name,
+              path: itemPath,
+              isDirectory: entry.isDirectory(),
+              isFile: entry.isFile(),
+              isSymlink: entry.isSymbolicLink(),
+              isApp,
+              isAlias: false,
+              size: 0,
+              mtime: 0,
+              birthtime: 0,
+              mode: 0,
+              permissions: entry.isDirectory() ? 'drwxr-xr-x' : '-rw-r--r--',
+              extension: isApp ? 'app' : path.extname(entry.name).toLowerCase(),
+              isHidden,
+            })
+          }
+        }
+      }
+
+      // Extract native macOS icons for all application bundles (.app) and application aliases
+      const appItems = items.filter((i) => i.isApp || (i.isAlias && i.aliasTarget?.endsWith('.app')))
       if (appItems.length > 0) {
         await Promise.all(
           appItems.map(async (item: any) => {
-            item.appIcon = await getAppIcon(item.path)
+            const target = item.isAlias && item.aliasTarget ? item.aliasTarget : item.path
+            item.appIcon = await getAppIcon(target)
           })
         )
       }
@@ -114,7 +160,7 @@ export function setupFileSystemIpc() {
   })
 
   // Create Folder
-  ipcMain.handle('fs:createFolder', async (_, targetPath: string) => {
+  safeHandle('fs:createFolder', async (_, targetPath: string) => {
     try {
       await fsPromises.mkdir(targetPath, { recursive: true })
       return { success: true }
@@ -124,7 +170,7 @@ export function setupFileSystemIpc() {
   })
 
   // Create File
-  ipcMain.handle('fs:createFile', async (_, targetPath: string) => {
+  safeHandle('fs:createFile', async (_, targetPath: string) => {
     try {
       await fsPromises.writeFile(targetPath, '', { flag: 'wx' })
       return { success: true }
@@ -134,7 +180,7 @@ export function setupFileSystemIpc() {
   })
 
   // Delete Paths (Move to Trash by default, or permanent with fallback)
-  ipcMain.handle('fs:deletePaths', async (_, paths: string[], moveToTrash = true) => {
+  safeHandle('fs:deletePaths', async (_, paths: string[], moveToTrash = true) => {
     try {
       for (const itemPath of paths) {
         const base = path.basename(itemPath)
@@ -162,7 +208,7 @@ export function setupFileSystemIpc() {
   })
 
   // Copy Paths
-  ipcMain.handle('fs:copyPaths', async (_, sources: string[], destinationDir: string) => {
+  safeHandle('fs:copyPaths', async (_, sources: string[], destinationDir: string) => {
     try {
       for (const src of sources) {
         const baseName = path.basename(src)
@@ -184,7 +230,7 @@ export function setupFileSystemIpc() {
   })
 
   // Move Paths
-  ipcMain.handle('fs:movePaths', async (_, sources: string[], destinationDir: string) => {
+  safeHandle('fs:movePaths', async (_, sources: string[], destinationDir: string) => {
     try {
       for (const src of sources) {
         const baseName = path.basename(src)
@@ -210,7 +256,7 @@ export function setupFileSystemIpc() {
   })
 
   // Rename Single Path
-  ipcMain.handle('fs:renamePath', async (_, oldPath: string, newPath: string) => {
+  safeHandle('fs:renamePath', async (_, oldPath: string, newPath: string) => {
     try {
       await fsPromises.rename(oldPath, newPath)
       return { success: true }
@@ -220,7 +266,7 @@ export function setupFileSystemIpc() {
   })
 
   // Read File Content (for F3 Viewer and F4 Editor)
-  ipcMain.handle('fs:readFile', async (_, filePath: string, maxBytes = 2 * 1024 * 1024) => {
+  safeHandle('fs:readFile', async (_, filePath: string, maxBytes = 2 * 1024 * 1024) => {
     try {
       const stats = await fsPromises.stat(filePath)
       if (stats.size > maxBytes) {
@@ -260,7 +306,7 @@ export function setupFileSystemIpc() {
   })
 
   // Write File Content (for F4 Editor)
-  ipcMain.handle('fs:writeFile', async (_, filePath: string, content: string) => {
+  safeHandle('fs:writeFile', async (_, filePath: string, content: string) => {
     try {
       await fsPromises.writeFile(filePath, content, 'utf-8')
       return { success: true }
@@ -270,7 +316,7 @@ export function setupFileSystemIpc() {
   })
 
   // Open with system default app
-  ipcMain.handle('fs:openPath', async (_, filePath: string) => {
+  safeHandle('fs:openPath', async (_, filePath: string) => {
     try {
       const result = await shell.openPath(filePath)
       if (result) {
@@ -283,7 +329,7 @@ export function setupFileSystemIpc() {
   })
 
   // Show file in native macOS Finder
-  ipcMain.handle('fs:showInFolder', async (_, targetPath: string) => {
+  safeHandle('fs:showInFolder', async (_, targetPath: string) => {
     try {
       shell.showItemInFolder(targetPath)
       return { success: true }
@@ -293,7 +339,7 @@ export function setupFileSystemIpc() {
   })
 
   // Open Directory in macOS Terminal
-  ipcMain.handle('fs:openInTerminal', async (_, dirPath: string) => {
+  safeHandle('fs:openInTerminal', async (_, dirPath: string) => {
     try {
       exec(`open -a Terminal "${dirPath}"`, (err) => {
         if (err) console.error('Failed to open Terminal:', err)
@@ -305,7 +351,7 @@ export function setupFileSystemIpc() {
   })
 
   // macOS QuickLook (`qlmanage -p`)
-  ipcMain.handle('fs:quickLook', async (_, filePath: string) => {
+  safeHandle('fs:quickLook', async (_, filePath: string) => {
     try {
       exec(`qlmanage -p "${filePath}" >/dev/null 2>&1 &`)
       return { success: true }
@@ -315,7 +361,7 @@ export function setupFileSystemIpc() {
   })
 
   // File Search (Total Commander Alt+F7)
-  ipcMain.handle('fs:search', async (_, dirPath: string, query: string, recursive = true, contentSearch?: string) => {
+  safeHandle('fs:search', async (_, dirPath: string, query: string, recursive = true, contentSearch?: string) => {
     try {
       const results: any[] = []
       const lowerQuery = query.toLowerCase()

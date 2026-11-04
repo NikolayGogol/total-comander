@@ -4,6 +4,12 @@ import fs from 'fs'
 import fsPromises from 'fs/promises'
 import os from 'os'
 import { exec } from 'child_process'
+import { ejectVirtualDisk } from './virtualDisks'
+
+function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any) {
+  ipcMain.removeHandler(channel)
+  ipcMain.handle(channel, listener)
+}
 
 export async function getVolumeInfo(volPath: string): Promise<{ isUSB: boolean; isRemovable: boolean }> {
   return new Promise((resolve) => {
@@ -125,11 +131,10 @@ export function isProtectedSystemFile(name: string, fullPath: string): boolean {
 
 export function setupDiskIpc() {
   // Quick Access / Drives & USB Media
-  ipcMain.handle('fs:getDrives', async () => {
+  safeHandle('fs:getDrives', async () => {
     try {
       const home = os.homedir()
       const drives: any[] = [
-        { name: 'Macintosh HD', path: '/', icon: 'HardDrive', type: 'root', isRemovable: false },
         { name: 'Home (~)', path: home, icon: 'Home', type: 'home', isRemovable: false },
         { name: 'Desktop', path: path.join(home, 'Desktop'), icon: 'Monitor', type: 'folder', isRemovable: false },
         { name: 'Documents', path: path.join(home, 'Documents'), icon: 'FileText', type: 'folder', isRemovable: false },
@@ -175,11 +180,13 @@ export function setupDiskIpc() {
       const existingDrives = []
       for (const d of drives) {
         if (fs.existsSync(d.path)) {
-          const space = await getDiskSpaceStats(d.path)
-          d.totalSpace = space.total
-          d.freeSpace = space.free
-          d.availableSpace = space.available
-          d.purgeableSpace = space.purgeable
+          if (d.totalSpace === undefined) {
+            const space = await getDiskSpaceStats(d.path)
+            d.totalSpace = space.total
+            d.freeSpace = space.free
+            d.availableSpace = space.available
+            d.purgeableSpace = space.purgeable
+          }
           existingDrives.push(d)
         }
       }
@@ -191,7 +198,7 @@ export function setupDiskIpc() {
   })
 
   // Get Disk Space for any path
-  ipcMain.handle('fs:getDiskSpace', async (_, dirPath: string) => {
+  safeHandle('fs:getDiskSpace', async (_, dirPath: string) => {
     try {
       const space = await getDiskSpaceStats(dirPath)
       return {
@@ -206,11 +213,15 @@ export function setupDiskIpc() {
     }
   })
 
-  // Eject USB / External Volume
-  ipcMain.handle('fs:ejectVolume', async (_, volumePath: string) => {
+  // Eject USB / Virtual Disk / External Volume
+  safeHandle('fs:ejectVolume', async (_, volumePath: string) => {
     try {
       if (!volumePath.startsWith('/Volumes/')) {
         return { success: false, error: 'Тільки зовнішні томи або USB можна вилучити' }
+      }
+      const res = await ejectVirtualDisk(volumePath)
+      if (res.success) {
+        return { success: true }
       }
       await new Promise<void>((resolve, reject) => {
         exec(`diskutil eject "${volumePath}"`, (err, stdout, stderr) => {
@@ -230,36 +241,8 @@ export function setupDiskIpc() {
     }
   })
 
-  // Calculate Directory Size
-  ipcMain.handle('fs:getDirSize', async (_, dirPath: string) => {
-    try {
-      let totalSize = 0
-      let totalCount = 0
-
-      async function scan(current: string, depth = 0) {
-        if (depth > 6) return
-        const entries = await fsPromises.readdir(current, { withFileTypes: true })
-        for (const e of entries) {
-          const subPath = path.join(current, e.name)
-          if (e.isDirectory()) {
-            await scan(subPath, depth + 1)
-          } else {
-            const st = await fsPromises.lstat(subPath)
-            totalSize += st.size
-            totalCount++
-          }
-        }
-      }
-
-      await scan(dirPath)
-      return { success: true, size: totalSize, count: totalCount }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  })
-
   // Folder Size Breakdown for FolderSizeModal
-  ipcMain.handle('fs:getFolderSizeBreakdown', async (_, dirPath: string) => {
+  safeHandle('fs:getFolderSizeBreakdown', async (_, dirPath: string) => {
     try {
       const resolved = path.resolve(dirPath)
       const entries = await fsPromises.readdir(resolved, { withFileTypes: true })
@@ -329,8 +312,99 @@ export function setupDiskIpc() {
     }
   })
 
+  // Fast Search for Large Files by Threshold
+  safeHandle(
+    'fs:findLargeFiles',
+    async (_, options: { targetDir: string; minSizeBytes: number; limit?: number }) => {
+      try {
+        const { targetDir, minSizeBytes = 50 * 1024 * 1024, limit = 200 } = options
+        const resolved = path.resolve(targetDir)
+        if (!fs.existsSync(resolved)) {
+          return { success: false, error: 'Директорія не існує' }
+        }
+
+        const largeFiles: Array<{
+          path: string
+          name: string
+          size: number
+          mtime: number
+          extension: string
+          dir: string
+        }> = []
+
+        let totalSize = 0
+        let scannedCount = 0
+        const queue: Array<{ dir: string; depth: number }> = [{ dir: resolved, depth: 0 }]
+        const skipNames = new Set([
+          '.git',
+          'node_modules',
+          '.trash',
+          '.trashes',
+          '.fseventsd',
+          '.spotlight-v100',
+        ])
+
+        while (queue.length > 0 && scannedCount < 100000) {
+          const current = queue.shift()!
+          if (current.depth > 7) continue
+
+          let entries: fs.Dirent[]
+          try {
+            entries = await fsPromises.readdir(current.dir, { withFileTypes: true })
+          } catch {
+            continue
+          }
+
+          for (const entry of entries) {
+            scannedCount++
+            const lowerName = entry.name.toLowerCase()
+
+            if (entry.isDirectory()) {
+              if (skipNames.has(lowerName)) continue
+              if (entry.isSymbolicLink()) continue
+              if (current.dir.includes('/Library/Containers/com.docker.docker')) continue
+              queue.push({ dir: path.join(current.dir, entry.name), depth: current.depth + 1 })
+            } else if (entry.isFile()) {
+              if (isProtectedSystemFile(entry.name, path.join(current.dir, entry.name))) {
+                continue
+              }
+              try {
+                const fullPath = path.join(current.dir, entry.name)
+                const st = await fsPromises.lstat(fullPath)
+                if (st.isSymbolicLink()) continue
+                if (st.size >= minSizeBytes) {
+                  totalSize += st.size
+                  largeFiles.push({
+                    path: fullPath,
+                    name: entry.name,
+                    size: st.size,
+                    mtime: st.mtimeMs,
+                    extension: path.extname(entry.name).replace(/^\./, '').toLowerCase(),
+                    dir: current.dir,
+                  })
+                }
+              } catch {}
+            }
+          }
+        }
+
+        largeFiles.sort((a, b) => b.size - a.size)
+        const resultFiles = limit > 0 ? largeFiles.slice(0, limit) : largeFiles
+
+        return {
+          success: true,
+          files: resultFiles,
+          totalSize,
+          scannedCount,
+        }
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Помилка пошуку великих файлів' }
+      }
+    }
+  )
+
   // Large Files & Disk Space Analysis
-  ipcMain.handle('fs:analyzeDisk', async (_, dirPath: string, maxItems = 100) => {
+  safeHandle('fs:analyzeDisk', async (_, dirPath: string, maxItems = 100) => {
     try {
       const resolved = path.resolve(dirPath)
       let totalScannedBytes = 0

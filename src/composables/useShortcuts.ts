@@ -14,6 +14,7 @@ export interface ShortcutsHandlerContext {
   swapPanes: () => void;
   handleBottomAction: (type: string) => void;
   openLargeFilesModal: () => void;
+  openVirtualDisksModal?: () => void;
   openCreateArchiveModal: () => void;
   openArchiveInViewer: (item: FileItem) => void;
   openSearchModal: () => void;
@@ -136,6 +137,17 @@ export function useShortcuts(ctx: ShortcutsHandlerContext) {
         "Аналізатор великих файлів (Disk Cleanup)",
       );
       ctx.openLargeFilesModal();
+      return;
+    }
+
+    // Alt+D - Virtual Disks & Mounted DMGs
+    if (e.altKey && (e.key === "d" || e.key === "D")) {
+      e.preventDefault();
+      ctx.showShortcutToast(
+        "Alt + D",
+        "Віртуальні пристрої та змонтовані образи",
+      );
+      ctx.openVirtualDisksModal?.();
       return;
     }
 

@@ -20,21 +20,38 @@ A modern, high-performance orthodox two-panel file manager (Total Commander clon
   - State persisted automatically in `localStorage`.
   - Double-click any divider to reset width to default.
 
+- **macOS Unlocker (File & Process Unlocker)**:
+  - Detects processes locking files or directories using native macOS `/usr/sbin/lsof`.
+  - Displays locking processes with names and PIDs.
+  - Terminates locking processes (`kill -9`).
+  - Clears macOS immutable file flags (`chflags -R nouchg,noschg`) and restores write permissions (`chmod -R u+w`).
+  - Supports automatic execution of pending actions after unlocking: Delete, Move, Copy, or Unlock Only.
+  - Accessible via right-click Context Menu «Розблокувати (Unlocker)...» or from the Large Files Analyzer.
+
+- **Native macOS File Icons**:
+  - Direct retrieval of true macOS system icons via Electron's `app.getFileIcon`.
+  - Batch retrieval with shared in-memory extension and folder cache for high performance.
+  - Seamlessly integrated into file tables.
+
 - **Built-in Archive Manager (ZIP / TAR / GZ / TGZ / BZ2)**:
-  - **Create Archive (`Alt + F5`)**: Pack files/directories into ZIP or TAR.GZ via native macOS `ditto` and `tar` (`CreateArchiveModal.vue`).
-  - **Archive Viewer & Unpacker (`Alt + F6` / Double-Click)**: Browse inside archives without extracting; inspect uncompressed size, filter entries, and extract everything or selected files (`ArchiveViewModal.vue`).
+  - **Create Archive (`Alt + F5`)**: Pack files/directories into ZIP or TAR.GZ via native macOS `ditto`, `tar`, and `zip`. Supports password encryption (`zip -P`) and custom compression levels (`0` Store, `6` Normal, `9` Maximum).
+  - **Archive Explorer (`Alt + F6` / Double-Click)**: Virtual directory navigation with clickable breadcrumbs, internal directory hierarchy, search filtering, and password prompt banner for password-protected archives (`ArchiveViewModal.vue`).
   - Context menu shortcuts: "Розархівувати вміст...", "Створити архів (ZIP)...".
 
 - **Disk Cleanup & Large Files Analyzer (`Alt + L`)**:
   - Rapid recursive disk inspection (`LargeFilesModal.vue`).
-  - Filter by file size thresholds: `> 50 MB`, `> 100 MB`, `> 500 MB`, `> 1 GB`, `> 2 GB`, or all files.
+  - Quick size preset chips: `> 10 MB`, `> 25 MB`, `> 50 MB`, `> 100 MB`, `> 500 MB`, `> 1 GB`, `> 2 GB`, or custom MB.
+  - Quick drive chips: `Macintosh HD`, `Home (~)`, `/Volumes`, and current directory.
+  - Direct jump to Folder Size Analyzer and File Unlocker.
   - Quick reveal in Finder, individual trash, or batch cleanup of selected giant files.
   - **System Safety Protection**: automatically excludes and prevents accidental deletion of critical infrastructure and system files: Docker virtual disks (`Docker.raw`, `Docker.qcow2`), macOS swap files (`swapfile*`, `sleepimage`), and core system folders.
   - **Multi-Selection**: select multiple files using checkboxes, row clicks, Shift+Click (range selection), or `Cmd+A` (select all).
 
-- **Folder Size Calculation Inside App**:
+- **Real-time Streaming Folder Size Analyzer**:
   - Press **`Space`** on any folder to instantly calculate its exact size and replace the `<DIR>` badge.
-  - Open **Folder Size Breakdown** (`FolderSizeModal.vue`) via context menu to view subfolder size distribution with visual percentage bars.
+  - Open **Folder Size Breakdown** (`FolderSizeModal.vue`) via context menu to view subfolder size distribution.
+  - Real-time streaming scanning with progress indicator (`onFolderSizeItem`, `onFolderSizeProgress`), percentage visual progress bars, and 3 summary statistics cards (total size, total files, subfolder count).
+  - Cancelable background scanning.
 
 - **Classic Total Commander Function Keys (F2 - F10)**:
   - **F2 Rename / Shift+F6**: Rename any file or directory in place.
@@ -139,10 +156,20 @@ A modern, high-performance orthodox two-panel file manager (Total Commander clon
 | `npm run dev` | Synonym for `npm start`. |
 | `npm run app` | Synonym for `npm start`. |
 | `npm run build` | Compiles production bundle with **automatic build number increment** (`yyyy.mm.dd.X`). |
-| `npm run build:dmg:arm64` | Builds native Apple Silicon DMG installer (`release/`). |
-| `npm run build:dmg` | Builds standard DMG installer for current architecture. |
+| `npm run build:dmg` | Builds **universal macOS DMG installer** (`release/`) that runs natively on both Apple Silicon (ARM64) & Intel (x86_64). |
+| `npm run build:dmg:universal` | Builds Universal DMG installer (both ARM64 & Intel x86_64). |
+| `npm run build:dmg:arm64` | Builds native Apple Silicon (M1/M2/M3/M4) DMG installer. |
+| `npm run build:dmg:x64` | Builds native Intel (x86_64) DMG installer. |
 | `npm run run:prod` | Builds bundle and launches it in production mode. |
 | `npm run lint` | Runs ESLint check across all TS, JS, and Vue files. |
 | `npm run lint:fix` | Automatically fixes ESLint errors. |
 | `npm run format` | Formats codebase using Prettier. |
 | `npm run fix` | One-step command: runs both ESLint auto-fix and Prettier formatting. |
+
+---
+
+### 💡 macOS Security & Gatekeeper Note
+
+Because the app is built without a paid Apple Developer certificate, it uses automated ad-hoc code signing (`afterPack` hook). When transferred via Telegram or web browsers, macOS marks it with quarantine:
+- **First launch**: Right-click (or Control-click) `Total Commander.app` → select **Open** → click **Open**.
+- **Or via Terminal**: run `xattr -cr "/Applications/Total Commander.app"`.

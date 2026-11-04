@@ -63,6 +63,21 @@
         <ArrowLeftRight :size="15" />
       </button>
 
+      <!-- Virtual Disks / DMGs (Alt+D) -->
+      <button
+        class="btn-icon btn-virtual-disks"
+        :class="{ 'has-disks': (virtualDisksCount || 0) > 0 }"
+        data-tooltip="Змонтовані образи та віртуальні диски (Alt+D)"
+        data-tooltip-pos="bottom"
+        title="Переглянути активні змонтовані диски та образи (Alt+D)"
+        @click="$emit('open-virtual-disks')"
+      >
+        <Disc :size="15" />
+        <span v-if="(virtualDisksCount || 0) > 0" class="virtual-disks-badge">
+          {{ virtualDisksCount }}
+        </span>
+      </button>
+
       <!-- Open Terminal -->
       <button
         class="btn-icon"
@@ -128,6 +143,7 @@ import {
   Eye,
   EyeOff,
   ArrowLeftRight,
+  Disc,
   Terminal,
   RotateCw,
   Sun,
@@ -138,6 +154,7 @@ defineProps<{
   showHidden: boolean;
   currentTheme: "dark" | "light";
   buildVersion?: string;
+  virtualDisksCount?: number;
 }>();
 
 defineEmits<{
@@ -145,6 +162,7 @@ defineEmits<{
   (e: "open-search"): void;
   (e: "toggle-hidden"): void;
   (e: "swap-panes"): void;
+  (e: "open-virtual-disks"): void;
   (e: "open-terminal"): void;
   (e: "refresh-all"): void;
   (e: "toggle-theme"): void;

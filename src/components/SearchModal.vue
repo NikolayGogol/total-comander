@@ -50,17 +50,28 @@
           <div class="form-options">
             <label class="checkbox-label">
               <input type="checkbox" v-model="recursive" />
-              <span>Search subdirectories (recursive)</span>
+              <span>Шукати у підпапках (рекурсивно)</span>
             </label>
 
-            <button
-              class="btn-primary"
-              :disabled="searching"
-              @click="runSearch"
-            >
-              <Search :size="13" />
-              <span>{{ searching ? "Searching..." : "Start Search" }}</span>
-            </button>
+            <div class="search-actions-group">
+              <button
+                type="button"
+                class="btn-secondary"
+                title="Пошук великих файлів для звільнення місця (>50MB, >1GB)"
+                @click="openLargeFiles"
+              >
+                <PieChart :size="13" />
+                <span>Аналізатор диска...</span>
+              </button>
+              <button
+                class="btn-primary"
+                :disabled="searching"
+                @click="runSearch"
+              >
+                <Search :size="13" />
+                <span>{{ searching ? "Пошук..." : "Почати пошук" }}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -136,7 +147,7 @@
 import { ref, onMounted, nextTick } from "vue";
 import type { SearchResult } from "@/types";
 import { formatBytes } from "@/utils/formatters";
-import { Search, X, Folder, File } from "lucide-vue-next";
+import { Search, X, Folder, File, PieChart } from "lucide-vue-next";
 
 const props = defineProps<{
   initialDir: string;
@@ -145,6 +156,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "jump-to", filePath: string): void;
+  (e: "open-large-files", searchDir: string): void;
 }>();
 
 const searchDir = ref("");
@@ -155,6 +167,11 @@ const searching = ref(false);
 const hasSearched = ref(false);
 const results = ref<SearchResult[]>([]);
 const nameInputRef = ref<HTMLInputElement | null>(null);
+
+function openLargeFiles() {
+  emit("open-large-files", searchDir.value.trim() || props.initialDir);
+  emit("close");
+}
 
 async function runSearch() {
   if (!searchDir.value.trim()) return;

@@ -1,5 +1,5 @@
-import type {Ref} from "vue";
-import type {FileItem, PaneState} from "@/types";
+import type { Ref } from "vue";
+import type { FileItem, PaneState } from "@/types";
 
 export interface FileOperationsContext {
   activePaneId: Ref<"left" | "right">;
@@ -47,6 +47,13 @@ export interface FileOperationsContext {
   folderSizeModal: {
     open: boolean;
     folderPath: string;
+  };
+  unlockerModal: {
+    open: boolean;
+    targetPath: string;
+    targetName: string;
+    isDirectory: boolean;
+    oppositePath: string;
   };
   contextMenuState: {
     visible: boolean;
@@ -233,6 +240,8 @@ export function useFileOperations(ctx: FileOperationsContext) {
   async function onArchiveCreateConfirm(payload: {
     format: "zip" | "tar.gz";
     fullTarget: string;
+    password?: string;
+    level?: number;
   }) {
     ctx.createArchiveModal.open = false;
     ctx.showToast("Створення архіву...", "success");
@@ -240,10 +249,13 @@ export function useFileOperations(ctx: FileOperationsContext) {
       const rawSources = JSON.parse(
         JSON.stringify(ctx.createArchiveModal.sourceItems),
       );
-      const res = await window.electronAPI.createArchive(
-        rawSources,
-        payload.fullTarget,
-      );
+      const res = await window.electronAPI.createArchive({
+        sources: rawSources,
+        targetPath: payload.fullTarget,
+        format: payload.format,
+        password: payload.password,
+        level: payload.level,
+      });
       if (res.success) {
         ctx.showToast(
           `Архів створено: ${payload.fullTarget.split("/").pop()}`,
@@ -361,10 +373,24 @@ export function useFileOperations(ctx: FileOperationsContext) {
         break;
 
       case "large-files": {
-        ctx.largeFilesModal.initialDir = item && item.isDirectory
+        ctx.largeFilesModal.initialDir =
+          item && item.isDirectory
             ? item.path
             : ctx.activePaneState.value.currentPath;
         ctx.largeFilesModal.open = true;
+        break;
+      }
+
+      case "unlocker": {
+        const target = item || ctx.getActiveCursorItem();
+        if (target) {
+          ctx.unlockerModal.targetPath = target.path;
+          ctx.unlockerModal.targetName = target.name;
+          ctx.unlockerModal.isDirectory = target.isDirectory;
+          ctx.unlockerModal.oppositePath =
+            ctx.oppositePaneState.value.currentPath;
+          ctx.unlockerModal.open = true;
+        }
         break;
       }
 

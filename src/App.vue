@@ -8,11 +8,13 @@
     <TitleBar
       :show-hidden="showHidden"
       :current-theme="currentTheme"
+      :virtual-disks-count="virtualDisksCount"
       :build-version="
         'v' + BUILD_INFO.version + ' (b.' + BUILD_INFO.buildNumber + ')'
       "
       @open-search="openSearchModal"
       @open-analyzer="openLargeFilesModal"
+      @open-virtual-disks="openVirtualDisksModal"
       @toggle-hidden="toggleHiddenFiles"
       @swap-panes="swapPanes"
       @open-terminal="openActiveTerminal"
@@ -126,6 +128,7 @@
       :initial-dir="searchModal.initialDir"
       @close="searchModal.open = false"
       @jump-to="jumpToSearchFile"
+      @open-large-files="openLargeFilesModal"
     />
 
     <!-- Create Archive Modal (Alt+F5) -->
@@ -152,14 +155,43 @@
       :initial-dir="largeFilesModal.initialDir"
       @close="largeFilesModal.open = false"
       @refreshed="refreshAllPanes"
+      @jump-to="jumpToSearchFile"
+      @open-folder-sizes="handleOpenFolderSizes"
+      @open-unlocker="handleOpenUnlockerFromLargeFiles"
     />
 
     <!-- Folder Size Breakdown Modal -->
     <FolderSizeModal
       v-if="folderSizeModal.open"
       :folder-path="folderSizeModal.folderPath"
+      @jump-to="(p) => navigatePane(activePaneId, p)"
       @navigate="(p) => navigatePane(activePaneId, p)"
+      @toast="showToast"
       @close="folderSizeModal.open = false"
+    />
+
+    <!-- Unlocker Modal -->
+    <UnlockerModal
+      v-if="unlockerModal.open"
+      :target-path="unlockerModal.targetPath"
+      :target-name="unlockerModal.targetName"
+      :is-directory="unlockerModal.isDirectory"
+      :opposite-path="unlockerModal.oppositePath"
+      @action-completed="handleUnlockerCompleted"
+      @toast="showToast"
+      @close="unlockerModal.open = false"
+    />
+
+    <!-- Virtual Disks Modal (Alt+D) -->
+    <VirtualDisksModal
+      v-if="virtualDisksModal.open"
+      @navigate="(p) => navigatePane(activePaneId, p)"
+      @close="
+        () => {
+          virtualDisksModal.open = false;
+          refreshVirtualDisksCount();
+        }
+      "
     />
 
     <!-- Right-Click Context Menu -->
@@ -211,6 +243,8 @@ import CreateArchiveModal from "@/components/CreateArchiveModal.vue";
 import ArchiveViewModal from "@/components/ArchiveViewModal.vue";
 import LargeFilesModal from "@/components/LargeFilesModal.vue";
 import FolderSizeModal from "@/components/FolderSizeModal.vue";
+import UnlockerModal from "@/components/UnlockerModal.vue";
+import VirtualDisksModal from "@/components/VirtualDisksModal.vue";
 
 import { useToast } from "@/composables/useToast";
 import { useModals } from "@/composables/useModals";
@@ -238,6 +272,8 @@ const {
   archiveViewModal,
   largeFilesModal,
   folderSizeModal,
+  unlockerModal,
+  virtualDisksModal,
   contextMenuState,
   isAnyModalOpen,
   closeAllModals,
@@ -317,6 +353,8 @@ const {
   archiveViewModal,
   largeFilesModal,
   folderSizeModal,
+  unlockerModal,
+  virtualDisksModal,
   contextMenuState,
   getActiveCursorItem,
   getSelectedOrCursorPaths,
@@ -345,6 +383,25 @@ function navigateToDrive(path: string) {
   navigatePane(activePaneId.value, path);
 }
 
+const virtualDisksCount = ref(0);
+
+async function refreshVirtualDisksCount() {
+  try {
+    const res = await window.electronAPI.getVirtualDisks();
+    if (res.success && res.data) {
+      virtualDisksCount.value = res.data.length;
+    } else {
+      virtualDisksCount.value = 0;
+    }
+  } catch {
+    virtualDisksCount.value = 0;
+  }
+}
+
+function openVirtualDisksModal() {
+  virtualDisksModal.open = true;
+}
+
 function handleEjectDrive(path: string) {
   ejectDrive(path, leftPane, rightPane, navigatePane);
 }
@@ -365,6 +422,7 @@ const { handleGlobalShortcuts } = useShortcuts({
   swapPanes,
   handleBottomAction,
   openLargeFilesModal,
+  openVirtualDisksModal,
   openCreateArchiveModal,
   openArchiveInViewer,
   openSearchModal,
@@ -399,6 +457,40 @@ function preventDragDefault(e: DragEvent) {
   e.preventDefault();
 }
 
+function handleUnlockerCompleted(payload: {
+  action: string;
+  targetPath: string;
+}) {
+  refreshAllPanes();
+  showToast(
+    payload.action === "delete"
+      ? "Об'єкт успішно розблоковано та видалено"
+      : payload.action === "move"
+        ? "Об'єкт успішно розблоковано та переміщено"
+        : payload.action === "copy"
+          ? "Об'єкт успішно скопійовано"
+          : "Об'єкт успішно розблоковано",
+    "success",
+  );
+}
+
+function handleOpenFolderSizes(folderPath: string) {
+  folderSizeModal.folderPath = folderPath;
+  folderSizeModal.open = true;
+}
+
+function handleOpenUnlockerFromLargeFiles(
+  targetPath: string,
+  targetName: string,
+  isDirectory: boolean,
+) {
+  unlockerModal.targetPath = targetPath;
+  unlockerModal.targetName = targetName;
+  unlockerModal.isDirectory = isDirectory;
+  unlockerModal.oppositePath = oppositePaneState.value.currentPath;
+  unlockerModal.open = true;
+}
+
 onMounted(async () => {
   try {
     document.documentElement.setAttribute("data-theme", currentTheme.value);
@@ -409,6 +501,7 @@ onMounted(async () => {
       loadDirectory(leftPane, homeDir.value),
       loadDirectory(rightPane, defaultRoot),
       loadDrivesList(),
+      refreshVirtualDisksCount(),
     ]);
 
     window.addEventListener("dragover", preventDragDefault);
@@ -454,7 +547,7 @@ onMounted(async () => {
     });
 
     window.electronAPI.onDrivesChanged(async () => {
-      await loadDrivesList();
+      await Promise.all([loadDrivesList(), refreshVirtualDisksCount()]);
       showShortcutToast("USB", "Оновлено підключені USB-носії та диски");
     });
   } catch (err: any) {

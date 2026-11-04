@@ -484,6 +484,12 @@
         color: $color-text-muted;
         cursor: pointer;
       }
+
+      .search-actions-group {
+        display: flex;
+        align-items: center;
+        gap: $size-space-sm;
+      }
     }
   }
 

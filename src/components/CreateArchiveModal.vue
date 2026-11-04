@@ -3,8 +3,8 @@
     <div class="modal-card archive-create-card">
       <div class="modal-header">
         <div class="modal-title">
-          <Archive :size="16" class="icon-blue" title="Create Archive" />
-          <span>Створити архів (Alt+F5)</span>
+          <Archive :size="16" class="icon-amber" />
+          <span>Створення архіву (Alt+F5)</span>
         </div>
         <button
           class="modal-close-btn"
@@ -16,6 +16,7 @@
       </div>
 
       <div class="modal-body">
+        <!-- Target Directory -->
         <div class="form-row">
           <label class="form-label">Цільова папка:</label>
           <div class="path-display-badge">
@@ -23,6 +24,7 @@
           </div>
         </div>
 
+        <!-- Archive Name -->
         <div class="form-row">
           <label class="form-label">Назва архіву:</label>
           <input
@@ -30,28 +32,29 @@
             v-model="archiveName"
             type="text"
             class="form-input"
-            placeholder="Назва архіву (наприклад: archive.zip)"
+            placeholder="Назва архіву"
             @keydown.enter="submit"
           />
         </div>
 
+        <!-- Archive Format -->
         <div class="form-row">
           <label class="form-label">Формат архіву:</label>
           <div class="archive-format-options">
             <label class="radio-option">
               <input
+                v-model="selectedFormat"
                 type="radio"
                 value="zip"
-                v-model="selectedFormat"
                 @change="onFormatChange"
               />
               <span>ZIP (.zip) — Apple Ditto / Сумісний</span>
             </label>
             <label class="radio-option">
               <input
+                v-model="selectedFormat"
                 type="radio"
                 value="tar.gz"
-                v-model="selectedFormat"
                 @change="onFormatChange"
               />
               <span>TAR GZ (.tar.gz) — Unix / Linux</span>
@@ -59,10 +62,55 @@
           </div>
         </div>
 
+        <!-- Password Protection -->
         <div class="form-row">
-          <label class="form-label"
-            >Файли для архівації ({{ sourceItems.length }}):</label
-          >
+          <div class="label-with-action">
+            <label class="form-label">
+              <Lock :size="13" class="icon-blue" />
+              <span>Захист паролем (необов'язково):</span>
+            </label>
+            <button
+              type="button"
+              class="btn-text-toggle"
+              tabindex="-1"
+              @click="showPassword = !showPassword"
+            >
+              {{ showPassword ? "Сховати" : "Показати" }}
+            </button>
+          </div>
+          <input
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            class="form-input"
+            placeholder="Введіть пароль для шифрування..."
+            @keydown.enter="submit"
+          />
+        </div>
+
+        <!-- Compression Level -->
+        <div class="form-row">
+          <label class="form-label">Рівень стиснення:</label>
+          <div class="archive-level-options">
+            <label class="radio-option">
+              <input v-model="compressionLevel" type="radio" :value="1" />
+              <span>Швидкий (Fast)</span>
+            </label>
+            <label class="radio-option">
+              <input v-model="compressionLevel" type="radio" :value="6" />
+              <span>Звичайний (Normal)</span>
+            </label>
+            <label class="radio-option">
+              <input v-model="compressionLevel" type="radio" :value="9" />
+              <span>Максимальний (Maximum)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Files Preview -->
+        <div class="form-row">
+          <label class="form-label">
+            Файли для архівації ({{ sourceItems.length }}):
+          </label>
           <div class="items-preview-list">
             <div
               v-for="item in sourceItems.slice(0, 5)"
@@ -99,7 +147,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import { Archive, X } from "lucide-vue-next";
+import { Archive, Lock, X } from "lucide-vue-next";
 
 const props = defineProps<{
   sourceItems: string[];
@@ -109,7 +157,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   (
     e: "confirm",
-    payload: { format: "zip" | "tar.gz"; fullTarget: string },
+    payload: {
+      format: "zip" | "tar.gz";
+      fullTarget: string;
+      password?: string;
+      level?: number;
+    },
   ): void;
   (e: "close"): void;
 }>();
@@ -117,6 +170,9 @@ const emit = defineEmits<{
 const inputRef = ref<HTMLInputElement | null>(null);
 const selectedFormat = ref<"zip" | "tar.gz">("zip");
 const archiveName = ref("");
+const password = ref("");
+const showPassword = ref(false);
+const compressionLevel = ref(6);
 const isProcessing = ref(false);
 
 function onFormatChange() {
@@ -133,7 +189,12 @@ function submit() {
     finalName += expectedExt;
   }
   const fullTarget = `${props.targetDir.replace(/\/+$/, "")}/${finalName}`;
-  emit("confirm", { format: selectedFormat.value, fullTarget });
+  emit("confirm", {
+    format: selectedFormat.value,
+    fullTarget,
+    password: password.value ? password.value.trim() : undefined,
+    level: compressionLevel.value,
+  });
 }
 
 function onKeyDown(e: KeyboardEvent) {
