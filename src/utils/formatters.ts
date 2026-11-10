@@ -256,18 +256,9 @@ export function getFileTypeDescription(
 export function isArchive(item?: any): boolean {
   if (!item || item.isDirectory) return false;
   const ext = (item.extension || "").toLowerCase().replace(/^\./, "");
-  return [
-    "zip",
-    "tar",
-    "gz",
-    "tgz",
-    "bz2",
-    "tbz2",
-    "xz",
-    "7z",
-    "rar",
-    "dmg",
-  ].includes(ext);
+  return ["zip", "tar", "gz", "tgz", "bz2", "tbz2", "xz", "7z", "rar"].includes(
+    ext,
+  );
 }
 
 export function getItemIconTitle(item?: any): string {

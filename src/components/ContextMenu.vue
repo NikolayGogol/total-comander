@@ -118,7 +118,6 @@ const itemsList = computed<ContextItemDef[]>(() => {
       "xz",
       "7z",
       "rar",
-      "dmg",
     ].includes(ext);
     const list: ContextItemDef[] = [];
 
@@ -133,6 +132,25 @@ const itemsList = computed<ContextItemDef[]>(() => {
         action: "show-package-contents",
         label: "Показати вміст пакета",
         icon: FolderOpen,
+      });
+    } else if (ext === "dmg") {
+      list.push({
+        action: "open",
+        label: "Змонтувати / відкрити образ (.dmg)",
+        icon: ExternalLink,
+        shortcut: "↵",
+      });
+      list.push({
+        action: "view",
+        label: "Перегляд (Quick Look)",
+        icon: Eye,
+        shortcut: "F3",
+      });
+      list.push({
+        action: "archive-create",
+        label: "Створити архів (ZIP)...",
+        icon: Archive,
+        shortcut: "⌥F5",
       });
     } else if (isArchive) {
       list.push({

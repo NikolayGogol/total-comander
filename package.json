@@ -1,7 +1,7 @@
 {
   "name": "total-commander-macos",
   "productName": "Total Commander",
-  "version": "1.0.23",
+  "version": "1.0.25",
   "description": "Total Commander for macOS built with Node.js, Electron, Vue 3, and SCSS",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -75,7 +75,7 @@
         "height": 380
       }
     },
-    "buildVersion": "2026.11.10.11"
+    "buildVersion": "2026.11.10.15"
   },
   "dependencies": {
     "@lucide/vue": "^1.62.0",

@@ -175,10 +175,8 @@ export function useFileIcons() {
   }
 
   function getCategory(item: FileItem): string {
-    return getFileCategory(
-      item.extension || item.name,
-      item.isDirectory,
-    ).category;
+    return getFileCategory(item.extension || item.name, item.isDirectory)
+      .category;
   }
 
   function getIconModifier(item: FileItem): string {
