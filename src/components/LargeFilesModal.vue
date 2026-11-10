@@ -641,16 +641,17 @@ async function deleteSelected(moveToTrash: boolean) {
 
   if (!confirm(confirmMsg)) return;
 
-  for (const p of paths) {
-    try {
-      if (moveToTrash) {
-        await window.electronAPI.trashFile(p);
-      } else {
-        await window.electronAPI.deleteItem(p);
-      }
-    } catch (e) {
-      console.error(e);
+  try {
+    const res = await window.electronAPI.deletePaths(paths, moveToTrash);
+    if (!res.success && res.error) {
+      alert("Помилка видалення файлів: " + res.error);
+      return;
     }
+    selectedPaths.value.clear();
+  } catch (e: any) {
+    console.error(e);
+    alert("Помилка видалення файлів: " + (e?.message || e));
+    return;
   }
 
   emit("refreshed");
