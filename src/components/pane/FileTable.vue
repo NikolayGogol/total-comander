@@ -146,8 +146,14 @@
           <td class="col-name">
             <div class="col-icon-name">
               <div class="item-icon-wrapper">
+                <Archive
+                  v-if="isArchive(item)"
+                  :size="14"
+                  class="item-icon icon-archive"
+                  :title="getItemIconTitle(item)"
+                />
                 <img
-                  v-if="item.appIcon || getNativeIcon(item)"
+                  v-else-if="item.appIcon || getNativeIcon(item)"
                   :src="item.appIcon || getNativeIcon(item)"
                   class="item-icon item-icon-native"
                   :alt="item.name"
@@ -283,7 +289,7 @@ import {
 import { useTableColumns } from "@/composables/useTableColumns";
 import { useFileIcons } from "@/composables/useFileIcons";
 import { extractDroppedPaths, getParentPath } from "@/utils/paths";
-import { CornerLeftUp, Loader2 } from "lucide-vue-next";
+import { CornerLeftUp, Loader2, Archive } from "lucide-vue-next";
 
 const props = defineProps<{
   items: FileItem[];

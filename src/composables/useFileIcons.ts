@@ -1,7 +1,7 @@
 import { reactive } from "vue";
 import type { Component } from "vue";
 import type { FileItem } from "@/types";
-import { getFileCategory } from "@/utils/formatters";
+import { getFileCategory, isArchive } from "@/utils/formatters";
 import {
   Folder,
   File,
@@ -33,6 +33,7 @@ const inFlightPaths = new Set<string>();
 export function useFileIcons() {
   function getNativeIcon(item: FileItem): string | undefined {
     if (!item) return undefined;
+    if (isArchive(item)) return undefined;
     const isApp =
       item.isApp ||
       item.name?.endsWith(".app") ||
@@ -84,6 +85,7 @@ export function useFileIcons() {
 
     for (const item of items) {
       if (!item.path) continue;
+      if (isArchive(item)) continue;
       const isApp =
         item.isApp ||
         item.name?.endsWith(".app") ||
@@ -151,6 +153,7 @@ export function useFileIcons() {
   function getIconComponent(item: FileItem): Component {
     if (item.isApp) return AppWindow;
     if (item.isDirectory) return Folder;
+    if (isArchive(item)) return Archive;
     const cat = getFileCategory(
       item.extension || item.name,
       item.isDirectory,

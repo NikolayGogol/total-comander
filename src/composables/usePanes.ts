@@ -211,14 +211,13 @@ export function usePanes(
     }
   }
 
-  function refreshPane(paneKey: "left" | "right") {
+  function refreshPane(paneKey: "left" | "right"): Promise<void> {
     const p = paneKey === "left" ? leftPane : rightPane;
-    loadDirectory(p, p.currentPath);
+    return loadDirectory(p, p.currentPath);
   }
 
-  function refreshAllPanes() {
-    refreshPane("left");
-    refreshPane("right");
+  function refreshAllPanes(): Promise<[void, void]> {
+    return Promise.all([refreshPane("left"), refreshPane("right")]);
   }
 
   function switchTab(paneKey: "left" | "right", tabId: string) {

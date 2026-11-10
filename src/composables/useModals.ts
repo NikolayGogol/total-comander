@@ -36,10 +36,12 @@ export function useModals() {
     open: boolean;
     sourceItems: string[];
     targetDir: string;
+    loading: boolean;
   }>({
     open: false,
     sourceItems: [],
     targetDir: "",
+    loading: false,
   });
 
   const archiveViewModal = reactive<{

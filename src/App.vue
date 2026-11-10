@@ -136,6 +136,7 @@
       v-if="createArchiveModal.open"
       :source-items="createArchiveModal.sourceItems"
       :target-dir="createArchiveModal.targetDir"
+      :is-creating="createArchiveModal.loading"
       @confirm="onArchiveCreateConfirm"
       @close="createArchiveModal.open = false"
     />

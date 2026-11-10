@@ -519,33 +519,14 @@ function reloadWithPassword() {
   loadArchive(passwordInput.value.trim());
 }
 
-async function extractAll() {
-  loading.value = true;
-  try {
-    const fullTarget = finalExtractPath.value;
-    const pwd = passwordInput.value.trim() || undefined;
-
-    const res = await window.electronAPI.extractArchive(
-      props.archivePath,
-      fullTarget,
-      pwd,
-    );
-    if (res.success) {
-      emit("extracted", fullTarget);
-      emit("extract", {
-        archivePath: props.archivePath,
-        targetDir: fullTarget,
-        password: pwd,
-      });
-      emit("close");
-    } else {
-      errorMessage.value = res.error || "Помилка розпакування";
-    }
-  } catch (err: any) {
-    errorMessage.value = err.message;
-  } finally {
-    loading.value = false;
-  }
+function extractAll() {
+  const fullTarget = finalExtractPath.value;
+  const pwd = passwordInput.value.trim() || undefined;
+  emit("extract", {
+    archivePath: props.archivePath,
+    targetDir: fullTarget,
+    password: pwd,
+  });
 }
 
 function handleKeyDown(e: KeyboardEvent) {

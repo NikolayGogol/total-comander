@@ -10,14 +10,14 @@
   .path-display-badge {
     padding: $size-space-sm $size-space-md;
     background: var(--bg-input);
-    border: 1px solid $color-border-subtle;
+    border: 1px solid var(--border-subtle);
     border-radius: $radius-sm;
     font-size: $font-size-xs;
-    color: $color-text-muted;
+    color: var(--text-muted);
     word-break: break-all;
 
     code {
-      color: $color-accent-cyan;
+      color: var(--accent-cyan);
       font-family: $font-family-mono;
     }
   }
@@ -26,54 +26,117 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: $size-space-md;
-    margin-top: $size-space-xs;
+    margin-top: $size-space-2xs;
 
     .radio-option {
       display: flex;
       align-items: center;
       gap: $size-space-sm;
       font-size: $font-size-xs;
-      color: $color-text-main;
+      color: var(--text-main);
       padding: $size-space-sm $size-space-md;
       background: var(--bg-pill);
       border: 1px solid var(--border-pill);
       border-radius: $radius-sm;
       cursor: pointer;
+      user-select: none;
       transition: all 0.15s ease;
 
       &:hover {
-        background: $color-bg-row-hover;
-        border-color: $color-border-focus;
+        background: var(--row-hover);
+        border-color: var(--border-hover);
       }
 
+      &.is-selected,
       &:has(input[type="radio"]:checked) {
-        border-color: $color-accent-blue;
-        background: rgba($color-accent-blue, 0.12);
-        color: white;
+        border-color: var(--accent-blue);
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--accent-blue);
+        font-weight: $font-weight-semibold;
       }
 
       input[type="radio"] {
-        accent-color: $color-accent-blue;
+        accent-color: var(--accent-blue);
         cursor: pointer;
+        margin: 0;
+      }
+    }
+  }
+
+  .label-with-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $size-space-2xs;
+
+    .form-label {
+      display: inline-flex;
+      align-items: center;
+      gap: $size-space-xs;
+      margin-bottom: 0;
+    }
+
+    .btn-text-toggle {
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      color: var(--accent-blue);
+      font-size: $font-size-2xs;
+      font-weight: $font-weight-medium;
+      padding: 2px $size-space-sm;
+      border-radius: $radius-xs;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: var(--row-hover);
+        border-color: var(--accent-blue);
+      }
+
+      &:active {
+        transform: scale(0.96);
       }
     }
   }
 
   .archive-level-options {
-    display: flex;
-    gap: $size-space-lg;
-    padding: $size-space-xs 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: $size-space-sm;
+    margin-top: $size-space-2xs;
 
-    .level-radio {
+    .radio-option {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: $size-space-xs;
       font-size: $font-size-xs;
-      color: $color-text-secondary;
+      color: var(--text-main);
+      padding: $size-space-sm $size-space-xs;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-pill);
+      border-radius: $radius-sm;
       cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+
+      &:hover {
+        background: var(--row-hover);
+        border-color: var(--border-hover);
+      }
+
+      &.is-selected,
+      &:has(input[type="radio"]:checked) {
+        border-color: var(--accent-blue);
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--accent-blue);
+        font-weight: $font-weight-semibold;
+      }
 
       input[type="radio"] {
-        accent-color: $color-accent-blue;
+        accent-color: var(--accent-blue);
+        cursor: pointer;
+        margin: 0;
       }
     }
   }
@@ -89,7 +152,7 @@
 
   .items-preview-list {
     background: var(--bg-input);
-    border: 1px solid $color-border-subtle;
+    border: 1px solid var(--border-subtle);
     border-radius: $radius-sm;
     padding: $size-space-xs $size-space-md;
     max-height: 120px;
@@ -99,12 +162,12 @@
     .item-preview {
       font-size: $font-size-xs;
       font-family: $font-family-mono;
-      color: $color-text-muted;
-      padding: 3px 0;
+      color: var(--text-muted);
+      padding: 4px 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid var(--border-subtle);
 
       &:last-child {
         border-bottom: none;
@@ -113,7 +176,7 @@
 
     .item-preview-more {
       font-size: $font-size-2xs;
-      color: $color-accent-cyan;
+      color: var(--accent-cyan);
       padding-top: $size-space-xs;
     }
   }

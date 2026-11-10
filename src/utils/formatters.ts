@@ -254,8 +254,13 @@ export function getFileTypeDescription(
 }
 
 export function isArchive(item?: any): boolean {
-  if (!item || item.isDirectory) return false;
-  const ext = (item.extension || "").toLowerCase().replace(/^\./, "");
+  if (!item) return false;
+  if (typeof item === "object" && item.isDirectory) return false;
+  const str =
+    typeof item === "string" ? item : item.extension || item.name || "";
+  const ext = (str.includes(".") ? str.split(".").pop()! : str)
+    .toLowerCase()
+    .replace(/^\./, "");
   return ["zip", "tar", "gz", "tgz", "bz2", "tbz2", "xz", "7z", "rar"].includes(
     ext,
   );
@@ -265,6 +270,8 @@ export function getItemIconTitle(item?: any): string {
   if (!item) return "";
   if (item.isAlias) return `Ярлик до: ${item.aliasTarget || item.name}`;
   if (item.isDirectory) return `Папка: ${item.name}`;
+  if (isArchive(item))
+    return `Архів: ${item.name} (${formatBytes(item.size)}) — подвійний клік щоб відкрити`;
   const ext = item.extension
     ? `${item.extension.toUpperCase().replace(/^\./, "")} `
     : "";

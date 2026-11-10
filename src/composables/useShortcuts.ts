@@ -21,7 +21,7 @@ export interface ShortcutsHandlerContext {
   selectAllInActivePane: () => void;
   invertSelectionInActivePane: () => void;
   deselectAllInActivePane: () => void;
-  refreshAllPanes: () => void;
+  refreshAllPanes: () => void | Promise<any>;
   toggleHiddenFiles: () => void;
   toggleTheme: () => void;
   goUp: (paneKey: "left" | "right") => void;

@@ -277,6 +277,8 @@
     }
     &.icon-archive {
       color: var(--color-archive);
+      fill: currentColor;
+      fill-opacity: 0.18;
     }
     &.icon-system {
       color: var(--color-system);

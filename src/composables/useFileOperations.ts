@@ -15,7 +15,7 @@ export interface FileOperationsContext extends ModalsState {
   loadDirectory: (pane: PaneState, dir: string) => Promise<void>;
   navigatePane: (paneKey: "left" | "right", dir: string) => void;
   refreshPane: (paneKey: "left" | "right") => void;
-  refreshAllPanes: () => void;
+  refreshAllPanes: () => Promise<any> | void;
   copySelectedToClipboard: (paths: string[], action: "copy" | "cut") => void;
   pasteFromClipboard: (
     targetDir: string,
@@ -184,7 +184,7 @@ export function useFileOperations(ctx: FileOperationsContext) {
     password?: string;
     level?: number;
   }) {
-    ctx.createArchiveModal.open = false;
+    ctx.createArchiveModal.loading = true;
     ctx.showToast("Створення архіву...", "success");
     try {
       const rawSources = JSON.parse(
@@ -198,16 +198,32 @@ export function useFileOperations(ctx: FileOperationsContext) {
         level: payload.level,
       });
       if (res.success) {
+        ctx.createArchiveModal.open = false;
         ctx.showToast(
           `Архів створено: ${payload.fullTarget.split("/").pop()}`,
           "success",
         );
-        ctx.refreshAllPanes();
+        // Refresh all panes and wait for them to finish reading
+        await ctx.refreshAllPanes();
+        // Fallback tick to guarantee APFS index update & highlight item
+        setTimeout(async () => {
+          await ctx.refreshAllPanes();
+          const targetName = payload.fullTarget.split("/").pop();
+          if (targetName) {
+            const p = ctx.activePaneState.value;
+            const idx = p.items.findIndex((item) => item.name === targetName);
+            if (idx !== -1) {
+              p.cursorIndex = idx;
+            }
+          }
+        }, 150);
       } else {
         ctx.showToast(`Помилка створення архіву: ${res.error}`, "error");
       }
     } catch (err: any) {
       ctx.showToast(`Помилка: ${err.message}`, "error");
+    } finally {
+      ctx.createArchiveModal.loading = false;
     }
   }
 
@@ -215,6 +231,7 @@ export function useFileOperations(ctx: FileOperationsContext) {
     archivePath: string;
     targetDir: string;
     selectedFiles?: string[];
+    password?: string;
   }) {
     ctx.archiveViewModal.open = false;
     ctx.showToast("Розпакування архіву...", "success");
@@ -222,11 +239,11 @@ export function useFileOperations(ctx: FileOperationsContext) {
       const res = await window.electronAPI.extractArchive(
         payload.archivePath,
         payload.targetDir,
-        payload.selectedFiles,
+        payload.password || payload.selectedFiles,
       );
       if (res.success) {
         ctx.showToast("Архів успішно розпаковано", "success");
-        ctx.refreshAllPanes();
+        await ctx.refreshAllPanes();
       } else {
         ctx.showToast(`Помилка розпакування: ${res.error}`, "error");
       }

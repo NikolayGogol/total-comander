@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay" @click.self="!isCreating && $emit('close')">
     <div class="modal-card archive-create-card">
       <div class="modal-header">
         <div class="modal-title">
@@ -9,6 +9,7 @@
         <button
           class="modal-close-btn"
           title="Скасувати (Esc)"
+          :disabled="isCreating"
           @click="$emit('close')"
         >
           <X :size="15" />
@@ -41,7 +42,10 @@
         <div class="form-row">
           <label class="form-label">Формат архіву:</label>
           <div class="archive-format-options">
-            <label class="radio-option">
+            <label
+              class="radio-option"
+              :class="{ 'is-selected': selectedFormat === 'zip' }"
+            >
               <input
                 v-model="selectedFormat"
                 type="radio"
@@ -50,7 +54,10 @@
               />
               <span>ZIP (.zip) — Apple Ditto / Сумісний</span>
             </label>
-            <label class="radio-option">
+            <label
+              class="radio-option"
+              :class="{ 'is-selected': selectedFormat === 'tar.gz' }"
+            >
               <input
                 v-model="selectedFormat"
                 type="radio"
@@ -91,15 +98,24 @@
         <div class="form-row">
           <label class="form-label">Рівень стиснення:</label>
           <div class="archive-level-options">
-            <label class="radio-option">
+            <label
+              class="radio-option"
+              :class="{ 'is-selected': compressionLevel === 1 }"
+            >
               <input v-model="compressionLevel" type="radio" :value="1" />
               <span>Швидкий (Fast)</span>
             </label>
-            <label class="radio-option">
+            <label
+              class="radio-option"
+              :class="{ 'is-selected': compressionLevel === 6 }"
+            >
               <input v-model="compressionLevel" type="radio" :value="6" />
               <span>Звичайний (Normal)</span>
             </label>
-            <label class="radio-option">
+            <label
+              class="radio-option"
+              :class="{ 'is-selected': compressionLevel === 9 }"
+            >
               <input v-model="compressionLevel" type="radio" :value="9" />
               <span>Максимальний (Maximum)</span>
             </label>
@@ -127,17 +143,22 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-secondary" @click="$emit('close')">
+        <button
+          class="btn-secondary"
+          :disabled="isCreating"
+          @click="$emit('close')"
+        >
           Скасувати (Esc)
         </button>
         <button
           class="btn-primary"
-          :disabled="isProcessing || !archiveName.trim()"
+          :disabled="isCreating || !archiveName.trim()"
           @click="submit"
         >
-          <Archive :size="14" />
+          <Loader2 v-if="isCreating" :size="14" class="spin" />
+          <Archive v-else :size="14" />
           <span>{{
-            isProcessing ? "Створення..." : "Створити архів (Enter)"
+            isCreating ? "Створення архіву..." : "Створити архів (Enter)"
           }}</span>
         </button>
       </div>
@@ -147,12 +168,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import { Archive, Lock, X } from "lucide-vue-next";
+import { Archive, Lock, X, Loader2 } from "lucide-vue-next";
 
-const props = defineProps<{
-  sourceItems: string[];
-  targetDir: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    sourceItems: string[];
+    targetDir: string;
+    isCreating?: boolean;
+  }>(),
+  {
+    isCreating: false,
+  },
+);
 
 const emit = defineEmits<{
   (
@@ -181,7 +208,7 @@ function onFormatChange() {
 }
 
 function submit() {
-  if (isProcessing.value || !archiveName.value.trim()) return;
+  if (props.isCreating || isProcessing.value || !archiveName.value.trim()) return;
   isProcessing.value = true;
   let finalName = archiveName.value.trim();
   const expectedExt = `.${selectedFormat.value}`;
@@ -198,7 +225,7 @@ function submit() {
 }
 
 function onKeyDown(e: KeyboardEvent) {
-  if (e.key === "Escape") {
+  if (e.key === "Escape" && !props.isCreating) {
     e.preventDefault();
     emit("close");
   }

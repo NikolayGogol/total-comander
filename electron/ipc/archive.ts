@@ -86,27 +86,36 @@ export function setupArchiveIpc(): void {
       let isEncrypted = false
 
       if (ext === '.zip') {
-        const stdout = await new Promise<string>((resolve, reject) => {
-          exec(
-            `/usr/bin/zipinfo -l "${archivePath.replace(/"/g, '\\"')}"`,
-            { maxBuffer: 20 * 1024 * 1024 },
-            (err, out) => {
-              if (err) reject(err)
-              else resolve(out)
-            }
-          )
-        })
+        let stdout = ''
+        try {
+          stdout = await new Promise<string>((resolve, reject) => {
+            exec(
+              `/usr/bin/zipinfo -l "${archivePath.replace(/"/g, '\\"')}"`,
+              { maxBuffer: 50 * 1024 * 1024 },
+              (err, out) => {
+                if (err) reject(err)
+                else resolve(out)
+              }
+            )
+          })
+        } catch {
+          stdout = ''
+        }
 
         const lines = stdout.split('\n')
         for (const line of lines) {
-          // Format: -rw-r--r--  3.0 unx     3621 tx     1155 defN 26-Nov-01 19:59 package.json
-          const match = line.match(/^([drwxst-]{10})\s+[\d.]+\s+\w+\s+(\d+)\s+([tTbB][xX\s])\s+(\d+)\s+\w+\s+([\d-]+ \d+:\d+)\s+(.+)$/)
+          if (!line.trim() || line.startsWith('Archive:') || line.startsWith('Zip file size:') || line.includes('files,') || line.startsWith('Empty zipfile')) {
+            continue
+          }
+
+          // Format: -rw-r--r--  2.1 unx    47084 bX     4078 defN 26-Nov-10 18:38 real-preview/.build/manifest.pif
+          const match = line.match(/^([a-zA-Z0-9,\-?_]{7,10})\s+\S+\s+\S+\s+(\d+)\s+([tTbB][\w\-\s])\s+(\d+)\s+\S+\s+([^\n]+?\d{1,2}:\d{2})\s+(.+)$/)
           if (match) {
             const perms = match[1]
             const sz = parseInt(match[2], 10)
             const encFlag = match[3]
             const packed = parseInt(match[4], 10)
-            const modDate = match[5]
+            const modDate = match[5].trim()
             const entryPath = match[6].trim()
             const isDir = perms.startsWith('d') || entryPath.endsWith('/')
             const hasEnc = encFlag.startsWith('T') || encFlag.startsWith('B')
@@ -121,21 +130,44 @@ export function setupArchiveIpc(): void {
               isDirectory: isDir,
               encrypted: hasEnc,
             })
-          } else {
-            // Fallback for non-standard lines
-            const simpleMatch = line.match(/^\s*(\d+)\s+[\d-]+\s+[\d:]+\s+(.+)$/)
-            if (simpleMatch) {
-              const sz = parseInt(simpleMatch[1], 10)
-              const entryPath = simpleMatch[2].trim()
-              if (entryPath && !entryPath.startsWith('Archive:') && !entryPath.startsWith('---')) {
-                entries.push({
-                  path: entryPath,
-                  name: entryPath.split(/[/\\]/).filter(Boolean).pop() || entryPath,
-                  size: sz,
-                  isDirectory: entryPath.endsWith('/'),
-                })
+          }
+        }
+
+        // Robust fallback: if zipinfo produced no entries, try unzip -l
+        if (entries.length === 0) {
+          try {
+            const unzipOut = await new Promise<string>((resolve, reject) => {
+              exec(
+                `/usr/bin/unzip -l "${archivePath.replace(/"/g, '\\"')}"`,
+                { maxBuffer: 50 * 1024 * 1024 },
+                (err, out) => {
+                  if (err) reject(err)
+                  else resolve(out)
+                }
+              )
+            })
+
+            const uLines = unzipOut.split('\n')
+            for (const uLine of uLines) {
+              // Format: 47084  11-10-2026 18:38   real-preview/.build/manifest.pif
+              const uMatch = uLine.match(/^\s*(\d+)\s+([\d-]+|\S+)\s+(\d{1,2}:\d{2})\s+(.+)$/)
+              if (uMatch) {
+                const sz = parseInt(uMatch[1], 10)
+                const modDate = `${uMatch[2]} ${uMatch[3]}`
+                const entryPath = uMatch[4].trim()
+                if (entryPath && !entryPath.startsWith('Archive:') && !entryPath.startsWith('---') && !entryPath.includes('files')) {
+                  entries.push({
+                    path: entryPath,
+                    name: entryPath.split(/[/\\]/).filter(Boolean).pop() || entryPath,
+                    size: sz,
+                    modified: modDate,
+                    isDirectory: entryPath.endsWith('/'),
+                  })
+                }
               }
             }
+          } catch {
+            // unzip fallback failed
           }
         }
 
@@ -165,7 +197,7 @@ export function setupArchiveIpc(): void {
         const stdout = await new Promise<string>((resolve, reject) => {
           exec(
             `/usr/bin/tar -tvf "${archivePath.replace(/"/g, '\\"')}"`,
-            { maxBuffer: 20 * 1024 * 1024 },
+            { maxBuffer: 50 * 1024 * 1024 },
             (err, out) => {
               if (err) reject(err)
               else resolve(out)
@@ -178,7 +210,7 @@ export function setupArchiveIpc(): void {
           const parts = line.trim().split(/\s+/)
           if (parts.length >= 6) {
             const sz = parseInt(parts[4], 10) || 0
-            const modDate = `${parts[5]} ${parts[6] || ''}`
+            const modDate = `${parts[5]} ${parts[6] || ''} ${parts[7] || ''}`.trim()
             const entryPath = parts.slice(8).join(' ') || parts[parts.length - 1]
             if (entryPath) {
               entries.push({
