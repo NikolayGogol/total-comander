@@ -3,6 +3,7 @@ import { execFile } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
+import { trashViaFinder, trashPrivileged, runPrivilegedRm, runPrivilegedMove } from './fileSystem'
 
 interface ProcInfo {
   pid: number
@@ -179,12 +180,25 @@ export function registerUnlockerIpc(): void {
 
         if (action === 'delete') {
           if (permanentDelete) {
-            await fsPromises.rm(targetPath, { recursive: true, force: true })
+            try {
+              await fsPromises.rm(targetPath, { recursive: true, force: true })
+            } catch (err: any) {
+              if (err.code === 'EACCES' || err.code === 'EPERM') {
+                const privRm = await runPrivilegedRm([targetPath])
+                if (!privRm.success) return privRm
+              } else {
+                throw err
+              }
+            }
           } else {
             try {
               await shell.trashItem(targetPath)
             } catch {
-              await fsPromises.rm(targetPath, { recursive: true, force: true })
+              const finderOk = await trashViaFinder(targetPath)
+              if (!finderOk) {
+                const privTrash = await trashPrivileged([targetPath])
+                if (!privTrash.success) return privTrash
+              }
             }
           }
           return { success: true, killedCount: pidsToKill.length, actionExecuted: 'delete' }
@@ -203,7 +217,18 @@ export function registerUnlockerIpc(): void {
           } catch (renameErr: any) {
             if (renameErr.code === 'EXDEV') {
               await fsPromises.cp(targetPath, dest, { recursive: true })
-              await fsPromises.rm(targetPath, { recursive: true, force: true })
+              try {
+                await fsPromises.rm(targetPath, { recursive: true, force: true })
+              } catch (rmErr: any) {
+                if (rmErr.code === 'EACCES' || rmErr.code === 'EPERM') {
+                  await runPrivilegedRm([targetPath])
+                } else {
+                  throw rmErr
+                }
+              }
+            } else if (renameErr.code === 'EACCES' || renameErr.code === 'EPERM') {
+              const privMove = await runPrivilegedMove(targetPath, dest)
+              if (!privMove.success) return privMove
             } else {
               throw renameErr
             }

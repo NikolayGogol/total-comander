@@ -2,13 +2,102 @@ import { ipcMain, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
-import { exec } from 'child_process'
+import { exec, execFile } from 'child_process'
 import { isProtectedSystemFile } from './disk'
 import { extractAppIcon, resolveAliasInfo } from './icons'
 
 function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any) {
   ipcMain.removeHandler(channel)
   ipcMain.handle(channel, listener)
+}
+
+/**
+ * Move file to Trash via AppleScript Finder integration.
+ * Finder natively handles files in /Applications and system permissions.
+ */
+export function trashViaFinder(itemPath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const escaped = itemPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    const script = `tell application "Finder" to delete POSIX file "${escaped}"`
+    execFile('/usr/bin/osascript', ['-e', script], (err) => {
+      resolve(!err)
+    })
+  })
+}
+
+/**
+ * Execute elevated deletion using macOS SecurityAgent authorization dialog.
+ * Prompts user for Touch ID, Apple Watch, or administrator password.
+ */
+export function runPrivilegedRm(paths: string[]): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    if (!paths || paths.length === 0) return resolve({ success: true })
+
+    const quotedParts = paths
+      .map((p) => `quoted form of "${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`)
+      .join(' & " " & ')
+
+    const script = `do shell script "chflags -R nouchg,noschg " & ${quotedParts} & " 2>/dev/null; rm -rf " & ${quotedParts} with administrator privileges`
+
+    execFile('/usr/bin/osascript', ['-e', script], (err, _stdout, stderr) => {
+      if (!err) {
+        return resolve({ success: true })
+      }
+      const msg = (stderr || err.message || '').trim()
+      if (msg.includes('-128') || msg.includes('User canceled')) {
+        return resolve({ success: false, error: 'Скасовано користувачем (не підтверджено Touch ID або пароль)' })
+      }
+      return resolve({ success: false, error: msg || 'Помилка видалення з правами адміністратора' })
+    })
+  })
+}
+
+/**
+ * Privileged move to Trash using macOS SecurityAgent authorization dialog.
+ * Falls back to privileged rm if move to ~/.Trash fails.
+ */
+export function trashPrivileged(paths: string[]): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    if (!paths || paths.length === 0) return resolve({ success: true })
+
+    const quotedParts = paths
+      .map((p) => `quoted form of "${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`)
+      .join(' & " " & ')
+
+    const script = `do shell script "mv -f " & ${quotedParts} & " \\"$HOME/.Trash/\\" 2>/dev/null" with administrator privileges`
+
+    execFile('/usr/bin/osascript', ['-e', script], async (err, _stdout, stderr) => {
+      if (!err) {
+        return resolve({ success: true })
+      }
+      const msg = (stderr || err.message || '').trim()
+      if (msg.includes('-128') || msg.includes('User canceled')) {
+        return resolve({ success: false, error: 'Скасовано користувачем (не підтверджено Touch ID або пароль)' })
+      }
+      const rmResult = await runPrivilegedRm(paths)
+      resolve(rmResult)
+    })
+  })
+}
+
+/**
+ * Privileged move using macOS SecurityAgent authorization dialog.
+ */
+export function runPrivilegedMove(src: string, dest: string): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    const qSrc = `quoted form of "${src.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+    const qDest = `quoted form of "${dest.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+    const script = `do shell script "mv -f " & ${qSrc} & " " & ${qDest} with administrator privileges`
+
+    execFile('/usr/bin/osascript', ['-e', script], (err, _stdout, stderr) => {
+      if (!err) return resolve({ success: true })
+      const msg = (stderr || err.message || '').trim()
+      if (msg.includes('-128') || msg.includes('User canceled')) {
+        return resolve({ success: false, error: 'Скасовано користувачем' })
+      }
+      return resolve({ success: false, error: msg || 'Помилка переміщення з правами адміністратора' })
+    })
+  })
 }
 
 export function formatPermissions(mode: number, isDirectory: boolean): string {
@@ -179,9 +268,11 @@ export function setupFileSystemIpc() {
     }
   })
 
-  // Delete Paths (Move to Trash by default, or permanent with fallback)
+  // Delete Paths (Move to Trash with Touch ID/Password support, or permanent with fallback)
   safeHandle('fs:deletePaths', async (_, paths: string[], moveToTrash = true) => {
     try {
+      const pathsToElevate: string[] = []
+
       for (const itemPath of paths) {
         const base = path.basename(itemPath)
         if (isProtectedSystemFile(base, itemPath)) {
@@ -190,17 +281,42 @@ export function setupFileSystemIpc() {
             error: `Захищений системний файл або віртуальний диск: "${base}" не можна видаляти`,
           }
         }
+
         if (moveToTrash) {
           try {
             await shell.trashItem(itemPath)
+            continue
           } catch {
-            // Fallback to permanent removal if macOS Trash rejects path (e.g. external volumes or protected temp)
-            await fsPromises.rm(itemPath, { recursive: true, force: true })
+            // If shell.trashItem fails (e.g. app in /Applications), try Finder native trash
+            const finderOk = await trashViaFinder(itemPath)
+            if (finderOk) continue
+
+            // If Finder also fails, queue for privileged deletion (Touch ID / Password prompt)
+            pathsToElevate.push(itemPath)
           }
         } else {
-          await fsPromises.rm(itemPath, { recursive: true, force: true })
+          try {
+            await fsPromises.rm(itemPath, { recursive: true, force: true })
+          } catch (err: any) {
+            if (err.code === 'EACCES' || err.code === 'EPERM' || err.message?.includes('permission denied')) {
+              pathsToElevate.push(itemPath)
+            } else {
+              throw err
+            }
+          }
         }
       }
+
+      if (pathsToElevate.length > 0) {
+        if (moveToTrash) {
+          const privRes = await trashPrivileged(pathsToElevate)
+          if (!privRes.success) return privRes
+        } else {
+          const privRes = await runPrivilegedRm(pathsToElevate)
+          if (!privRes.success) return privRes
+        }
+      }
+
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -229,7 +345,7 @@ export function setupFileSystemIpc() {
     }
   })
 
-  // Move Paths
+  // Move Paths (with privileged Touch ID / Password fallback)
   safeHandle('fs:movePaths', async (_, sources: string[], destinationDir: string) => {
     try {
       for (const src of sources) {
@@ -243,7 +359,18 @@ export function setupFileSystemIpc() {
           // EXDEV fallback for cross-filesystem moves
           if (renameErr.code === 'EXDEV') {
             await fsPromises.cp(src, dest, { recursive: true })
-            await fsPromises.rm(src, { recursive: true, force: true })
+            try {
+              await fsPromises.rm(src, { recursive: true, force: true })
+            } catch (rmErr: any) {
+              if (rmErr.code === 'EACCES' || rmErr.code === 'EPERM') {
+                await runPrivilegedRm([src])
+              } else {
+                throw rmErr
+              }
+            }
+          } else if (renameErr.code === 'EACCES' || renameErr.code === 'EPERM') {
+            const privMove = await runPrivilegedMove(src, dest)
+            if (!privMove.success) return privMove
           } else {
             throw renameErr
           }
