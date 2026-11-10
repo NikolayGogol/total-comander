@@ -95,10 +95,17 @@
         <tr
           v-if="currentPath !== '/'"
           class="file-row is-parent"
-          :class="{ 'is-cursor': cursorIndex === -1 }"
+          :class="{
+            'is-cursor': cursorIndex === -1,
+            'is-drag-target': dragTargetItemPath === '..',
+          }"
           title="⤴ Перейти у батьківську директорію (Backspace або подвійний клік)"
           @click="setCursor(-1)"
           @dblclick="$emit('go-up')"
+          @dragenter.prevent.stop="onParentDragEnter"
+          @dragover.prevent.stop="onParentDragOver"
+          @dragleave.stop="onParentDragLeave"
+          @drop.prevent.stop="onParentDrop"
         >
           <td colspan="5">
             <div class="col-icon-name">
@@ -127,9 +134,10 @@
           :draggable="true"
           :title="getItemTooltip(item)"
           @dragstart="onDragStart($event, item)"
+          @dragend="onDragEnd"
           @dragenter.prevent.stop="onItemDragEnter($event, item)"
           @dragover.prevent.stop="onItemDragOver($event, item)"
-          @dragleave.stop="onItemDragLeave(item)"
+          @dragleave.stop="onItemDragLeave($event, item)"
           @drop.prevent.stop="onItemDrop($event, item)"
           @click="handleRowClick($event, item, index)"
           @dblclick="handleRowDblClick(item)"
@@ -261,31 +269,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted, nextTick } from "vue";
+import { ref, reactive, watch, onMounted, onUnmounted, nextTick } from "vue";
 import type { FileItem, SortField, SortOrder } from "@/types";
 import {
   formatBytes,
   formatDate,
   formatNumber,
-  getFileCategory,
   getItemTooltip,
   getShortItemTooltip,
+  getItemIconTitle,
+  isArchive,
 } from "@/utils/formatters";
 import { useTableColumns } from "@/composables/useTableColumns";
 import { useFileIcons } from "@/composables/useFileIcons";
-import { extractDroppedPaths } from "@/utils/paths";
-import {
-  Folder,
-  File,
-  Image,
-  Film,
-  Music,
-  FileText,
-  Archive,
-  CornerLeftUp,
-  Loader2,
-  AppWindow,
-} from "lucide-vue-next";
+import { extractDroppedPaths, getParentPath } from "@/utils/paths";
+import { CornerLeftUp, Loader2 } from "lucide-vue-next";
 
 const props = defineProps<{
   items: FileItem[];
@@ -329,7 +327,13 @@ const calculatingDirs = reactive<Set<string>>(new Set());
 const { startResize, resetColWidth, loadSavedColWidths } =
   useTableColumns(wrapperRef);
 
-const { getNativeIcon, fetchIconsForItems } = useFileIcons();
+const {
+  getNativeIcon,
+  fetchIconsForItems,
+  getIconComponent,
+  getIconModifier,
+  getCategory,
+} = useFileIcons();
 
 watch(
   () => props.items,
@@ -340,30 +344,6 @@ watch(
   },
   { immediate: true },
 );
-
-function getItemIconTitle(item: FileItem): string {
-  if (item.isAlias) return `Ярлик до: ${item.aliasTarget || item.name}`;
-  if (item.isDirectory) return `Папка: ${item.name}`;
-  const ext = item.extension ? `${item.extension.toUpperCase()} ` : "";
-  return `${ext}Файл: ${item.name} (${formatBytes(item.size)})`;
-}
-
-function isArchive(item: FileItem): boolean {
-  if (item.isDirectory) return false;
-  const ext = (item.extension || "").toLowerCase();
-  return [
-    "zip",
-    "tar",
-    "gz",
-    "tgz",
-    "bz2",
-    "tbz2",
-    "xz",
-    "7z",
-    "rar",
-    "dmg",
-  ].includes(ext);
-}
 
 async function calculateDirectorySize(dirPath: string) {
   if (calculatingDirs.has(dirPath)) return;
@@ -529,17 +509,52 @@ function scrollToCursor() {
 
 // Drag and drop handlers
 function onDragStart(e: DragEvent, item: FileItem) {
-  const selected = Array.from(props.selectedPaths);
-  const paths =
-    selected.length > 0 && selected.includes(item.path)
-      ? selected
-      : [item.path];
-  if (e.dataTransfer) {
-    e.dataTransfer.setData("tc/paths", JSON.stringify(paths));
-    e.dataTransfer.setData("application/json", JSON.stringify(paths));
-    e.dataTransfer.setData("text/plain", paths.join("\n"));
-    e.dataTransfer.effectAllowed = "copyMove";
+  if (item.name === "..") {
+    e.preventDefault();
+    return;
   }
+
+  let paths: string[];
+  if (isSelected(item.path)) {
+    paths = Array.from(props.selectedPaths);
+  } else {
+    paths = [item.path];
+    const idx = props.items.findIndex((it) => it.path === item.path);
+    if (idx !== -1) {
+      setCursor(idx);
+    }
+  }
+
+  // 1. Shared in-app drag session (guarantees reliable drop between panes)
+  (window as any).__TC_ACTIVE_DRAG__ = {
+    sources: paths,
+    fromPath: props.currentPath,
+    time: Date.now(),
+  };
+
+  // 2. DataTransfer payload
+  if (e.dataTransfer) {
+    try {
+      e.dataTransfer.setData("tc/paths", JSON.stringify(paths));
+      e.dataTransfer.setData("application/json", JSON.stringify(paths));
+      e.dataTransfer.setData("text/plain", paths.join("\n"));
+      e.dataTransfer.effectAllowed = "copyMove";
+    } catch {}
+  }
+
+  // 3. Native macOS drag to Desktop, Finder, and external apps
+  if (
+    window.electronAPI &&
+    typeof window.electronAPI.startDrag === "function"
+  ) {
+    window.electronAPI.startDrag(paths);
+  }
+}
+
+function onDragEnd() {
+  setTimeout(() => {
+    (window as any).__TC_ACTIVE_DRAG__ = null;
+  }, 400);
 }
 
 function onTableDragEnter(e: DragEvent) {
@@ -556,10 +571,12 @@ function onTableDragOver(e: DragEvent) {
 }
 
 function onTableDragLeave(e: DragEvent) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
   const related = e.relatedTarget as HTMLElement | null;
-  if (!related || !wrapperRef.value?.contains(related)) {
-    isDragOverTable.value = false;
+  if (currentTarget && related && currentTarget.contains(related)) {
+    return;
   }
+  isDragOverTable.value = false;
 }
 
 function onTableDrop(e: DragEvent) {
@@ -568,6 +585,40 @@ function onTableDrop(e: DragEvent) {
   const sources = extractDroppedPaths(e);
   if (sources.length > 0) {
     emit("drop-items", sources, props.currentPath, e.shiftKey || e.altKey);
+  }
+}
+
+function onParentDragEnter(e: DragEvent) {
+  e.preventDefault();
+  dragTargetItemPath.value = "..";
+}
+
+function onParentDragOver(e: DragEvent) {
+  e.preventDefault();
+  dragTargetItemPath.value = "..";
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = e.shiftKey || e.altKey ? "move" : "copy";
+  }
+}
+
+function onParentDragLeave(e: DragEvent) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  const related = e.relatedTarget as HTMLElement | null;
+  if (currentTarget && related && currentTarget.contains(related)) {
+    return;
+  }
+  if (dragTargetItemPath.value === "..") {
+    dragTargetItemPath.value = null;
+  }
+}
+
+function onParentDrop(e: DragEvent) {
+  dragTargetItemPath.value = null;
+  isDragOverTable.value = false;
+  const sources = extractDroppedPaths(e);
+  if (sources.length > 0) {
+    const parentPath = getParentPath(props.currentPath);
+    emit("drop-items", sources, parentPath, e.shiftKey || e.altKey);
   }
 }
 
@@ -582,13 +633,18 @@ function onItemDragOver(e: DragEvent, item: FileItem) {
   e.preventDefault();
   if (item.isDirectory) {
     dragTargetItemPath.value = item.path;
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = e.shiftKey || e.altKey ? "move" : "copy";
-    }
+  }
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = e.shiftKey || e.altKey ? "move" : "copy";
   }
 }
 
-function onItemDragLeave(item: FileItem) {
+function onItemDragLeave(e: DragEvent, item: FileItem) {
+  const currentTarget = e.currentTarget as HTMLElement | null;
+  const related = e.relatedTarget as HTMLElement | null;
+  if (currentTarget && related && currentTarget.contains(related)) {
+    return;
+  }
   if (dragTargetItemPath.value === item.path) {
     dragTargetItemPath.value = null;
   }
@@ -604,43 +660,21 @@ function onItemDrop(e: DragEvent, item: FileItem) {
   }
 }
 
-function getCategory(item: FileItem) {
-  return getFileCategory(item.extension || item.name, item.isDirectory)
-    .category;
-}
-
-// Icon selectors
-function getIconComponent(item: FileItem) {
-  if (item.isApp) return AppWindow;
-  if (item.isDirectory) return Folder;
-  const cat = getCategory(item);
-  switch (cat) {
-    case "code":
-    case "app":
-      return AppWindow;
-    case "image":
-      return Image;
-    case "video":
-      return Film;
-    case "audio":
-      return Music;
-    case "doc":
-      return FileText;
-    case "archive":
-      return Archive;
-    default:
-      return File;
+function onGlobalMouseUp() {
+  if ((window as any).__TC_ACTIVE_DRAG__) {
+    setTimeout(() => {
+      (window as any).__TC_ACTIVE_DRAG__ = null;
+    }, 400);
   }
-}
-
-function getIconModifier(item: FileItem): string {
-  if (item.isApp) return "icon-code";
-  return getFileCategory(item.extension || item.name, item.isDirectory)
-    .classModifier;
 }
 
 onMounted(() => {
   loadSavedColWidths();
+  window.addEventListener("mouseup", onGlobalMouseUp);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("mouseup", onGlobalMouseUp);
 });
 
 defineExpose({

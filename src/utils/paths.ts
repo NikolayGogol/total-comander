@@ -51,6 +51,19 @@ export function getPathLeafName(p?: string | null): string {
 }
 
 export function extractDroppedPaths(e: DragEvent): string[] {
+  // 0. Active in-app drag session
+  const internalDrag = (window as any).__TC_ACTIVE_DRAG__;
+  if (
+    internalDrag &&
+    Array.isArray(internalDrag.sources) &&
+    internalDrag.sources.length > 0 &&
+    Date.now() - (internalDrag.time || 0) < 60000
+  ) {
+    const list = [...internalDrag.sources];
+    (window as any).__TC_ACTIVE_DRAG__ = null;
+    return list;
+  }
+
   if (!e.dataTransfer) return [];
 
   // 1. In-app drag

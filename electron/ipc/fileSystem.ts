@@ -1,103 +1,32 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain, shell, nativeImage, app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
-import { exec, execFile } from 'child_process'
+import { exec } from 'child_process'
 import { isProtectedSystemFile } from './disk'
 import { extractAppIcon, resolveAliasInfo } from './icons'
+import { executeCopyMove, cancelTransfer } from './transferEngine'
+import {
+  trashViaFinder,
+  runPrivilegedRm,
+  trashPrivileged,
+  runPrivilegedMove,
+  runPrivilegedMkdir,
+  runPrivilegedTouch,
+} from './privileged'
+
+export {
+  trashViaFinder,
+  runPrivilegedRm,
+  trashPrivileged,
+  runPrivilegedMove,
+  runPrivilegedMkdir,
+  runPrivilegedTouch,
+}
 
 function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any) {
   ipcMain.removeHandler(channel)
   ipcMain.handle(channel, listener)
-}
-
-/**
- * Move file to Trash via AppleScript Finder integration.
- * Finder natively handles files in /Applications and system permissions.
- */
-export function trashViaFinder(itemPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const escaped = itemPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-    const script = `tell application "Finder" to delete POSIX file "${escaped}"`
-    execFile('/usr/bin/osascript', ['-e', script], (err) => {
-      resolve(!err)
-    })
-  })
-}
-
-/**
- * Execute elevated deletion using macOS SecurityAgent authorization dialog.
- * Prompts user for Touch ID, Apple Watch, or administrator password.
- */
-export function runPrivilegedRm(paths: string[]): Promise<{ success: boolean; error?: string }> {
-  return new Promise((resolve) => {
-    if (!paths || paths.length === 0) return resolve({ success: true })
-
-    const quotedParts = paths
-      .map((p) => `quoted form of "${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`)
-      .join(' & " " & ')
-
-    const script = `do shell script "chflags -R nouchg,noschg " & ${quotedParts} & " 2>/dev/null; rm -rf " & ${quotedParts} with administrator privileges`
-
-    execFile('/usr/bin/osascript', ['-e', script], (err, _stdout, stderr) => {
-      if (!err) {
-        return resolve({ success: true })
-      }
-      const msg = (stderr || err.message || '').trim()
-      if (msg.includes('-128') || msg.includes('User canceled')) {
-        return resolve({ success: false, error: 'Скасовано користувачем (не підтверджено Touch ID або пароль)' })
-      }
-      return resolve({ success: false, error: msg || 'Помилка видалення з правами адміністратора' })
-    })
-  })
-}
-
-/**
- * Privileged move to Trash using macOS SecurityAgent authorization dialog.
- * Falls back to privileged rm if move to ~/.Trash fails.
- */
-export function trashPrivileged(paths: string[]): Promise<{ success: boolean; error?: string }> {
-  return new Promise((resolve) => {
-    if (!paths || paths.length === 0) return resolve({ success: true })
-
-    const quotedParts = paths
-      .map((p) => `quoted form of "${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`)
-      .join(' & " " & ')
-
-    const script = `do shell script "mv -f " & ${quotedParts} & " \\"$HOME/.Trash/\\" 2>/dev/null" with administrator privileges`
-
-    execFile('/usr/bin/osascript', ['-e', script], async (err, _stdout, stderr) => {
-      if (!err) {
-        return resolve({ success: true })
-      }
-      const msg = (stderr || err.message || '').trim()
-      if (msg.includes('-128') || msg.includes('User canceled')) {
-        return resolve({ success: false, error: 'Скасовано користувачем (не підтверджено Touch ID або пароль)' })
-      }
-      const rmResult = await runPrivilegedRm(paths)
-      resolve(rmResult)
-    })
-  })
-}
-
-/**
- * Privileged move using macOS SecurityAgent authorization dialog.
- */
-export function runPrivilegedMove(src: string, dest: string): Promise<{ success: boolean; error?: string }> {
-  return new Promise((resolve) => {
-    const qSrc = `quoted form of "${src.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-    const qDest = `quoted form of "${dest.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-    const script = `do shell script "mv -f " & ${qSrc} & " " & ${qDest} with administrator privileges`
-
-    execFile('/usr/bin/osascript', ['-e', script], (err, _stdout, stderr) => {
-      if (!err) return resolve({ success: true })
-      const msg = (stderr || err.message || '').trim()
-      if (msg.includes('-128') || msg.includes('User canceled')) {
-        return resolve({ success: false, error: 'Скасовано користувачем' })
-      }
-      return resolve({ success: false, error: msg || 'Помилка переміщення з правами адміністратора' })
-    })
-  })
 }
 
 export function formatPermissions(mode: number, isDirectory: boolean): string {
@@ -254,6 +183,9 @@ export function setupFileSystemIpc() {
       await fsPromises.mkdir(targetPath, { recursive: true })
       return { success: true }
     } catch (err: any) {
+      if (err.code === 'EACCES' || err.code === 'EPERM') {
+        return runPrivilegedMkdir(targetPath)
+      }
       return { success: false, error: err.message }
     }
   })
@@ -264,6 +196,9 @@ export function setupFileSystemIpc() {
       await fsPromises.writeFile(targetPath, '', { flag: 'wx' })
       return { success: true }
     } catch (err: any) {
+      if (err.code === 'EACCES' || err.code === 'EPERM') {
+        return runPrivilegedTouch(targetPath)
+      }
       return { success: false, error: err.message }
     }
   })
@@ -381,6 +316,85 @@ export function setupFileSystemIpc() {
       return { success: false, error: err.message }
     }
   })
+
+  // Streaming file transfer with real-time speed, ETA, and cancellation
+  safeHandle(
+    'fs:runTransfer',
+    async (
+      event,
+      payload: {
+        type: 'copy' | 'move'
+        sources: string[]
+        destinationDir: string
+        operationId: string
+      }
+    ) => {
+      const { type, sources, destinationDir, operationId } = payload
+      return executeCopyMove({
+        operationId,
+        type,
+        sources,
+        destinationDir,
+        onProgress: (data) => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send('transfer:progress', data)
+          }
+        },
+      })
+    }
+  )
+
+  // Cancel running transfer
+  safeHandle('fs:cancelTransfer', async (_, operationId: string) => {
+    return cancelTransfer(operationId)
+  })
+
+  // Native Drag-and-Drop to External Applications (Finder, Desktop, Telegram, Discord, etc.)
+  ipcMain.on('fs:startDrag', (event, paths: string[] | { files: string[] }) => {
+    const rawFiles = Array.isArray(paths) ? paths : paths?.files || []
+    if (!rawFiles || rawFiles.length === 0) return
+
+    const files = rawFiles.map((f) => path.normalize(path.resolve(f))).filter((f) => fs.existsSync(f))
+    if (files.length === 0) return
+
+    let dragIcon = nativeImage.createEmpty()
+    try {
+      const possibleIconPaths = [
+        path.join(app.getAppPath(), 'build', 'icon.png'),
+        path.resolve('build/icon.png'),
+        path.join(app.getAppPath(), 'build', 'icon.iconset', 'icon_32x32.png'),
+        path.resolve('build/icon.iconset/icon_32x32.png'),
+      ]
+      for (const ip of possibleIconPaths) {
+        if (fs.existsSync(ip)) {
+          const img = nativeImage.createFromPath(ip)
+          if (!img.isEmpty()) {
+            dragIcon = img.resize({ width: 32, height: 32 })
+            break
+          }
+        }
+      }
+    } catch {}
+
+    if (dragIcon.isEmpty()) {
+      const FALLBACK_PNG = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAMklEQVR42u3PMQEAIAwDwO1fWigT7wMEgRZZj97y+gAAAAAAAAAAAAAAAACw2X2Qh6UBNGgRk8x9y7IAAAAASUVORK5CYII=',
+        'base64'
+      )
+      dragIcon = nativeImage.createFromBuffer(FALLBACK_PNG)
+    }
+
+    try {
+      event.sender.startDrag({
+        file: files[0],
+        files,
+        icon: dragIcon,
+      })
+    } catch (err) {
+      console.error('Failed to start native drag:', err)
+    }
+  })
+
 
   // Rename Single Path
   safeHandle('fs:renamePath', async (_, oldPath: string, newPath: string) => {

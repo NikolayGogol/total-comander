@@ -116,8 +116,15 @@
 // Row states
 .file-row {
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: element;
   transition: background-color 0.08s ease;
   border-bottom: 1px solid var(--row-border);
+
+  td {
+    -webkit-user-drag: element;
+  }
 
   // Alternating zebra striping
   &:nth-child(even) {

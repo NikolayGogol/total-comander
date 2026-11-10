@@ -1,7 +1,8 @@
-import type { Ref } from "vue";
-import type { FileItem, PaneState } from "@/types";
+import { onMounted, onUnmounted, type Ref } from "vue";
+import type { FileItem, PaneState, TransferProgressData } from "@/types";
+import type { ModalsState } from "@/composables/useModals";
 
-export interface FileOperationsContext {
+export interface FileOperationsContext extends ModalsState {
   activePaneId: Ref<"left" | "right">;
   activePaneState: Ref<PaneState>;
   oppositePaneState: Ref<PaneState>;
@@ -9,59 +10,6 @@ export interface FileOperationsContext {
   rightPane: PaneState;
   leftPaneRef: Ref<any>;
   rightPaneRef: Ref<any>;
-  operationModal: {
-    open: boolean;
-    opType: "copy" | "move" | "mkdir" | "newfile" | "delete" | "rename";
-    sourceItems: string[];
-    targetDir: string;
-  };
-  viewerModal: {
-    open: boolean;
-    filePath: string;
-    fileName: string;
-    fileSize: number;
-  };
-  editorModal: {
-    open: boolean;
-    filePath: string;
-    fileName: string;
-  };
-  searchModal: {
-    open: boolean;
-    initialDir: string;
-  };
-  createArchiveModal: {
-    open: boolean;
-    sourceItems: string[];
-    targetDir: string;
-  };
-  archiveViewModal: {
-    open: boolean;
-    archivePath: string;
-    destinationDir: string;
-  };
-  largeFilesModal: {
-    open: boolean;
-    initialDir: string;
-  };
-  folderSizeModal: {
-    open: boolean;
-    folderPath: string;
-  };
-  unlockerModal: {
-    open: boolean;
-    targetPath: string;
-    targetName: string;
-    isDirectory: boolean;
-    oppositePath: string;
-  };
-  contextMenuState: {
-    visible: boolean;
-    x: number;
-    y: number;
-    item: FileItem | null;
-    paneId: "left" | "right";
-  };
   getActiveCursorItem: () => FileItem | null;
   getSelectedOrCursorPaths: () => string[];
   loadDirectory: (pane: PaneState, dir: string) => Promise<void>;
@@ -103,9 +51,7 @@ export function useFileOperations(ctx: FileOperationsContext) {
 
   function jumpToSearchFile(filePath: string) {
     ctx.searchModal.open = false;
-    const parts = filePath.split("/");
-    parts.pop();
-    const dir = parts.join("/") || "/";
+    const dir = filePath.substring(0, filePath.lastIndexOf("/")) || "/";
     ctx.navigatePane(ctx.activePaneId.value, dir);
   }
 
@@ -146,33 +92,49 @@ export function useFileOperations(ctx: FileOperationsContext) {
           ctx.operationModal.sourceItems = [cursorItem.path];
           ctx.operationModal.targetDir = "";
           ctx.operationModal.open = true;
+        } else {
+          ctx.showToast("Виберіть файл або папку для перейменування", "error");
         }
         break;
 
       case "view":
         if (cursorItem && !cursorItem.isDirectory) {
-          ctx.viewerModal.filePath = cursorItem.path;
-          ctx.viewerModal.fileName = cursorItem.name;
-          ctx.viewerModal.fileSize = cursorItem.size;
-          ctx.viewerModal.open = true;
+          Object.assign(ctx.viewerModal, {
+            filePath: cursorItem.path,
+            fileName: cursorItem.name,
+            fileSize: cursorItem.size,
+            open: true,
+          });
+        } else if (cursorItem?.isDirectory) {
+          ctx.showToast("Перегляд вмісту доступний тільки для файлів", "error");
         }
         break;
 
       case "edit":
         if (cursorItem && !cursorItem.isDirectory) {
-          ctx.editorModal.filePath = cursorItem.path;
-          ctx.editorModal.fileName = cursorItem.name;
-          ctx.editorModal.open = true;
+          Object.assign(ctx.editorModal, {
+            filePath: cursorItem.path,
+            fileName: cursorItem.name,
+            open: true,
+          });
+        } else if (cursorItem?.isDirectory) {
+          ctx.showToast("Редагування доступне тільки для файлів", "error");
         }
         break;
 
       case "copy":
+      case "move":
         if (selectedPaths.length > 0) {
-          ctx.operationModal.opType = "copy";
+          ctx.operationModal.opType = type as "copy" | "move";
           ctx.operationModal.sourceItems = selectedPaths;
           ctx.operationModal.targetDir =
             ctx.oppositePaneState.value.currentPath;
           ctx.operationModal.open = true;
+        } else {
+          ctx.showToast(
+            `Виберіть елементи для ${type === "copy" ? "копіювання" : "переміщення"}`,
+            "error",
+          );
         }
         break;
 
@@ -185,45 +147,24 @@ export function useFileOperations(ctx: FileOperationsContext) {
         }
         break;
 
-      case "move":
-        if (selectedPaths.length > 0) {
-          ctx.operationModal.opType = "move";
-          ctx.operationModal.sourceItems = selectedPaths;
-          ctx.operationModal.targetDir =
-            ctx.oppositePaneState.value.currentPath;
-          ctx.operationModal.open = true;
-        }
-        break;
-
       case "mkdir":
-        ctx.operationModal.opType = "mkdir";
-        ctx.operationModal.sourceItems = [];
-        ctx.operationModal.targetDir = ctx.activePaneState.value.currentPath;
-        ctx.operationModal.open = true;
-        break;
-
       case "newfile":
-        ctx.operationModal.opType = "newfile";
+        ctx.operationModal.opType = type;
         ctx.operationModal.sourceItems = [];
         ctx.operationModal.targetDir = ctx.activePaneState.value.currentPath;
         ctx.operationModal.open = true;
         break;
 
       case "delete":
-        if (selectedPaths.length > 0) {
-          ctx.operationModal.opType = "delete";
-          ctx.operationModal.sourceItems = selectedPaths;
-          ctx.operationModal.targetDir = "";
-          ctx.operationModal.open = true;
-        }
-        break;
-
       case "permanent-delete":
         if (selectedPaths.length > 0) {
           ctx.operationModal.opType = "delete";
           ctx.operationModal.sourceItems = selectedPaths;
-          ctx.operationModal.targetDir = "PERMANENT";
+          ctx.operationModal.targetDir =
+            type === "permanent-delete" ? "PERMANENT" : "";
           ctx.operationModal.open = true;
+        } else {
+          ctx.showToast("Виберіть елементи для видалення", "error");
         }
         break;
 
@@ -320,9 +261,7 @@ export function useFileOperations(ctx: FileOperationsContext) {
     switch (action) {
       case "open":
         if (item) {
-          if (item.isApp) {
-            await openFileNative(item);
-          } else if (item.isDirectory) {
+          if (item.isDirectory && !item.isApp) {
             ctx.navigatePane(ctx.contextMenuState.paneId, item.path);
           } else {
             await openFileNative(item);
@@ -357,11 +296,11 @@ export function useFileOperations(ctx: FileOperationsContext) {
 
       case "calculate-dir-size":
         if (item && item.isDirectory) {
-          if (ctx.contextMenuState.paneId === "left") {
-            ctx.leftPaneRef.value?.calculateDirectorySize(item.path);
-          } else {
-            ctx.rightPaneRef.value?.calculateDirectorySize(item.path);
-          }
+          const paneRef =
+            ctx.contextMenuState.paneId === "left"
+              ? ctx.leftPaneRef
+              : ctx.rightPaneRef;
+          paneRef.value?.calculateDirectorySize(item.path);
         }
         break;
 
@@ -396,35 +335,30 @@ export function useFileOperations(ctx: FileOperationsContext) {
 
       case "view":
         if (item && !item.isDirectory) {
-          ctx.viewerModal.filePath = item.path;
-          ctx.viewerModal.fileName = item.name;
-          ctx.viewerModal.fileSize = item.size;
-          ctx.viewerModal.open = true;
+          Object.assign(ctx.viewerModal, {
+            filePath: item.path,
+            fileName: item.name,
+            fileSize: item.size,
+            open: true,
+          });
         }
         break;
 
       case "edit":
         if (item && !item.isDirectory) {
-          ctx.editorModal.filePath = item.path;
-          ctx.editorModal.fileName = item.name;
-          ctx.editorModal.open = true;
+          Object.assign(ctx.editorModal, {
+            filePath: item.path,
+            fileName: item.name,
+            open: true,
+          });
         }
         break;
 
       case "copy":
-        handleBottomAction("copy");
-        break;
-
       case "move":
-        handleBottomAction("move");
-        break;
-
       case "rename":
-        handleBottomAction("rename");
-        break;
-
       case "delete":
-        handleBottomAction("delete");
+        handleBottomAction(action);
         break;
 
       case "clipboard-copy":
@@ -447,11 +381,9 @@ export function useFileOperations(ctx: FileOperationsContext) {
         break;
 
       case "paste":
-        ctx.pasteFromClipboard(ctx.activePaneState.value.currentPath, () =>
-          Promise.all([
-            ctx.loadDirectory(ctx.leftPane, ctx.leftPane.currentPath),
-            ctx.loadDirectory(ctx.rightPane, ctx.rightPane.currentPath),
-          ]).then(() => {}),
+        ctx.pasteFromClipboard(
+          ctx.activePaneState.value.currentPath,
+          ctx.refreshAllPanes,
         );
         break;
 
@@ -488,6 +420,108 @@ export function useFileOperations(ctx: FileOperationsContext) {
     }
   }
 
+  onMounted(() => {
+    if (
+      window.electronAPI &&
+      typeof window.electronAPI.onTransferProgress === "function"
+    ) {
+      const unsub = window.electronAPI.onTransferProgress(
+        (data: TransferProgressData) => {
+          if (
+            ctx.operationProgressModal.data.operationId === data.operationId
+          ) {
+            Object.assign(ctx.operationProgressModal.data, data);
+          }
+        },
+      );
+      onUnmounted(() => {
+        unsub();
+      });
+    }
+  });
+
+  async function runTransferWithProgress(
+    type: "copy" | "move",
+    sources: string[],
+    targetDir: string,
+  ): Promise<{ success: boolean; canceled?: boolean; error?: string }> {
+    const opId =
+      "transfer-" +
+      Date.now() +
+      "-" +
+      Math.random().toString(36).substring(2, 7);
+
+    Object.assign(ctx.operationProgressModal.data, {
+      operationId: opId,
+      type,
+      currentFile: "",
+      currentDir: targetDir,
+      itemsDone: 0,
+      totalItems: sources.length,
+      bytesTransferred: 0,
+      totalBytes: 0,
+      bytesRemaining: 0,
+      speedBytesPerSec: 0,
+      etaSeconds: -1,
+      elapsedSeconds: 0,
+      percent: 0,
+      isDone: false,
+      canceled: false,
+      error: undefined,
+    });
+    ctx.operationProgressModal.targetDir = targetDir;
+    ctx.operationProgressModal.open = true;
+
+    const startTime = Date.now();
+    const res = await window.electronAPI.runTransfer({
+      type,
+      sources,
+      destinationDir: targetDir,
+      operationId: opId,
+    });
+
+    if (res.canceled) {
+      ctx.operationProgressModal.data.canceled = true;
+      ctx.showToast(
+        `Операцію ${type === "copy" ? "копіювання" : "переміщення"} скасовано`,
+        "shortcut",
+      );
+      setTimeout(() => {
+        ctx.operationProgressModal.open = false;
+      }, 400);
+      ctx.refreshAllPanes();
+    } else if (res.success) {
+      ctx.operationProgressModal.data.isDone = true;
+      const elapsed = Date.now() - startTime;
+      const delay = elapsed < 400 ? 150 : 350;
+      setTimeout(() => {
+        ctx.operationProgressModal.open = false;
+      }, delay);
+      ctx.refreshAllPanes();
+    } else {
+      ctx.operationProgressModal.open = false;
+      ctx.showToast(
+        res.error ||
+          `Помилка ${type === "copy" ? "копіювання" : "переміщення"}`,
+        "error",
+      );
+    }
+
+    return res;
+  }
+
+  async function cancelCurrentTransfer() {
+    if (
+      ctx.operationProgressModal.data.operationId &&
+      window.electronAPI.cancelTransfer
+    ) {
+      await window.electronAPI.cancelTransfer(
+        ctx.operationProgressModal.data.operationId,
+      );
+      ctx.operationProgressModal.data.canceled = true;
+    }
+  }
+
   async function onOperationConfirm(payload: {
     opType: string;
     target: string;
@@ -499,23 +533,24 @@ export function useFileOperations(ctx: FileOperationsContext) {
     );
 
     try {
-      if (opType === "mkdir") {
-        const fullPath = `${ctx.activePaneState.value.currentPath}/${target}`;
-        const res = await window.electronAPI.createFolder(fullPath);
+      if (opType === "mkdir" || opType === "newfile") {
+        const current =
+          ctx.activePaneState.value.currentPath === "/"
+            ? ""
+            : ctx.activePaneState.value.currentPath;
+        const fullPath = `${current}/${target.replace(/^\/+/, "")}`;
+        const res =
+          opType === "mkdir"
+            ? await window.electronAPI.createFolder(fullPath)
+            : await window.electronAPI.createFile(fullPath);
         if (res.success) {
-          ctx.showToast(`Created directory "${target}"`, "success");
+          ctx.showToast(
+            `Створено ${opType === "mkdir" ? "папку" : "файл"} "${target}"`,
+            "success",
+          );
           ctx.refreshPane(ctx.activePaneId.value);
         } else {
-          ctx.showToast(`Error creating folder: ${res.error}`, "error");
-        }
-      } else if (opType === "newfile") {
-        const fullPath = `${ctx.activePaneState.value.currentPath}/${target}`;
-        const res = await window.electronAPI.createFile(fullPath);
-        if (res.success) {
-          ctx.showToast(`Created file "${target}"`, "success");
-          ctx.refreshPane(ctx.activePaneId.value);
-        } else {
-          ctx.showToast(`Error creating file: ${res.error}`, "error");
+          ctx.showToast(`Помилка створення: ${res.error}`, "error");
         }
       } else if (opType === "rename") {
         const oldPath = rawSources[0];
@@ -530,20 +565,20 @@ export function useFileOperations(ctx: FileOperationsContext) {
           ctx.showToast(`Rename error: ${res.error}`, "error");
         }
       } else if (opType === "copy") {
-        const res = await window.electronAPI.copyPaths(rawSources, target);
+        const res = await runTransferWithProgress("copy", rawSources, target);
         if (res.success) {
-          ctx.showToast(`Copied ${rawSources.length} item(s)`, "success");
-          ctx.refreshAllPanes();
-        } else {
-          ctx.showToast(`Copy error: ${res.error}`, "error");
+          ctx.showToast(
+            `Скопійовано ${rawSources.length} елемент(ів)`,
+            "success",
+          );
         }
       } else if (opType === "move") {
-        const res = await window.electronAPI.movePaths(rawSources, target);
+        const res = await runTransferWithProgress("move", rawSources, target);
         if (res.success) {
-          ctx.showToast(`Moved ${rawSources.length} item(s)`, "success");
-          ctx.refreshAllPanes();
-        } else {
-          ctx.showToast(`Move error: ${res.error}`, "error");
+          ctx.showToast(
+            `Переміщено ${rawSources.length} елемент(ів)`,
+            "success",
+          );
         }
       } else if (opType === "delete") {
         const isPermanent = ctx.operationModal.targetDir === "PERMANENT";
@@ -593,9 +628,11 @@ export function useFileOperations(ctx: FileOperationsContext) {
         return;
       }
 
-      const res = isMove
-        ? await window.electronAPI.movePaths(rawPaths, targetDir)
-        : await window.electronAPI.copyPaths(rawPaths, targetDir);
+      const res = await runTransferWithProgress(
+        isMove ? "move" : "copy",
+        rawPaths,
+        targetDir,
+      );
 
       if (res.success) {
         const actionWord = isMove ? "Переміщено" : "Скопійовано";
@@ -609,9 +646,6 @@ export function useFileOperations(ctx: FileOperationsContext) {
           `${actionWord} ${rawPaths.length} ${itemsWord} у "${targetName}"`,
           "success",
         );
-        ctx.refreshAllPanes();
-      } else {
-        ctx.showToast(`Помилка drag & drop: ${res.error}`, "error");
       }
     } catch (err: any) {
       ctx.showToast(`Помилка drag & drop: ${err.message}`, "error");
@@ -634,5 +668,7 @@ export function useFileOperations(ctx: FileOperationsContext) {
     onOperationConfirm,
     onFileSaved,
     handleDragDrop,
+    cancelCurrentTransfer,
+    runTransferWithProgress,
   };
 }

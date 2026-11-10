@@ -194,6 +194,15 @@
       "
     />
 
+    <!-- Real-time File Transfer Progress Modal (Copy / Move) -->
+    <FileOperationProgressModal
+      v-if="operationProgressModal.open"
+      :data="operationProgressModal.data"
+      :target-dir="operationProgressModal.targetDir"
+      @cancel="cancelCurrentTransfer"
+      @close="operationProgressModal.open = false"
+    />
+
     <!-- Right-Click Context Menu -->
     <ContextMenu
       :visible="contextMenuState.visible"
@@ -245,6 +254,7 @@ import LargeFilesModal from "@/components/LargeFilesModal.vue";
 import FolderSizeModal from "@/components/FolderSizeModal.vue";
 import UnlockerModal from "@/components/UnlockerModal.vue";
 import VirtualDisksModal from "@/components/VirtualDisksModal.vue";
+import FileOperationProgressModal from "@/components/FileOperationProgressModal.vue";
 
 import { useToast } from "@/composables/useToast";
 import { useModals } from "@/composables/useModals";
@@ -274,6 +284,7 @@ const {
   folderSizeModal,
   unlockerModal,
   virtualDisksModal,
+  operationProgressModal,
   contextMenuState,
   isAnyModalOpen,
   closeAllModals,
@@ -337,6 +348,7 @@ const {
   onOperationConfirm,
   onFileSaved,
   handleDragDrop,
+  cancelCurrentTransfer,
 } = useFileOperations({
   activePaneId,
   activePaneState,
@@ -355,7 +367,10 @@ const {
   folderSizeModal,
   unlockerModal,
   virtualDisksModal,
+  operationProgressModal,
   contextMenuState,
+  isAnyModalOpen,
+  closeAllModals,
   getActiveCursorItem,
   getSelectedOrCursorPaths,
   loadDirectory,

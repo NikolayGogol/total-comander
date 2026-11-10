@@ -37,6 +37,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('fs:copyPaths', toPlain(sources), destinationDir),
   movePaths: (sources: string[], destinationDir: string) =>
     ipcRenderer.invoke('fs:movePaths', toPlain(sources), destinationDir),
+  runTransfer: (payload: { type: 'copy' | 'move'; sources: string[]; destinationDir: string; operationId: string }) =>
+    ipcRenderer.invoke('fs:runTransfer', toPlain(payload)),
+  cancelTransfer: (operationId: string) => ipcRenderer.invoke('fs:cancelTransfer', operationId),
+  onTransferProgress: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('transfer:progress', listener)
+    return () => ipcRenderer.removeListener('transfer:progress', listener)
+  },
+  startDrag: (paths: string[] | { files: string[] }) =>
+    ipcRenderer.send('fs:startDrag', toPlain(paths)),
   renamePath: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:renamePath', oldPath, newPath),
   readFile: (filePath: string, maxBytes?: number) => ipcRenderer.invoke('fs:readFile', filePath, maxBytes),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),

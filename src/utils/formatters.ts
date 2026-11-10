@@ -23,6 +23,25 @@ export function formatDate(
   return d.format(format);
 }
 
+export function formatDuration(seconds?: number | null): string {
+  if (
+    seconds === undefined ||
+    seconds === null ||
+    isNaN(seconds) ||
+    seconds < 0
+  )
+    return "--";
+  const s = Math.round(seconds);
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
 export type FileCategory =
   | "folder"
   | "app"
@@ -232,6 +251,33 @@ export function getFileTypeDescription(
   if (["pdf", "doc", "docx", "txt", "md", "rtf"].includes(cleanExt))
     return "Текстовий документ";
   return cleanExt ? `Файл (${cleanExt.toUpperCase()})` : "Файл";
+}
+
+export function isArchive(item?: any): boolean {
+  if (!item || item.isDirectory) return false;
+  const ext = (item.extension || "").toLowerCase().replace(/^\./, "");
+  return [
+    "zip",
+    "tar",
+    "gz",
+    "tgz",
+    "bz2",
+    "tbz2",
+    "xz",
+    "7z",
+    "rar",
+    "dmg",
+  ].includes(ext);
+}
+
+export function getItemIconTitle(item?: any): string {
+  if (!item) return "";
+  if (item.isAlias) return `Ярлик до: ${item.aliasTarget || item.name}`;
+  if (item.isDirectory) return `Папка: ${item.name}`;
+  const ext = item.extension
+    ? `${item.extension.toUpperCase().replace(/^\./, "")} `
+    : "";
+  return `${ext}Файл: ${item.name} (${formatBytes(item.size)})`;
 }
 
 export function getShortItemTooltip(item?: any): string {

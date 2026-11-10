@@ -1,5 +1,17 @@
 import { reactive } from "vue";
+import type { Component } from "vue";
 import type { FileItem } from "@/types";
+import { getFileCategory } from "@/utils/formatters";
+import {
+  Folder,
+  File,
+  Image,
+  Film,
+  Music,
+  FileText,
+  Archive,
+  AppWindow,
+} from "lucide-vue-next";
 
 // Extensions with embedded unique icons per file
 const UNIQUE_EXTENSIONS = new Set([
@@ -136,9 +148,51 @@ export function useFileIcons() {
     }
   }
 
+  function getIconComponent(item: FileItem): Component {
+    if (item.isApp) return AppWindow;
+    if (item.isDirectory) return Folder;
+    const cat = getFileCategory(
+      item.extension || item.name,
+      item.isDirectory,
+    ).category;
+    switch (cat) {
+      case "code":
+      case "app":
+        return AppWindow;
+      case "image":
+        return Image;
+      case "video":
+        return Film;
+      case "audio":
+        return Music;
+      case "doc":
+        return FileText;
+      case "archive":
+        return Archive;
+      default:
+        return File;
+    }
+  }
+
+  function getCategory(item: FileItem): string {
+    return getFileCategory(
+      item.extension || item.name,
+      item.isDirectory,
+    ).category;
+  }
+
+  function getIconModifier(item: FileItem): string {
+    if (item.isApp) return "icon-code";
+    return getFileCategory(item.extension || item.name, item.isDirectory)
+      .classModifier;
+  }
+
   return {
     iconCache,
     getNativeIcon,
     fetchIconsForItems,
+    getIconComponent,
+    getIconModifier,
+    getCategory,
   };
 }

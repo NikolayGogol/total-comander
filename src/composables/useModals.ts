@@ -1,5 +1,5 @@
 import { reactive, computed } from "vue";
-import type { FileItem } from "@/types";
+import type { FileItem, TransferProgressData } from "@/types";
 
 export function useModals() {
   const viewerModal = reactive({
@@ -86,6 +86,29 @@ export function useModals() {
     open: false,
   });
 
+  const operationProgressModal = reactive({
+    open: false,
+    targetDir: "",
+    data: {
+      operationId: "",
+      type: "copy" as "copy" | "move",
+      currentFile: "",
+      currentDir: "",
+      itemsDone: 0,
+      totalItems: 0,
+      bytesTransferred: 0,
+      totalBytes: 0,
+      bytesRemaining: 0,
+      speedBytesPerSec: 0,
+      etaSeconds: -1,
+      elapsedSeconds: 0,
+      percent: 0,
+      isDone: false,
+      canceled: false,
+      error: undefined as string | undefined,
+    } as TransferProgressData,
+  });
+
   const contextMenuState = reactive<{
     visible: boolean;
     x: number;
@@ -111,7 +134,8 @@ export function useModals() {
       largeFilesModal.open ||
       folderSizeModal.open ||
       unlockerModal.open ||
-      virtualDisksModal.open
+      virtualDisksModal.open ||
+      operationProgressModal.open
     );
   });
 
@@ -126,6 +150,7 @@ export function useModals() {
     folderSizeModal.open = false;
     unlockerModal.open = false;
     virtualDisksModal.open = false;
+    operationProgressModal.open = false;
   }
 
   return {
@@ -139,8 +164,11 @@ export function useModals() {
     folderSizeModal,
     unlockerModal,
     virtualDisksModal,
+    operationProgressModal,
     contextMenuState,
     isAnyModalOpen,
     closeAllModals,
   };
 }
+
+export type ModalsState = ReturnType<typeof useModals>;

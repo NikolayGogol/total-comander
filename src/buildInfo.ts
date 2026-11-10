@@ -7,8 +7,8 @@ export interface BuildInfoData {
 }
 
 export const BUILD_INFO: BuildInfoData = {
-  version: '1.0.16',
-  buildNumber: '2026.11.10.1',
-  buildDate: '2026-11-10 13:53:49',
+  version: '1.0.23',
+  buildNumber: '2026.11.10.11',
+  buildDate: '2026-11-10 16:25:38',
   platform: 'macOS',
 }

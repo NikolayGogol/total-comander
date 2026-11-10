@@ -152,6 +152,25 @@ export interface CreateArchiveOptions {
   encryptHeader?: boolean;
 }
 
+export interface TransferProgressData {
+  operationId: string;
+  type: "copy" | "move";
+  currentFile: string;
+  currentDir: string;
+  itemsDone: number;
+  totalItems: number;
+  bytesTransferred: number;
+  totalBytes: number;
+  bytesRemaining: number;
+  speedBytesPerSec: number;
+  etaSeconds: number;
+  elapsedSeconds: number;
+  percent: number;
+  isDone?: boolean;
+  error?: string;
+  canceled?: boolean;
+}
+
 export interface FolderSizeSubfolder {
   name: string;
   path: string;
@@ -197,18 +216,32 @@ export interface VirtualDiskInfo {
 }
 
 export interface ElectronAPI {
-  getDirectoryContents: (dirPath: string) => Promise<{
-    items: FileItem[];
-    freeSpace?: number;
-    availableSpace?: number;
-    purgeableSpace?: number;
-    totalSpace?: number;
+  getPathForFile: (file: File) => string;
+  readDir: (
+    dirPath: string,
+    showHidden?: boolean,
+  ) => Promise<{
+    success: boolean;
+    data?: FileItem[];
     error?: string;
   }>;
-  getDrives: () => Promise<DriveItem[]>;
-  ejectDrive: (
-    drivePath: string,
+  getDiskSpace: (dirPath: string) => Promise<{
+    success: boolean;
+    free?: number;
+    total?: number;
+    available?: number;
+    purgeable?: number;
+    error?: string;
+  }>;
+  getDrives: () => Promise<{
+    success: boolean;
+    data?: DriveItem[];
+    error?: string;
+  }>;
+  ejectVolume: (
+    volumePath: string,
   ) => Promise<{ success: boolean; error?: string }>;
+  onDrivesChanged: (callback: () => void) => () => void;
   createFolder: (
     targetPath: string,
   ) => Promise<{ success: boolean; error?: string }>;
@@ -227,6 +260,17 @@ export interface ElectronAPI {
     sources: string[],
     destinationDir: string,
   ) => Promise<{ success: boolean; error?: string }>;
+  runTransfer: (payload: {
+    type: "copy" | "move";
+    sources: string[];
+    destinationDir: string;
+    operationId: string;
+  }) => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
+  cancelTransfer: (operationId: string) => Promise<boolean>;
+  onTransferProgress: (
+    callback: (data: TransferProgressData) => void,
+  ) => () => void;
+  startDrag: (paths: string[] | { files: string[] }) => void;
   renamePath: (
     oldPath: string,
     newPath: string,
