@@ -33,10 +33,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createFile: (targetPath: string) => ipcRenderer.invoke('fs:createFile', targetPath),
   deletePaths: (paths: string[], moveToTrash?: boolean) =>
     ipcRenderer.invoke('fs:deletePaths', toPlain(paths), moveToTrash),
-  copyPaths: (sources: string[], destinationDir: string) =>
-    ipcRenderer.invoke('fs:copyPaths', toPlain(sources), destinationDir),
-  movePaths: (sources: string[], destinationDir: string) =>
-    ipcRenderer.invoke('fs:movePaths', toPlain(sources), destinationDir),
+  copyPaths: (sources: string[], destinationDir: string, operationId?: string) =>
+    ipcRenderer.invoke('fs:copyPaths', toPlain(sources), destinationDir, operationId),
+  movePaths: (sources: string[], destinationDir: string, operationId?: string) =>
+    ipcRenderer.invoke('fs:movePaths', toPlain(sources), destinationDir, operationId),
+  cancelTransfer: (operationId: string) => ipcRenderer.invoke('fs:cancelTransfer', operationId),
+  startDrag: (paths: string[]) => ipcRenderer.send('fs:startDrag', toPlain(paths)),
+  onTransferProgress: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('fs:transferProgress', listener)
+    return () => ipcRenderer.removeListener('fs:transferProgress', listener)
+  },
   renamePath: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:renamePath', oldPath, newPath),
   readFile: (filePath: string, maxBytes?: number) => ipcRenderer.invoke('fs:readFile', filePath, maxBytes),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),

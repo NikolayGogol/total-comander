@@ -1,9 +1,10 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain, shell, nativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
 import { exec } from 'child_process'
-import { formatPermissions, safeEnsureDir } from '../utils'
+import { formatPermissions } from '../utils'
+import { executeCopyMove, cancelTransfer } from './transferEngine'
 
 export function registerFileSystemIpc(): void {
   // Read Directory
@@ -103,53 +104,61 @@ export function registerFileSystemIpc(): void {
     }
   })
 
-  // Copy Paths
-  ipcMain.handle('fs:copyPaths', async (_, sources: string[], destinationDir: string) => {
-    try {
-      await safeEnsureDir(destinationDir)
-      for (const src of sources) {
-        const baseName = path.basename(src)
-        const dest = path.join(destinationDir, baseName)
-        if (src.toLowerCase() === dest.toLowerCase()) {
-          const ext = path.extname(baseName)
-          const nameWithoutExt = path.basename(baseName, ext)
-          const copyDest = path.join(destinationDir, `${nameWithoutExt} - Копія${ext}`)
-          await fsPromises.cp(src, copyDest, { recursive: true })
-        } else {
-          await fsPromises.cp(src, dest, { recursive: true })
+  // Copy Paths with Real-Time Progress, Speed & ETA
+  ipcMain.handle('fs:copyPaths', async (event, sources: string[], destinationDir: string, operationId?: string) => {
+    const opId = operationId || `copy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    return executeCopyMove({
+      operationId: opId,
+      type: 'copy',
+      sources,
+      destinationDir,
+      onProgress: (data) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('fs:transferProgress', data)
         }
-      }
-      return { success: true }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
+      },
+    })
   })
 
-  // Move Paths
-  ipcMain.handle('fs:movePaths', async (_, sources: string[], destinationDir: string) => {
-    try {
-      await safeEnsureDir(destinationDir)
-      for (const src of sources) {
-        const baseName = path.basename(src)
-        const dest = path.join(destinationDir, baseName)
-        if (src.toLowerCase() === dest.toLowerCase()) continue
-
-        try {
-          await fsPromises.rename(src, dest)
-        } catch (renameErr: any) {
-          // EXDEV fallback for cross-filesystem moves
-          if (renameErr.code === 'EXDEV') {
-            await fsPromises.cp(src, dest, { recursive: true })
-            await fsPromises.rm(src, { recursive: true, force: true })
-          } else {
-            throw renameErr
-          }
+  // Move Paths with Real-Time Progress, Speed & ETA
+  ipcMain.handle('fs:movePaths', async (event, sources: string[], destinationDir: string, operationId?: string) => {
+    const opId = operationId || `move-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    return executeCopyMove({
+      operationId: opId,
+      type: 'move',
+      sources,
+      destinationDir,
+      onProgress: (data) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('fs:transferProgress', data)
         }
+      },
+    })
+  })
+
+  // Cancel in-flight copy/move transfer
+  ipcMain.handle('fs:cancelTransfer', async (_, operationId: string) => {
+    return cancelTransfer(operationId)
+  })
+
+  // Native Drag-and-Drop to External Applications (Explorer, Discord, Telegram, Browsers, etc.)
+  ipcMain.on('fs:startDrag', (event, paths: string[] | { files: string[] }) => {
+    const files = Array.isArray(paths) ? paths : paths?.files || []
+    if (!files || files.length === 0) return
+
+    let dragIcon = nativeImage.createEmpty()
+    try {
+      const iconPath = path.resolve('build/icon.png')
+      if (fs.existsSync(iconPath)) {
+        dragIcon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 })
       }
-      return { success: true }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
+    } catch {}
+
+    event.sender.startDrag({
+      file: files[0],
+      files,
+      icon: dragIcon,
+    })
   })
 
   // Rename Single Path

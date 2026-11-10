@@ -102,6 +102,25 @@ export interface UnlockerExecuteOptions {
   permanentDelete?: boolean
 }
 
+export interface TransferProgressData {
+  operationId: string
+  type: 'copy' | 'move'
+  currentFile: string
+  currentDir?: string
+  itemsDone: number
+  totalItems: number
+  bytesTransferred: number
+  totalBytes: number
+  bytesRemaining: number
+  speedBytesPerSec: number
+  etaSeconds: number
+  elapsedSeconds: number
+  percent: number
+  isDone?: boolean
+  error?: string
+  canceled?: boolean
+}
+
 export interface CreateArchiveOptions {
   sources: string[]
   targetPath: string
@@ -129,8 +148,19 @@ export interface ElectronAPI {
   createFolder: (targetPath: string) => Promise<{ success: boolean; error?: string }>
   createFile: (targetPath: string) => Promise<{ success: boolean; error?: string }>
   deletePaths: (paths: string[], moveToTrash?: boolean) => Promise<{ success: boolean; error?: string }>
-  copyPaths: (sources: string[], destinationDir: string) => Promise<{ success: boolean; error?: string }>
-  movePaths: (sources: string[], destinationDir: string) => Promise<{ success: boolean; error?: string }>
+  copyPaths: (
+    sources: string[],
+    destinationDir: string,
+    operationId?: string
+  ) => Promise<{ success: boolean; canceled?: boolean; error?: string }>
+  movePaths: (
+    sources: string[],
+    destinationDir: string,
+    operationId?: string
+  ) => Promise<{ success: boolean; canceled?: boolean; error?: string }>
+  cancelTransfer: (operationId: string) => Promise<boolean>
+  startDrag: (paths: string[]) => void
+  onTransferProgress: (callback: (data: TransferProgressData) => void) => () => void
   renamePath: (oldPath: string, newPath: string) => Promise<{ success: boolean; error?: string }>
   readFile: (
     filePath: string,

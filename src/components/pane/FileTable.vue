@@ -575,6 +575,11 @@ function onDragStart(e: DragEvent, item: FileItem) {
       if (badge.parentNode) badge.parentNode.removeChild(badge)
     }, 0)
   } catch {}
+
+  // 4. Native drag-and-drop to external applications (Explorer, Telegram, Discord, browser, etc.)
+  if (window.electronAPI && typeof window.electronAPI.startDrag === 'function') {
+    window.electronAPI.startDrag(paths)
+  }
 }
 
 function onDragEnd() {

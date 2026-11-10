@@ -6,6 +6,11 @@ export function useClipboard(options: {
   refreshAllPanes: () => Promise<void>
   showToast: (message: string, type?: 'success' | 'error' | 'shortcut') => void
   showShortcutToast: (shortcut: string, message: string) => void
+  runTransferWithProgress?: (
+    type: 'copy' | 'move',
+    sources: string[],
+    destinationDir: string
+  ) => Promise<{ success: boolean; canceled?: boolean; error?: string }>
 }) {
   const { getSelectedOrCursorPaths, getActivePaneTargetDir, refreshAllPanes, showToast, showShortcutToast } = options
 
@@ -71,12 +76,17 @@ export function useClipboard(options: {
       const action = res.action || 'copy'
 
       let opRes
-      if (action === 'cut') {
+      if (options.runTransferWithProgress) {
+        opRes = await options.runTransferWithProgress(action === 'cut' ? 'move' : 'copy', res.paths, targetDir)
+      } else if (action === 'cut') {
         opRes = await window.electronAPI.movePaths(res.paths, targetDir)
-        await window.electronAPI.clearClipboard()
-        canPaste.value = false
       } else {
         opRes = await window.electronAPI.copyPaths(res.paths, targetDir)
+      }
+
+      if (action === 'cut' && opRes.success) {
+        await window.electronAPI.clearClipboard()
+        canPaste.value = false
       }
 
       if (opRes.success) {

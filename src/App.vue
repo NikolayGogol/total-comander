@@ -184,6 +184,15 @@
       @action-completed="onUnlockerActionCompleted"
     />
 
+    <!-- Real-time File Transfer Progress Modal (Traffic, Speed, ETA) -->
+    <FileOperationProgressModal
+      v-if="transferProgressModal.open"
+      :data="transferProgressModal.data"
+      :target-dir="transferProgressModal.targetDir"
+      @cancel="cancelCurrentTransfer"
+      @close="transferProgressModal.open = false"
+    />
+
     <!-- Right-Click Context Menu -->
     <ContextMenu
       v-if="contextMenu.open"
@@ -221,6 +230,7 @@ import ArchiveViewModal from '@/components/ArchiveViewModal.vue'
 import LargeFilesModal from '@/components/LargeFilesModal.vue'
 import FolderSizeModal from '@/components/FolderSizeModal.vue'
 import UnlockerModal from '@/components/UnlockerModal.vue'
+import FileOperationProgressModal from '@/components/FileOperationProgressModal.vue'
 
 import { useToast } from '@/composables/useToast'
 import { usePanes } from '@/composables/usePanes'
@@ -293,6 +303,7 @@ const { canPaste, checkCanPaste, copySelectedToClipboard, pasteFromClipboard } =
   refreshAllPanes,
   showToast,
   showShortcutToast,
+  runTransferWithProgress: (type, sources, dest) => runTransferWithProgress(type, sources, dest),
 })
 
 const {
@@ -305,6 +316,9 @@ const {
   createArchiveModal,
   archiveViewModal,
   unlockerModal,
+  transferProgressModal,
+  cancelCurrentTransfer,
+  runTransferWithProgress,
   contextMenu,
   openContextMenu,
   openSearchModal,

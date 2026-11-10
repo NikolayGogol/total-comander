@@ -1,5 +1,5 @@
-import { reactive, type ComputedRef } from 'vue'
-import type { FileItem, PaneState } from '@/types'
+import { reactive, onMounted, onUnmounted, type ComputedRef } from 'vue'
+import type { FileItem, PaneState, TransferProgressData } from '@/types'
 
 export function useModals(options: {
   activePaneId: { value: 'left' | 'right' }
@@ -110,6 +110,111 @@ export function useModals(options: {
     unlockerModal.isDirectory = item.isDirectory
     unlockerModal.oppositePath = oppositePaneState.value?.currentPath || ''
     unlockerModal.open = true
+  }
+
+  // File Transfer Progress Modal (Real-time traffic, speed, ETA)
+  const transferProgressModal = reactive({
+    open: false,
+    targetDir: '',
+    data: {
+      operationId: '',
+      type: 'copy' as 'copy' | 'move',
+      currentFile: '',
+      currentDir: '',
+      itemsDone: 0,
+      totalItems: 0,
+      bytesTransferred: 0,
+      totalBytes: 0,
+      bytesRemaining: 0,
+      speedBytesPerSec: 0,
+      etaSeconds: 0,
+      elapsedSeconds: 0,
+      percent: 0,
+      isDone: false,
+      canceled: false,
+    } as TransferProgressData,
+  })
+
+  let unsubscribeTransferProgress: (() => void) | null = null
+
+  onMounted(() => {
+    if (window.electronAPI && typeof window.electronAPI.onTransferProgress === 'function') {
+      unsubscribeTransferProgress = window.electronAPI.onTransferProgress((data) => {
+        if (data.operationId === transferProgressModal.data.operationId) {
+          Object.assign(transferProgressModal.data, data)
+        }
+      })
+    }
+  })
+
+  onUnmounted(() => {
+    if (unsubscribeTransferProgress) {
+      unsubscribeTransferProgress()
+      unsubscribeTransferProgress = null
+    }
+  })
+
+  async function runTransferWithProgress(type: 'copy' | 'move', sources: string[], destinationDir: string) {
+    const opId = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    transferProgressModal.targetDir = destinationDir
+    transferProgressModal.data = {
+      operationId: opId,
+      type,
+      currentFile: 'Підготовка...',
+      currentDir: destinationDir,
+      itemsDone: 0,
+      totalItems: sources.length,
+      bytesTransferred: 0,
+      totalBytes: 0,
+      bytesRemaining: 0,
+      speedBytesPerSec: 0,
+      etaSeconds: 0,
+      elapsedSeconds: 0,
+      percent: 0,
+      isDone: false,
+      canceled: false,
+    }
+    transferProgressModal.open = true
+
+    const startTime = Date.now()
+    const res =
+      type === 'copy'
+        ? await window.electronAPI.copyPaths(sources, destinationDir, opId)
+        : await window.electronAPI.movePaths(sources, destinationDir, opId)
+
+    const elapsed = Date.now() - startTime
+
+    if (res.canceled) {
+      transferProgressModal.data.canceled = true
+      showToast('Операцію скасовано користувачем', 'error')
+      setTimeout(() => {
+        transferProgressModal.open = false
+      }, 500)
+      refreshAllPanes()
+      return res
+    }
+
+    if (res.success) {
+      transferProgressModal.data.isDone = true
+      transferProgressModal.data.percent = 100
+      const delay = elapsed < 400 ? 150 : 350
+      setTimeout(() => {
+        transferProgressModal.open = false
+      }, delay)
+      refreshAllPanes()
+    } else {
+      transferProgressModal.open = false
+      showToast(res.error || `Помилка ${type === 'copy' ? 'копіювання' : 'переміщення'}`, 'error')
+    }
+
+    return res
+  }
+
+  async function cancelCurrentTransfer() {
+    if (transferProgressModal.data.operationId && window.electronAPI.cancelTransfer) {
+      await window.electronAPI.cancelTransfer(transferProgressModal.data.operationId)
+      transferProgressModal.data.canceled = true
+    }
   }
 
   // Right-Click Context Menu
@@ -487,20 +592,14 @@ export function useModals(options: {
           showToast(`Rename error: ${res.error}`, 'error')
         }
       } else if (opType === 'copy') {
-        const res = await window.electronAPI.copyPaths(rawSources, target)
+        const res = await runTransferWithProgress('copy', rawSources, target)
         if (res.success) {
-          showToast(`Copied ${rawSources.length} item(s)`, 'success')
-          refreshAllPanes()
-        } else {
-          showToast(`Copy error: ${res.error}`, 'error')
+          showToast(`Скопійовано ${rawSources.length} елемент(ів)`, 'success')
         }
       } else if (opType === 'move') {
-        const res = await window.electronAPI.movePaths(rawSources, target)
+        const res = await runTransferWithProgress('move', rawSources, target)
         if (res.success) {
-          showToast(`Moved ${rawSources.length} item(s)`, 'success')
-          refreshAllPanes()
-        } else {
-          showToast(`Move error: ${res.error}`, 'error')
+          showToast(`Переміщено ${rawSources.length} елемент(ів)`, 'success')
         }
       } else if (opType === 'delete') {
         const isPermanent = operationModal.targetDir === 'PERMANENT'
@@ -570,17 +669,12 @@ export function useModals(options: {
         return
       }
 
-      const res = isMove
-        ? await window.electronAPI.movePaths(rawPaths, targetDir)
-        : await window.electronAPI.copyPaths(rawPaths, targetDir)
+      const res = await runTransferWithProgress(isMove ? 'move' : 'copy', rawPaths, targetDir)
 
       if (res.success) {
         const actionWord = isMove ? 'Переміщено' : 'Скопійовано'
         const itemsWord = rawPaths.length === 1 ? 'елемент' : rawPaths.length < 5 ? 'елементи' : 'елементів'
         showToast(`${actionWord} ${rawPaths.length} ${itemsWord} у "${targetName}"`, 'success')
-        refreshAllPanes()
-      } else {
-        showToast(`Drag & drop помилка: ${res.error}`, 'error')
       }
     } catch (err: any) {
       showToast(`Помилка drag & drop: ${err.message}`, 'error')
@@ -597,6 +691,7 @@ export function useModals(options: {
     createArchiveModal,
     archiveViewModal,
     unlockerModal,
+    transferProgressModal,
     contextMenu,
     openContextMenu,
     openViewer,
@@ -617,6 +712,8 @@ export function useModals(options: {
     onArchiveExtracted,
     onFileSaved,
     onUnlockerActionCompleted,
+    cancelCurrentTransfer,
+    runTransferWithProgress,
     handleDragDrop,
   }
 }

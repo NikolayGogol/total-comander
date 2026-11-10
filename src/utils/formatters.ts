@@ -18,6 +18,19 @@ export function formatDate(timestamp?: number | null, format = 'YYYY-MM-DD HH:mm
   return d.format(format)
 }
 
+export function formatDuration(seconds?: number | null): string {
+  if (seconds === undefined || seconds === null || isNaN(seconds) || seconds < 0) return '--'
+  const s = Math.round(seconds)
+  const hrs = Math.floor(s / 3600)
+  const mins = Math.floor((s % 3600) / 60)
+  const secs = s % 60
+
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
 export type FileCategory =
   'folder' | 'exe' | 'archive' | 'image' | 'video' | 'audio' | 'code' | 'doc' | 'system' | 'shortcut' | 'default'
 
