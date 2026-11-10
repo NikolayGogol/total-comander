@@ -1,4 +1,4 @@
-import { ipcMain, shell, nativeImage } from 'electron'
+import { ipcMain, shell, nativeImage, app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
@@ -141,24 +141,39 @@ export function registerFileSystemIpc(): void {
     return cancelTransfer(operationId)
   })
 
-  // Native Drag-and-Drop to External Applications (Explorer, Discord, Telegram, Browsers, etc.)
+  // Native Drag-and-Drop to External Applications (Explorer, Desktop, Discord, Telegram, Browsers, etc.)
   ipcMain.on('fs:startDrag', (event, paths: string[] | { files: string[] }) => {
-    const files = Array.isArray(paths) ? paths : paths?.files || []
-    if (!files || files.length === 0) return
+    const rawFiles = Array.isArray(paths) ? paths : paths?.files || []
+    if (!rawFiles || rawFiles.length === 0) return
 
-    let dragIcon = nativeImage.createEmpty()
+    // Normalize paths with Windows backslashes and ensure they exist
+    const files = rawFiles.map((f) => path.normalize(path.resolve(f))).filter((f) => fs.existsSync(f))
+
+    if (files.length === 0) return
+
+    let dragIcon: any = null
     try {
-      const iconPath = path.resolve('build/icon.png')
-      if (fs.existsSync(iconPath)) {
-        dragIcon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 })
+      const possibleIconPaths = [path.join(app.getAppPath(), 'build', 'icon.png'), path.resolve('build/icon.png')]
+      for (const ip of possibleIconPaths) {
+        if (fs.existsSync(ip)) {
+          const img = nativeImage.createFromPath(ip)
+          if (!img.isEmpty()) {
+            dragIcon = img.resize({ width: 32, height: 32 })
+            break
+          }
+        }
       }
     } catch {}
 
-    event.sender.startDrag({
+    const dragItem: { file: string; files: string[]; icon?: any } = {
       file: files[0],
       files,
-      icon: dragIcon,
-    })
+    }
+    if (dragIcon && !dragIcon.isEmpty()) {
+      dragItem.icon = dragIcon
+    }
+
+    event.sender.startDrag(dragItem)
   })
 
   // Rename Single Path

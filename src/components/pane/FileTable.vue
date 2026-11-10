@@ -349,15 +349,25 @@ function onStorageChange(e: StorageEvent) {
   }
 }
 
+function onGlobalMouseUp() {
+  if ((window as any).__TC_ACTIVE_DRAG__) {
+    setTimeout(() => {
+      ;(window as any).__TC_ACTIVE_DRAG__ = null
+    }, 300)
+  }
+}
+
 onMounted(() => {
   applyColWidthsToDOM()
   window.addEventListener('tc-col-widths-updated', onColWidthsUpdated)
   window.addEventListener('storage', onStorageChange)
+  window.addEventListener('mouseup', onGlobalMouseUp)
 })
 
 onUnmounted(() => {
   window.removeEventListener('tc-col-widths-updated', onColWidthsUpdated)
   window.removeEventListener('storage', onStorageChange)
+  window.removeEventListener('mouseup', onGlobalMouseUp)
 })
 
 const isRootPath = computed(() => {
@@ -540,7 +550,11 @@ function scrollToCursor() {
 
 // Drag & Drop
 function onDragStart(e: DragEvent, item: FileItem) {
-  if (!e.dataTransfer) return
+  if (item.name === '..') {
+    e.preventDefault()
+    return
+  }
+
   let paths: string[]
   if (isSelected(item.path)) {
     paths = Array.from(props.selectedPaths)
@@ -558,25 +572,21 @@ function onDragStart(e: DragEvent, item: FileItem) {
     fromPath: props.currentPath,
   }
 
-  // 2. DataTransfer payload
-  try {
-    e.dataTransfer.setData('application/json', JSON.stringify(paths))
-    e.dataTransfer.setData('text/plain', paths.join('\r\n'))
-    e.dataTransfer.effectAllowed = 'copyMove'
+  // 2. DataTransfer payload fallback
+  if (e.dataTransfer) {
+    try {
+      e.dataTransfer.setData('application/json', JSON.stringify(paths))
+      e.dataTransfer.setData('text/plain', paths.join('\r\n'))
+      e.dataTransfer.effectAllowed = 'copyMove'
+    } catch {}
+  }
 
-    // 3. Create a clean ghost drag image badge
-    const badge = document.createElement('div')
-    badge.style.cssText =
-      'position: absolute; top: -1000px; left: -1000px; padding: 4px 10px; background: #131824; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; font-family: monospace; font-size: 12px; pointer-events: none; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-weight: bold;'
-    badge.textContent = paths.length === 1 ? `📄 ${item.name}` : `📁 ${paths.length} items`
-    document.body.appendChild(badge)
-    e.dataTransfer.setDragImage(badge, 12, 12)
-    setTimeout(() => {
-      if (badge.parentNode) badge.parentNode.removeChild(badge)
-    }, 0)
-  } catch {}
+  // 3. Prevent default HTML5 drag to hand off control to Windows native OLE DoDragDrop
+  // Calling e.preventDefault() is required by Electron so Chromium yields control
+  // and starts a native CF_HDROP drag allowing copy to Desktop, Explorer, Telegram, etc.
+  e.preventDefault()
 
-  // 4. Native drag-and-drop to external applications (Explorer, Telegram, Discord, browser, etc.)
+  // 4. Native drag-and-drop to external applications (Desktop, Explorer, Telegram, Discord, etc.)
   if (window.electronAPI && typeof window.electronAPI.startDrag === 'function') {
     window.electronAPI.startDrag(paths)
   }
