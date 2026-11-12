@@ -1,8 +1,9 @@
-import { ipcMain, shell, nativeImage, app } from 'electron'
+import { ipcMain, shell, nativeImage, app, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
-import { exec } from 'child_process'
+import os from 'os'
+import { exec, execFile } from 'child_process'
 import { isProtectedSystemFile } from './disk'
 import { extractAppIcon, resolveAliasInfo } from './icons'
 import { executeCopyMove, cancelTransfer } from './transferEngine'
@@ -466,6 +467,79 @@ export function setupFileSystemIpc() {
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
+    }
+  })
+
+  // Open with specific application (open -a "<app>" "<file>")
+  safeHandle('fs:openWith', async (_, filePath: string, appPath: string) => {
+    try {
+      if (!fs.existsSync(filePath)) {
+        return { success: false, error: 'Файл не знайдено' }
+      }
+      await new Promise<void>((resolve, reject) => {
+        execFile('/usr/bin/open', ['-a', appPath, filePath], (err) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      })
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Не вдалося відкрити файл у вибраній програмі' }
+    }
+  })
+
+  // Get installed macOS applications for Open With selector
+  safeHandle('fs:getInstalledApps', async () => {
+    try {
+      const appDirs = [
+        '/Applications',
+        '/System/Applications',
+        '/System/Applications/Utilities',
+        path.join(os.homedir(), 'Applications'),
+      ]
+      const results: Array<{ name: string; path: string }> = []
+      const seen = new Set<string>()
+
+      for (const dir of appDirs) {
+        if (!fs.existsSync(dir)) continue
+        try {
+          const entries = await fsPromises.readdir(dir, { withFileTypes: true })
+          for (const entry of entries) {
+            if (entry.name.endsWith('.app')) {
+              const appName = entry.name.replace(/\.app$/, '')
+              const appPath = path.join(dir, entry.name)
+              const key = appName.toLowerCase()
+              if (!seen.has(key)) {
+                seen.add(key)
+                results.push({ name: appName, path: appPath })
+              }
+            }
+          }
+        } catch {}
+      }
+
+      results.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      return { success: true, apps: results }
+    } catch (err: any) {
+      return { success: false, error: err.message, apps: [] }
+    }
+  })
+
+  // Select application from disk via native macOS dialog
+  safeHandle('fs:selectAppDialog', async () => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Виберіть програму для відкриття файлу',
+        defaultPath: '/Applications',
+        properties: ['openFile'],
+        filters: [{ name: 'Applications (*.app)', extensions: ['app'] }],
+      })
+      if (canceled || !filePaths.length) {
+        return { canceled: true }
+      }
+      return { canceled: false, appPath: filePaths[0] }
+    } catch (err: any) {
+      return { canceled: true, error: err.message }
     }
   })
 

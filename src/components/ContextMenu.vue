@@ -54,6 +54,7 @@ import {
   PieChart,
   HardDrive,
   Unlock,
+  AppWindow,
 } from "lucide-vue-next";
 
 interface ContextItemDef {
@@ -133,12 +134,22 @@ const itemsList = computed<ContextItemDef[]>(() => {
         label: "Показати вміст пакета",
         icon: FolderOpen,
       });
+      list.push({
+        action: "open-with",
+        label: "Відкрити за допомогою...",
+        icon: AppWindow,
+      });
     } else if (ext === "dmg") {
       list.push({
         action: "open",
         label: "Змонтувати / відкрити образ (.dmg)",
         icon: ExternalLink,
         shortcut: "↵",
+      });
+      list.push({
+        action: "open-with",
+        label: "Відкрити за допомогою...",
+        icon: AppWindow,
       });
       list.push({
         action: "view",
@@ -160,6 +171,11 @@ const itemsList = computed<ContextItemDef[]>(() => {
         shortcut: "⌥F6",
       });
       list.push({
+        action: "open-with",
+        label: "Відкрити за допомогою...",
+        icon: AppWindow,
+      });
+      list.push({
         action: "extract-archive",
         label: "Розархівувати вміст...",
         icon: Archive,
@@ -176,6 +192,11 @@ const itemsList = computed<ContextItemDef[]>(() => {
         label: "Відкрити папку",
         icon: FolderOpen,
         shortcut: "↵",
+      });
+      list.push({
+        action: "open-with",
+        label: "Відкрити за допомогою...",
+        icon: AppWindow,
       });
       list.push({
         action: "calculate-dir-size",
@@ -205,6 +226,11 @@ const itemsList = computed<ContextItemDef[]>(() => {
         label: "Відкрити у програмі",
         icon: ExternalLink,
         shortcut: "↵",
+      });
+      list.push({
+        action: "open-with",
+        label: "Відкрити за допомогою...",
+        icon: AppWindow,
       });
       list.push({
         action: "view",

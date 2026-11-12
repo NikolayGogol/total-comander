@@ -208,7 +208,8 @@ function onFormatChange() {
 }
 
 function submit() {
-  if (props.isCreating || isProcessing.value || !archiveName.value.trim()) return;
+  if (props.isCreating || isProcessing.value || !archiveName.value.trim())
+    return;
   isProcessing.value = true;
   let finalName = archiveName.value.trim();
   const expectedExt = `.${selectedFormat.value}`;

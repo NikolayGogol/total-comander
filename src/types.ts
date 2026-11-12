@@ -289,6 +289,20 @@ export interface ElectronAPI {
     content: string,
   ) => Promise<{ success: boolean; error?: string }>;
   openPath: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+  openWith: (
+    filePath: string,
+    appPath: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  getInstalledApps: () => Promise<{
+    success: boolean;
+    apps: Array<{ name: string; path: string }>;
+    error?: string;
+  }>;
+  selectAppDialog: () => Promise<{
+    canceled: boolean;
+    appPath?: string;
+    error?: string;
+  }>;
   showInFolder: (
     filePath: string,
   ) => Promise<{ success: boolean; error?: string }>;

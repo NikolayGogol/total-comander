@@ -111,6 +111,14 @@ export function useModals() {
     } as TransferProgressData,
   });
 
+  const openWithModal = reactive<{
+    open: boolean;
+    item: FileItem | null;
+  }>({
+    open: false,
+    item: null,
+  });
+
   const contextMenuState = reactive<{
     visible: boolean;
     x: number;
@@ -137,7 +145,8 @@ export function useModals() {
       folderSizeModal.open ||
       unlockerModal.open ||
       virtualDisksModal.open ||
-      operationProgressModal.open
+      operationProgressModal.open ||
+      openWithModal.open
     );
   });
 
@@ -153,6 +162,7 @@ export function useModals() {
     unlockerModal.open = false;
     virtualDisksModal.open = false;
     operationProgressModal.open = false;
+    openWithModal.open = false;
   }
 
   return {
@@ -167,6 +177,7 @@ export function useModals() {
     unlockerModal,
     virtualDisksModal,
     operationProgressModal,
+    openWithModal,
     contextMenuState,
     isAnyModalOpen,
     closeAllModals,

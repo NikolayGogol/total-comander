@@ -204,6 +204,14 @@
       @close="operationProgressModal.open = false"
     />
 
+    <!-- Open With Modal (ПКМ Відкрити за допомогою...) -->
+    <OpenWithModal
+      v-if="openWithModal.open && openWithModal.item"
+      :item="openWithModal.item"
+      @open-with="handleOpenWithApp"
+      @close="openWithModal.open = false"
+    />
+
     <!-- Right-Click Context Menu -->
     <ContextMenu
       :visible="contextMenuState.visible"
@@ -256,6 +264,7 @@ import FolderSizeModal from "@/components/FolderSizeModal.vue";
 import UnlockerModal from "@/components/UnlockerModal.vue";
 import VirtualDisksModal from "@/components/VirtualDisksModal.vue";
 import FileOperationProgressModal from "@/components/FileOperationProgressModal.vue";
+import OpenWithModal from "@/components/OpenWithModal.vue";
 
 import { useToast } from "@/composables/useToast";
 import { useModals } from "@/composables/useModals";
@@ -286,6 +295,7 @@ const {
   unlockerModal,
   virtualDisksModal,
   operationProgressModal,
+  openWithModal,
   contextMenuState,
   isAnyModalOpen,
   closeAllModals,
@@ -346,6 +356,7 @@ const {
   onArchiveExtractConfirm,
   handleContextMenu,
   handleContextMenuAction,
+  handleOpenWithApp,
   onOperationConfirm,
   onFileSaved,
   handleDragDrop,
@@ -369,6 +380,7 @@ const {
   unlockerModal,
   virtualDisksModal,
   operationProgressModal,
+  openWithModal,
   contextMenuState,
   isAnyModalOpen,
   closeAllModals,

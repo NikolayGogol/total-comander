@@ -199,22 +199,15 @@ export function useFileOperations(ctx: FileOperationsContext) {
       });
       if (res.success) {
         ctx.createArchiveModal.open = false;
-        ctx.showToast(
-          `Архів створено: ${payload.fullTarget.split("/").pop()}`,
-          "success",
-        );
-        // Refresh all panes and wait for them to finish reading
+        const targetName = payload.fullTarget.split("/").pop();
+        ctx.showToast(`Архів створено: ${targetName}`, "success");
         await ctx.refreshAllPanes();
-        // Fallback tick to guarantee APFS index update & highlight item
         setTimeout(async () => {
           await ctx.refreshAllPanes();
-          const targetName = payload.fullTarget.split("/").pop();
           if (targetName) {
             const p = ctx.activePaneState.value;
             const idx = p.items.findIndex((item) => item.name === targetName);
-            if (idx !== -1) {
-              p.cursorIndex = idx;
-            }
+            if (idx !== -1) p.cursorIndex = idx;
           }
         }, 150);
       } else {
@@ -286,6 +279,13 @@ export function useFileOperations(ctx: FileOperationsContext) {
         }
         break;
 
+      case "open-with":
+        if (item) {
+          ctx.openWithModal.item = item;
+          ctx.openWithModal.open = true;
+        }
+        break;
+
       case "show-package-contents":
         if (item) {
           ctx.navigatePane(ctx.contextMenuState.paneId, item.path);
@@ -351,30 +351,13 @@ export function useFileOperations(ctx: FileOperationsContext) {
       }
 
       case "view":
-        if (item && !item.isDirectory) {
-          Object.assign(ctx.viewerModal, {
-            filePath: item.path,
-            fileName: item.name,
-            fileSize: item.size,
-            open: true,
-          });
-        }
-        break;
-
       case "edit":
-        if (item && !item.isDirectory) {
-          Object.assign(ctx.editorModal, {
-            filePath: item.path,
-            fileName: item.name,
-            open: true,
-          });
-        }
-        break;
-
       case "copy":
       case "move":
       case "rename":
       case "delete":
+      case "mkdir":
+      case "newfile":
         handleBottomAction(action);
         break;
 
@@ -417,14 +400,6 @@ export function useFileOperations(ctx: FileOperationsContext) {
 
       case "terminal":
         openActiveTerminal();
-        break;
-
-      case "mkdir":
-        handleBottomAction("mkdir");
-        break;
-
-      case "newfile":
-        handleBottomAction("newfile");
         break;
 
       case "select-all":
@@ -623,6 +598,28 @@ export function useFileOperations(ctx: FileOperationsContext) {
     ctx.refreshAllPanes();
   }
 
+  async function handleOpenWithApp(appPath: string) {
+    if (!ctx.openWithModal.item) return;
+    const filePath = ctx.openWithModal.item.path;
+    const fileName = ctx.openWithModal.item.name;
+    const appName =
+      appPath
+        .split("/")
+        .pop()
+        ?.replace(/\.app$/, "") || appPath;
+    ctx.openWithModal.open = false;
+    try {
+      const res = await window.electronAPI.openWith(filePath, appPath);
+      if (res.success) {
+        ctx.showToast(`Відкрито у ${appName}: ${fileName}`, "success");
+      } else {
+        ctx.showToast(`Помилка відкриття: ${res.error}`, "error");
+      }
+    } catch (err: any) {
+      ctx.showToast(`Помилка: ${err.message}`, "error");
+    }
+  }
+
   async function handleDragDrop(
     sourcePaths: string[],
     targetDir: string,
@@ -633,9 +630,9 @@ export function useFileOperations(ctx: FileOperationsContext) {
       const rawPaths: string[] = JSON.parse(JSON.stringify(sourcePaths));
       const targetName =
         targetDir.split("/").filter(Boolean).pop() || targetDir;
-
       const firstParent =
         rawPaths[0].substring(0, rawPaths[0].lastIndexOf("/")) || "/";
+
       if (
         rawPaths.length === 1 &&
         (firstParent === targetDir.replace(/\/+$/, "") ||
@@ -650,7 +647,6 @@ export function useFileOperations(ctx: FileOperationsContext) {
         rawPaths,
         targetDir,
       );
-
       if (res.success) {
         const actionWord = isMove ? "Переміщено" : "Скопійовано";
         const itemsWord =
@@ -682,6 +678,7 @@ export function useFileOperations(ctx: FileOperationsContext) {
     onArchiveExtractConfirm,
     handleContextMenu,
     handleContextMenuAction,
+    handleOpenWithApp,
     onOperationConfirm,
     onFileSaved,
     handleDragDrop,
