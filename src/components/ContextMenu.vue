@@ -14,6 +14,11 @@
           <span class="item-shortcut">Enter</span>
         </button>
 
+        <button class="context-menu-item" @click="trigger('open-with')">
+          <AppWindow :size="14" class="item-icon" />
+          <span class="item-label">Відкрити за допомогою...</span>
+        </button>
+
         <button class="context-menu-item" @click="trigger('view')">
           <Eye :size="14" class="item-icon" />
           <span class="item-label">Переглянути</span>
@@ -184,6 +189,7 @@ import {
   HardDrive,
   PieChart,
   Unlock,
+  AppWindow,
 } from 'lucide-vue-next'
 
 const props = defineProps<{

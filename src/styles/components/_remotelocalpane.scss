@@ -1,0 +1,482 @@
+// ==========================================
+// DUAL-PANE REMOTE & LOCAL EXPLORER STYLES
+// ==========================================
+
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.remote-dual-panes {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-table);
+
+  .remote-local-pane {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-table);
+    border-right: 2px solid var(--border-subtle);
+    transition:
+      background 0.15s ease,
+      outline 0.15s ease;
+
+    &.is-drop-target {
+      outline: 2px dashed var(--accent-blue);
+      outline-offset: -2px;
+      background: rgba(37, 99, 235, 0.06);
+    }
+  }
+
+  .remote-explorer-container {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-table);
+    transition:
+      background 0.15s ease,
+      outline 0.15s ease;
+
+    &.is-drop-target {
+      outline: 2px dashed var(--accent-blue);
+      outline-offset: -2px;
+      background: rgba(37, 99, 235, 0.06);
+    }
+  }
+
+  // --- Shared Toolbar for both Local and Remote Panes ---
+  .explorer-toolbar {
+    @include flex-between;
+    gap: $size-space-md;
+    padding: $size-space-xs $size-space-md;
+    background: var(--bg-panel-header);
+    border-bottom: 1px solid var(--border-subtle);
+    min-height: 38px;
+
+    .breadcrumbs-bar {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: $size-space-xs;
+
+      .btn-breadcrumb-up {
+        @include button-base;
+        @include flex-center;
+        width: 26px;
+        height: 26px;
+        flex-shrink: 0;
+        border-radius: $radius-xs;
+        background: var(--bg-btn-fn);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-main);
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          background: var(--row-hover);
+          color: var(--accent-blue);
+          border-color: var(--accent-blue);
+        }
+
+        &:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+      }
+
+      .breadcrumbs-scroll {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        overflow-x: auto;
+        white-space: nowrap;
+        @include custom-scrollbar;
+
+        .crumb-wrapper {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+        }
+
+        .crumb-item {
+          font-size: $font-size-xs;
+          font-family: $font-family-mono;
+          color: var(--text-muted);
+          padding: 2px 4px;
+          border-radius: $radius-xs;
+          cursor: pointer;
+          user-select: none;
+
+          &:hover {
+            color: var(--text-main);
+            background: var(--row-hover);
+          }
+
+          &.is-current {
+            color: var(--accent-blue);
+            font-weight: $font-weight-semibold;
+          }
+        }
+
+        .crumb-separator {
+          color: var(--text-dim);
+        }
+      }
+    }
+
+    .toolbar-tools {
+      display: flex;
+      align-items: center;
+      gap: $size-space-xs;
+      flex-shrink: 0;
+
+      .search-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        .search-icon {
+          position: absolute;
+          left: 8px;
+          color: var(--text-muted);
+          pointer-events: none;
+        }
+
+        .filter-input {
+          width: 120px;
+          height: 26px;
+          padding-left: 24px;
+          padding-right: 8px;
+          background: var(--bg-input);
+          border: 1px solid var(--border-subtle);
+          border-radius: $radius-xs;
+          color: var(--text-main);
+          font-size: 11px;
+          outline: none;
+          transition:
+            width 0.15s ease,
+            border-color 0.15s ease;
+
+          &:focus {
+            width: 160px;
+            border-color: var(--accent-blue);
+          }
+        }
+      }
+
+      .btn-tool {
+        @include button-base;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 26px;
+        padding: 0 8px;
+        font-size: 11px;
+        background: var(--bg-btn-fn);
+        border: 1px solid var(--border-subtle);
+        border-radius: $radius-xs;
+        color: var(--text-main);
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          background: var(--row-hover);
+          color: var(--accent-blue);
+          border-color: var(--accent-blue);
+        }
+
+        &.btn-disconnect {
+          background: rgba(244, 63, 94, 0.1);
+          color: var(--accent-rose);
+          border-color: rgba(244, 63, 94, 0.25);
+
+          &:hover {
+            background: rgba(244, 63, 94, 0.2);
+          }
+        }
+      }
+    }
+  }
+
+  // --- Shared File Tables ---
+  .remote-table-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    @include custom-scrollbar;
+    background: var(--bg-table);
+  }
+
+  .remote-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: $font-size-xs;
+    table-layout: fixed;
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg-table-header);
+      border-bottom: 1px solid var(--border-subtle);
+
+      th {
+        text-align: left;
+        font-size: 10px;
+        font-weight: $font-weight-bold;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        padding: 6px $size-space-md;
+        white-space: nowrap;
+        user-select: none;
+      }
+    }
+
+    .remote-row {
+      height: 28px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background 0.1s ease;
+
+      &:hover {
+        background: var(--row-hover);
+      }
+
+      &.is-selected {
+        background: rgba(37, 99, 235, 0.15);
+
+        td {
+          color: var(--text-main);
+        }
+      }
+
+      &.is-parent-dir {
+        background: rgba(255, 255, 255, 0.02);
+
+        .parent-icon,
+        .parent-text {
+          color: var(--accent-blue);
+          font-weight: $font-weight-semibold;
+        }
+      }
+
+      td {
+        padding: 4px $size-space-md;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        &.td-name {
+          display: flex;
+          align-items: center;
+          gap: $size-space-sm;
+          @include truncate-text;
+
+          .icon-folder {
+            color: var(--accent-amber);
+            flex-shrink: 0;
+          }
+
+          .icon-archive {
+            color: var(--accent-purple);
+            flex-shrink: 0;
+          }
+
+          .icon-file {
+            color: var(--text-muted);
+            flex-shrink: 0;
+          }
+
+          .entry-name {
+            @include truncate-text;
+          }
+        }
+
+        &.td-ext .ext-badge {
+          font-size: 10px;
+          padding: 1px 4px;
+          border-radius: $radius-xs;
+          background: var(--bg-pill);
+          color: var(--text-muted);
+        }
+
+        &.td-size {
+          text-align: right;
+          font-family: $font-family-mono;
+          font-size: 11px;
+
+          .dir-badge {
+            color: var(--accent-blue);
+            font-weight: $font-weight-bold;
+          }
+        }
+
+        &.td-date {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-family: $font-family-mono;
+        }
+
+        &.td-perms .perms-code {
+          font-family: $font-family-mono;
+          font-size: 10px;
+          color: var(--text-dim);
+        }
+      }
+    }
+
+    .empty-row .empty-cell {
+      text-align: center;
+      padding: $size-space-2xl;
+      color: var(--text-muted);
+      font-size: $font-size-xs;
+    }
+  }
+
+  // Column width definitions
+  .remote-local-pane .remote-table {
+    th.th-name {
+      width: 44%;
+    }
+    th.th-ext {
+      width: 10%;
+    }
+    th.th-size {
+      width: 16%;
+      text-align: right;
+    }
+    th.th-date {
+      width: 30%;
+    }
+  }
+
+  .remote-explorer-container .remote-table {
+    th.th-name {
+      width: 38%;
+    }
+    th.th-ext {
+      width: 8%;
+    }
+    th.th-size {
+      width: 14%;
+      text-align: right;
+    }
+    th.th-date {
+      width: 22%;
+    }
+    th.th-perms {
+      width: 18%;
+    }
+  }
+
+  // --- Shared Footer Strip ---
+  .explorer-footer {
+    @include flex-between;
+    padding: $size-space-xs $size-space-md;
+    background: var(--bg-panel-header);
+    border-top: 1px solid var(--border-subtle);
+    min-height: 38px;
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: $size-space-md;
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+
+      .footer-stats {
+        @include truncate-text;
+      }
+    }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: $size-space-sm;
+      flex-shrink: 0;
+
+      .btn-upload-arrow {
+        @include button-base;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 10px;
+        font-size: 11px;
+        font-weight: $font-weight-medium;
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--accent-emerald);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        border-radius: $radius-xs;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover:not(:disabled) {
+          background: rgba(16, 185, 129, 0.25);
+          border-color: var(--accent-emerald);
+        }
+
+        &:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+      }
+
+      .btn-download {
+        @include button-base;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 10px;
+        font-size: 11px;
+        background: var(--accent-blue);
+        color: #fff;
+        border: 1px solid transparent;
+        border-radius: $radius-xs;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          opacity: 0.9;
+        }
+
+        &:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+      }
+
+      .btn-delete {
+        @include button-base;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 10px;
+        font-size: 11px;
+        background: rgba(244, 63, 94, 0.15);
+        color: var(--accent-rose);
+        border: 1px solid rgba(244, 63, 94, 0.3);
+        border-radius: $radius-xs;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          background: rgba(244, 63, 94, 0.25);
+        }
+
+        &:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+}

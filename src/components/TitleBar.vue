@@ -17,6 +17,17 @@
     </div>
 
     <div class="title-bar-actions">
+      <!-- Remote Connections (SSH / SFTP / FTP) [Ctrl+F] -->
+      <button
+        class="btn-icon"
+        data-tooltip="Мережеві підключення SSH / SFTP / FTP (Ctrl+F)"
+        data-tooltip-pos="bottom"
+        title="Мережеві підключення (SSH / SFTP / FTP) [Ctrl+F]"
+        @click="$emit('open-remote')"
+      >
+        <Server :size="15" />
+      </button>
+
       <!-- Quick Search -->
       <button
         class="btn-icon"
@@ -115,7 +126,7 @@
 
 <script setup lang="ts">
 import { APP_VERSION, BUILD_NUMBER, BUILD_DATE } from '@/buildInfo'
-import { Search, PieChart, Eye, EyeOff, ArrowLeftRight, Terminal, RotateCw, Sun, Moon } from 'lucide-vue-next'
+import { Server, Search, PieChart, Eye, EyeOff, ArrowLeftRight, Terminal, RotateCw, Sun, Moon } from 'lucide-vue-next'
 
 defineProps<{
   showHidden: boolean
@@ -123,6 +134,7 @@ defineProps<{
 }>()
 
 defineEmits<{
+  (e: 'open-remote'): void
   (e: 'open-search'): void
   (e: 'open-large-files'): void
   (e: 'toggle-hidden'): void

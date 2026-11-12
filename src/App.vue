@@ -4,6 +4,7 @@
     <TitleBar
       :show-hidden="showHidden"
       :current-theme="currentTheme"
+      @open-remote="openRemoteModal"
       @open-search="openSearchModal"
       @open-large-files="openLargeFilesModal"
       @toggle-hidden="toggleHiddenFiles"
@@ -193,6 +194,25 @@
       @close="transferProgressModal.open = false"
     />
 
+    <!-- Open With Modal (ПКМ Відкрити за допомогою...) -->
+    <OpenWithModal
+      v-if="openWithModal.open && openWithModal.item"
+      :item="openWithModal.item"
+      @open-with="handleOpenWithApp"
+      @close="openWithModal.open = false"
+    />
+
+    <!-- Remote Connections Modal (SSH / SFTP / FTP) [Ctrl+F] -->
+    <RemoteConnectionModal
+      v-if="remoteConnectionModal.open"
+      :active-local-path="activePaneState.currentPath"
+      :active-selected-item="getActiveCursorItem()"
+      :minimized="remoteConnectionModal.minimized"
+      @update:minimized="remoteConnectionModal.minimized = $event"
+      @file-downloaded="handleRemoteFileDownloaded"
+      @close="closeRemoteModal"
+    />
+
     <!-- Right-Click Context Menu -->
     <ContextMenu
       v-if="contextMenu.open"
@@ -231,6 +251,8 @@ import LargeFilesModal from '@/components/LargeFilesModal.vue'
 import FolderSizeModal from '@/components/FolderSizeModal.vue'
 import UnlockerModal from '@/components/UnlockerModal.vue'
 import FileOperationProgressModal from '@/components/FileOperationProgressModal.vue'
+import OpenWithModal from '@/components/OpenWithModal.vue'
+import RemoteConnectionModal from '@/components/RemoteConnectionModal.vue'
 
 import { useToast } from '@/composables/useToast'
 import { usePanes } from '@/composables/usePanes'
@@ -316,6 +338,8 @@ const {
   createArchiveModal,
   archiveViewModal,
   unlockerModal,
+  openWithModal,
+  remoteConnectionModal,
   transferProgressModal,
   cancelCurrentTransfer,
   runTransferWithProgress,
@@ -326,6 +350,9 @@ const {
   openCreateArchiveModal,
   openArchiveViewer,
   openFolderSizeModal,
+  openRemoteModal,
+  handleOpenWithApp,
+  handleRemoteFileDownloaded,
   jumpToSearchFile,
   openActiveTerminal,
   openFileNative,
@@ -355,6 +382,11 @@ const {
   showShortcutToast,
 })
 
+function closeRemoteModal() {
+  remoteConnectionModal.open = false
+  remoteConnectionModal.minimized = false
+}
+
 const { handleGlobalShortcuts } = useShortcuts({
   activePaneId,
   activePaneState,
@@ -365,7 +397,10 @@ const { handleGlobalShortcuts } = useShortcuts({
     editorModal,
     operationModal,
     searchModal,
+    openWithModal,
+    remoteConnectionModal,
   },
+  openRemoteConnectionsModal: openRemoteModal,
   switchNextTab,
   swapPanes,
   handleBottomAction,

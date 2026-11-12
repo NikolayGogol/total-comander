@@ -93,4 +93,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('app:command', listener)
   },
   getSystemInfo: () => ipcRenderer.invoke('app:getSystemInfo'),
+  openWith: (filePath: string, appPath: string) => ipcRenderer.invoke('fs:openWith', filePath, appPath),
+  getInstalledApps: () => ipcRenderer.invoke('fs:getInstalledApps'),
+  selectAppDialog: () => ipcRenderer.invoke('fs:selectAppDialog'),
+  remoteTestConnection: (config: any) => ipcRenderer.invoke('remote:testConnection', toPlain(config)),
+  remoteListDir: (config: any, remotePath?: string) =>
+    ipcRenderer.invoke('remote:listDir', toPlain(config), remotePath),
+  remoteDownload: (config: any, remoteFilePath: string, localDestinationDir: string) =>
+    ipcRenderer.invoke('remote:download', toPlain(config), remoteFilePath, localDestinationDir),
+  remoteUpload: (config: any, localFilePath: string, remoteDestinationDir: string) =>
+    ipcRenderer.invoke('remote:upload', toPlain(config), localFilePath, remoteDestinationDir),
+  remoteMkdir: (config: any, remotePath: string) => ipcRenderer.invoke('remote:mkdir', toPlain(config), remotePath),
+  remoteCreateFile: (config: any, remotePath: string, content?: string) =>
+    ipcRenderer.invoke('remote:createFile', toPlain(config), remotePath, content),
+  remoteRename: (config: any, oldPath: string, newPath: string) =>
+    ipcRenderer.invoke('remote:rename', toPlain(config), oldPath, newPath),
+  remoteReadText: (config: any, remotePath: string) =>
+    ipcRenderer.invoke('remote:readText', toPlain(config), remotePath),
+  remoteWriteText: (config: any, remotePath: string, content: string) =>
+    ipcRenderer.invoke('remote:writeText', toPlain(config), remotePath, content),
+  remoteDelete: (config: any, remotePath: string, isDirectory: boolean) =>
+    ipcRenderer.invoke('remote:delete', toPlain(config), remotePath, isDirectory),
+  remoteOpenSshTerminal: (config: any) => ipcRenderer.invoke('remote:openSshTerminal', toPlain(config)),
+  remoteSelectPrivateKeyDialog: () => ipcRenderer.invoke('remote:selectPrivateKeyDialog'),
+  onRemoteTransferProgress: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('remote:transfer-progress', listener)
+    return () => ipcRenderer.removeListener('remote:transfer-progress', listener)
+  },
 })

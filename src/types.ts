@@ -241,4 +241,124 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; killedCount?: number; actionExecuted?: string; error?: string }>
   onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll' | 'refresh') => void) => () => void
   getSystemInfo: () => Promise<SystemInfo>
+  openWith: (filePath: string, appPath: string) => Promise<{ success: boolean; error?: string }>
+  getInstalledApps: () => Promise<{ success: boolean; apps?: InstalledApp[]; error?: string }>
+  selectAppDialog: () => Promise<{ canceled: boolean; appPath?: string; error?: string }>
+  remoteTestConnection: (config: RemoteConnectionConfig) => Promise<{
+    success: boolean
+    message?: string
+    error?: string
+  }>
+  remoteListDir: (
+    config: RemoteConnectionConfig,
+    remotePath?: string
+  ) => Promise<{
+    success: boolean
+    currentPath: string
+    entries?: RemoteFileEntry[]
+    error?: string
+  }>
+  remoteDownload: (
+    config: RemoteConnectionConfig,
+    remoteFilePath: string,
+    localDestinationDir: string
+  ) => Promise<{ success: boolean; localPath?: string; error?: string }>
+  remoteUpload: (
+    config: RemoteConnectionConfig,
+    localFilePath: string,
+    remoteDestinationDir: string
+  ) => Promise<{ success: boolean; remotePath?: string; error?: string }>
+  remoteMkdir: (config: RemoteConnectionConfig, remotePath: string) => Promise<{ success: boolean; error?: string }>
+  remoteCreateFile: (
+    config: RemoteConnectionConfig,
+    remotePath: string,
+    content?: string
+  ) => Promise<{ success: boolean; error?: string }>
+  remoteRename: (
+    config: RemoteConnectionConfig,
+    oldPath: string,
+    newPath: string
+  ) => Promise<{ success: boolean; error?: string }>
+  remoteReadText: (
+    config: RemoteConnectionConfig,
+    remotePath: string
+  ) => Promise<{ success: boolean; content?: string; error?: string }>
+  remoteWriteText: (
+    config: RemoteConnectionConfig,
+    remotePath: string,
+    content: string
+  ) => Promise<{ success: boolean; error?: string }>
+  remoteDelete: (
+    config: RemoteConnectionConfig,
+    remotePath: string,
+    isDirectory: boolean
+  ) => Promise<{ success: boolean; error?: string }>
+  remoteOpenSshTerminal: (config: RemoteConnectionConfig) => Promise<{ success: boolean; error?: string }>
+  remoteSelectPrivateKeyDialog: () => Promise<{
+    canceled: boolean
+    filePath?: string
+  }>
+  onRemoteTransferProgress: (callback: (data: RemoteTransferProgress) => void) => () => void
+}
+
+export interface InstalledApp {
+  name: string
+  path: string
+}
+
+export type RemoteProtocol = 'sftp' | 'ssh' | 'ftp' | 'ftps'
+export type RemoteAuthType = 'password' | 'key'
+
+export interface RemoteConnectionConfig {
+  id?: string
+  name?: string
+  protocol: RemoteProtocol
+  host: string
+  port: number
+  username: string
+  authType: RemoteAuthType
+  password?: string
+  privateKeyPath?: string
+  privateKeyContent?: string
+  passphrase?: string
+  remotePath?: string
+  timeout?: number
+}
+
+export interface RemoteProfile extends RemoteConnectionConfig {
+  id: string
+  name: string
+  createdAt: number
+  lastConnected?: number
+}
+
+export interface RemoteFileEntry {
+  name: string
+  path: string
+  isDirectory: boolean
+  isSymbolicLink?: boolean
+  size: number
+  modified: number
+  permissions?: string
+  extension?: string
+}
+
+export interface RemoteTransferProgress {
+  type: 'upload' | 'download'
+  fileName: string
+  bytesTransferred: number
+  totalBytes: number
+  bytesRemaining: number
+  percent: number
+  speedBytesPerSec: number
+  etaSeconds: number
+  elapsedSeconds: number
+  isDone?: boolean
+  error?: string
+}
+
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI
+  }
 }

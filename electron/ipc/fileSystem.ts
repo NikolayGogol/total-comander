@@ -1,8 +1,8 @@
-import { ipcMain, shell, nativeImage, app } from 'electron'
+import { ipcMain, shell, nativeImage, app, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
-import { exec } from 'child_process'
+import { exec, spawn } from 'child_process'
 import { formatPermissions } from '../utils'
 import { executeCopyMove, cancelTransfer } from './transferEngine'
 
@@ -330,6 +330,158 @@ export function registerFileSystemIpc(): void {
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
+    }
+  })
+
+  // Open with specific application (or Windows Open As dialog if appPath is 'system')
+  ipcMain.handle('fs:openWith', async (_, filePath: string, appPath: string) => {
+    try {
+      if (!filePath || !fs.existsSync(filePath)) {
+        return { success: false, error: 'Файл не знайдено' }
+      }
+      const cleanFile = path.resolve(filePath)
+
+      if (!appPath || appPath === 'system') {
+        // Trigger Windows native "Open with" dialog
+        const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+        const rundll = path.join(sysRoot, 'System32', 'rundll32.exe')
+        exec(`"${rundll}" shell32.dll,OpenAs_RunDLL "${cleanFile}"`)
+        return { success: true }
+      }
+
+      // Check if chosen app is an executable or shortcut
+      const cleanApp = path.resolve(appPath)
+      if (cleanApp.toLowerCase().endsWith('.lnk')) {
+        try {
+          const resolved = shell.readShortcutLink(cleanApp)
+          if (resolved.target && fs.existsSync(resolved.target)) {
+            spawn(resolved.target, [cleanFile], { detached: true, stdio: 'ignore' }).unref()
+            return { success: true }
+          }
+        } catch {}
+      }
+
+      spawn(cleanApp, [cleanFile], { detached: true, stdio: 'ignore' }).unref()
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Не вдалося відкрити файл у вибраній програмі' }
+    }
+  })
+
+  // Get installed applications for Open With selector on Windows
+  ipcMain.handle('fs:getInstalledApps', async () => {
+    try {
+      const results: Array<{ name: string; path: string }> = []
+      const seen = new Set<string>()
+
+      // 1. Built-in Windows system applications
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+      const systemApps = [
+        { name: 'Блокнот (Notepad)', path: path.join(sysRoot, 'System32', 'notepad.exe') },
+        { name: 'Paint (Графічний редактор)', path: path.join(sysRoot, 'System32', 'mspaint.exe') },
+        {
+          name: 'WordPad',
+          path: path.join(
+            process.env['ProgramFiles'] || 'C:\\Program Files',
+            'Windows NT',
+            'Accessories',
+            'wordpad.exe'
+          ),
+        },
+        {
+          name: 'Windows Media Player',
+          path: path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Windows Media Player', 'wmplayer.exe'),
+        },
+        {
+          name: 'PowerShell',
+          path: path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+        },
+        { name: 'Командний рядок (CMD)', path: path.join(sysRoot, 'System32', 'cmd.exe') },
+      ]
+      for (const sa of systemApps) {
+        if (fs.existsSync(sa.path)) {
+          seen.add(sa.name.toLowerCase())
+          results.push(sa)
+        }
+      }
+
+      // 2. Scan Start Menu directories
+      const startMenuDirs = [
+        'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs',
+        path.join(process.env.APPDATA || '', 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
+      ]
+
+      async function scanDir(dir: string, depth = 0) {
+        if (depth > 4 || !fs.existsSync(dir)) return
+        try {
+          const entries = await fsPromises.readdir(dir, { withFileTypes: true })
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name)
+            if (entry.isDirectory()) {
+              await scanDir(fullPath, depth + 1)
+            } else if (entry.name.toLowerCase().endsWith('.lnk')) {
+              const baseName = entry.name.replace(/\.lnk$/i, '').trim()
+              const lower = baseName.toLowerCase()
+              if (
+                lower.includes('uninstall') ||
+                lower.includes('видалит') ||
+                lower.includes('деінстал') ||
+                lower.includes('help') ||
+                lower.includes('readme') ||
+                lower.includes('довідка') ||
+                seen.has(lower)
+              ) {
+                continue
+              }
+              try {
+                const resolved = shell.readShortcutLink(fullPath)
+                if (
+                  resolved.target &&
+                  resolved.target.toLowerCase().endsWith('.exe') &&
+                  fs.existsSync(resolved.target)
+                ) {
+                  seen.add(lower)
+                  results.push({ name: baseName, path: resolved.target })
+                }
+              } catch {
+                seen.add(lower)
+                results.push({ name: baseName, path: fullPath })
+              }
+            }
+          }
+        } catch {}
+      }
+
+      for (const smDir of startMenuDirs) {
+        await scanDir(smDir)
+      }
+
+      // Sort alphabetically by application name
+      results.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      return { success: true, apps: results }
+    } catch (err: any) {
+      return { success: false, error: err.message, apps: [] }
+    }
+  })
+
+  // Select application from disk via native Windows OpenDialog
+  ipcMain.handle('fs:selectAppDialog', async () => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Виберіть програму для відкриття файлу',
+        defaultPath: process.env['ProgramFiles'] || 'C:\\Program Files',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Програми (*.exe, *.bat, *.cmd, *.lnk)', extensions: ['exe', 'bat', 'cmd', 'lnk'] },
+          { name: 'Усі файли (*.*)', extensions: ['*'] },
+        ],
+      })
+      if (canceled || !filePaths.length) {
+        return { canceled: true }
+      }
+      return { canceled: false, appPath: filePaths[0] }
+    } catch (err: any) {
+      return { canceled: true, error: err.message }
     }
   })
 }

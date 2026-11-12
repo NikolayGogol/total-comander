@@ -15,6 +15,13 @@ export default defineConfig({
         onstart(options) {
           options.startup()
         },
+        vite: {
+          build: {
+            rollupOptions: {
+              external: ['ssh2', 'basic-ftp', 'cpu-features'],
+            },
+          },
+        },
       },
       {
         entry: 'electron/preload.ts',

@@ -112,6 +112,60 @@ export function useModals(options: {
     unlockerModal.open = true
   }
 
+  // Open With Modal (Windows apps & native dialog)
+  const openWithModal = reactive<{
+    open: boolean
+    item: FileItem | null
+  }>({
+    open: false,
+    item: null,
+  })
+
+  function openOpenWithModal(item: FileItem) {
+    if (!item) return
+    openWithModal.item = item
+    openWithModal.open = true
+  }
+
+  async function handleOpenWithApp(appPath: string) {
+    if (!openWithModal.item) return
+    const filePath = openWithModal.item.path
+    const fileName = openWithModal.item.name
+    const appName = appPath
+      ? appPath
+          .split(/[/\\]/)
+          .pop()
+          ?.replace(/\.(exe|lnk|bat|cmd)$/i, '') || appPath
+      : 'Windows'
+    openWithModal.open = false
+    try {
+      const res = await window.electronAPI.openWith(filePath, appPath)
+      if (res.success) {
+        showToast(`Відкрито у ${appName}: ${fileName}`, 'success')
+      } else {
+        showToast(`Помилка відкриття: ${res.error}`, 'error')
+      }
+    } catch (err: any) {
+      showToast(`Помилка: ${err.message}`, 'error')
+    }
+  }
+
+  // Remote Connections Modal (SSH / SFTP / FTP)
+  const remoteConnectionModal = reactive({
+    open: false,
+    minimized: false,
+  })
+
+  function openRemoteModal() {
+    remoteConnectionModal.open = true
+    remoteConnectionModal.minimized = false
+  }
+
+  function handleRemoteFileDownloaded(_targetDir: string) {
+    refreshAllPanes()
+    showToast("Файл успішно завантажено на комп'ютер", 'success')
+  }
+
   // File Transfer Progress Modal (Real-time traffic, speed, ETA)
   const transferProgressModal = reactive({
     open: false,
@@ -541,6 +595,12 @@ export function useModals(options: {
         }
         break
 
+      case 'open-with':
+        if (item) {
+          openOpenWithModal(item)
+        }
+        break
+
       case 'show-in-folder':
         if (item) {
           window.electronAPI.showInFolder(item.path)
@@ -691,6 +751,8 @@ export function useModals(options: {
     createArchiveModal,
     archiveViewModal,
     unlockerModal,
+    openWithModal,
+    remoteConnectionModal,
     transferProgressModal,
     contextMenu,
     openContextMenu,
@@ -702,6 +764,10 @@ export function useModals(options: {
     openArchiveViewer,
     openFolderSizeModal,
     openUnlockerModal,
+    openOpenWithModal,
+    openRemoteModal,
+    handleOpenWithApp,
+    handleRemoteFileDownloaded,
     jumpToSearchFile,
     openActiveTerminal,
     openFileNative,

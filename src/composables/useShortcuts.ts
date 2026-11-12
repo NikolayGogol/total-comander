@@ -11,12 +11,15 @@ export function useShortcuts(options: {
     editorModal: { open: boolean }
     operationModal: { open: boolean }
     searchModal: { open: boolean }
+    openWithModal?: { open: boolean }
+    remoteConnectionModal?: { open: boolean; minimized?: boolean }
   }
   switchNextTab: (paneKey: 'left' | 'right', direction?: 1 | -1) => void
   swapPanes: () => void
   handleBottomAction: (type: string) => void
   getSelectedOrCursorPaths: () => string[]
   getActiveCursorItem: () => FileItem | null
+  openRemoteConnectionsModal?: () => void
   openCreateArchiveModal: (sources: string[]) => void
   openArchiveViewer: (path: string) => void
   openSearchModal: () => void
@@ -48,6 +51,7 @@ export function useShortcuts(options: {
     handleBottomAction,
     getSelectedOrCursorPaths,
     getActiveCursorItem,
+    openRemoteConnectionsModal,
     openCreateArchiveModal,
     openArchiveViewer,
     openSearchModal,
@@ -78,12 +82,23 @@ export function useShortcuts(options: {
       }
     }
 
-    if (modals.viewerModal.open || modals.editorModal.open || modals.operationModal.open || modals.searchModal.open) {
+    if (
+      modals.viewerModal.open ||
+      modals.editorModal.open ||
+      modals.operationModal.open ||
+      modals.searchModal.open ||
+      modals.openWithModal?.open ||
+      (modals.remoteConnectionModal?.open && !modals.remoteConnectionModal?.minimized)
+    ) {
       if (e.key === 'Escape') {
         modals.viewerModal.open = false
         modals.editorModal.open = false
         modals.operationModal.open = false
         modals.searchModal.open = false
+        if (modals.openWithModal) modals.openWithModal.open = false
+        if (modals.remoteConnectionModal && !modals.remoteConnectionModal.minimized) {
+          modals.remoteConnectionModal.open = false
+        }
         showShortcutToast('Esc', 'Закрито активне модальне вікно')
       }
       return
@@ -154,6 +169,19 @@ export function useShortcuts(options: {
         showShortcutToast('F4', 'Редагування у вбудованому редакторі')
         handleBottomAction('edit')
       }
+      return
+    }
+
+    // Ctrl+F - Remote Connections (SSH / SFTP / FTP)
+    if (
+      (e.metaKey || e.ctrlKey) &&
+      !e.shiftKey &&
+      !e.altKey &&
+      (e.code === 'KeyF' || e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А')
+    ) {
+      e.preventDefault()
+      showShortcutToast('Ctrl + F', 'Мережеві підключення (SSH / SFTP / FTP)')
+      openRemoteConnectionsModal?.()
       return
     }
 

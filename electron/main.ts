@@ -11,6 +11,7 @@ import { registerSearchIpc } from './ipc/search'
 import { registerClipboardIpc } from './ipc/clipboard'
 import { registerIconsIpc } from './ipc/icons'
 import { registerUnlockerIpc } from './ipc/unlocker'
+import { setupRemoteIpc as registerRemoteIpc } from './ipc/remote'
 
 app.setName('Total Commander')
 app.name = 'Total Commander'
@@ -79,6 +80,7 @@ function setupIpcHandlers(): void {
   registerClipboardIpc()
   registerIconsIpc()
   registerUnlockerIpc()
+  registerRemoteIpc()
 }
 
 app.whenReady().then(() => {
