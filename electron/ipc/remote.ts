@@ -109,7 +109,7 @@ function createProgressTracker(
   sender: Electron.WebContents,
   type: 'upload' | 'download',
   fileName: string,
-  totalBytes: number,
+  totalBytes: number
 ) {
   const startTime = Date.now()
   let lastTime = startTime
@@ -126,9 +126,7 @@ function createProgressTracker(
       if (timeDelta > 0) {
         const instantSpeed = bytesDelta / timeDelta
         speedBytesPerSec =
-          speedBytesPerSec > 0
-            ? Math.round(instantSpeed * 0.7 + speedBytesPerSec * 0.3)
-            : Math.round(instantSpeed)
+          speedBytesPerSec > 0 ? Math.round(instantSpeed * 0.7 + speedBytesPerSec * 0.3) : Math.round(instantSpeed)
       }
       lastTime = now
       lastBytes = bytesTransferred
@@ -255,8 +253,12 @@ export function setupRemoteIpc(): void {
         })
 
         const entries: RemoteFileEntry[] = rawList.map((item) => {
-          const isDir = Boolean((item.attrs?.mode && (item.attrs.mode & 0o170000) === 0o040000) || item.longname?.startsWith('d'))
-          const isLink = Boolean((item.attrs?.mode && (item.attrs.mode & 0o170000) === 0o120000) || item.longname?.startsWith('l'))
+          const isDir = Boolean(
+            (item.attrs?.mode && (item.attrs.mode & 0o170000) === 0o040000) || item.longname?.startsWith('d')
+          )
+          const isLink = Boolean(
+            (item.attrs?.mode && (item.attrs.mode & 0o170000) === 0o120000) || item.longname?.startsWith('l')
+          )
           const ext = isDir ? '' : path.extname(item.filename).replace(/^\./, '').toLowerCase()
 
           return {
@@ -334,130 +336,140 @@ export function setupRemoteIpc(): void {
         }
       }
     } else {
-      return { success: false, currentPath: requestedPath || '/', error: `Непідтримуваний протокол: ${config.protocol}` }
+      return {
+        success: false,
+        currentPath: requestedPath || '/',
+        error: `Непідтримуваний протокол: ${config.protocol}`,
+      }
     }
   })
 
   // 3. Download Remote File
-  safeHandle('remote:download', async (event, config: RemoteConnectionConfig, remoteFilePath: string, localDestinationDir: string) => {
-    try {
-      await fsPromises.mkdir(localDestinationDir, { recursive: true })
-      const fileName = path.posix.basename(remoteFilePath)
-      const localFilePath = path.join(localDestinationDir, fileName)
+  safeHandle(
+    'remote:download',
+    async (event, config: RemoteConnectionConfig, remoteFilePath: string, localDestinationDir: string) => {
+      try {
+        await fsPromises.mkdir(localDestinationDir, { recursive: true })
+        const fileName = path.posix.basename(remoteFilePath)
+        const localFilePath = path.join(localDestinationDir, fileName)
 
-      if (isSsh(config.protocol)) {
-        const session = await getSftpSession(config)
-        try {
-          let remoteSize = 0
+        if (isSsh(config.protocol)) {
+          const session = await getSftpSession(config)
           try {
-            const stat = await new Promise<any>((resolve, reject) => {
-              session.sftp.stat(remoteFilePath, (err, s) => (err ? reject(err) : resolve(s)))
-            })
-            remoteSize = stat.size || 0
-          } catch {}
+            let remoteSize = 0
+            try {
+              const stat = await new Promise<any>((resolve, reject) => {
+                session.sftp.stat(remoteFilePath, (err, s) => (err ? reject(err) : resolve(s)))
+              })
+              remoteSize = stat.size || 0
+            } catch {}
 
-          const tracker = createProgressTracker(event.sender, 'download', fileName, remoteSize)
+            const tracker = createProgressTracker(event.sender, 'download', fileName, remoteSize)
 
-          await new Promise<void>((resolve, reject) => {
-            session.sftp.fastGet(
-              remoteFilePath,
-              localFilePath,
-              {
-                step: (total_transferred, _chunk, total) => {
-                  tracker.update(total_transferred, total || remoteSize)
+            await new Promise<void>((resolve, reject) => {
+              session.sftp.fastGet(
+                remoteFilePath,
+                localFilePath,
+                {
+                  step: (total_transferred, _chunk, total) => {
+                    tracker.update(total_transferred, total || remoteSize)
+                  },
                 },
-              },
-              (err) => {
-                if (err) return reject(err)
-                tracker.finish(remoteSize)
-                resolve()
-              },
-            )
-          })
-        } finally {
-          session.client.end()
-        }
-      } else {
-        const client = await getFtpSession(config)
-        try {
-          let remoteSize = 0
+                (err) => {
+                  if (err) return reject(err)
+                  tracker.finish(remoteSize)
+                  resolve()
+                }
+              )
+            })
+          } finally {
+            session.client.end()
+          }
+        } else {
+          const client = await getFtpSession(config)
           try {
-            remoteSize = await client.size(remoteFilePath)
-          } catch {}
+            let remoteSize = 0
+            try {
+              remoteSize = await client.size(remoteFilePath)
+            } catch {}
 
-          const tracker = createProgressTracker(event.sender, 'download', fileName, remoteSize)
-          client.trackProgress((info) => {
-            tracker.update(info.bytesOverall, remoteSize)
-          })
+            const tracker = createProgressTracker(event.sender, 'download', fileName, remoteSize)
+            client.trackProgress((info) => {
+              tracker.update(info.bytesOverall, remoteSize)
+            })
 
-          await client.downloadTo(localFilePath, remoteFilePath)
-          client.trackProgress()
-          tracker.finish(remoteSize)
-        } finally {
-          client.close()
+            await client.downloadTo(localFilePath, remoteFilePath)
+            client.trackProgress()
+            tracker.finish(remoteSize)
+          } finally {
+            client.close()
+          }
         }
-      }
 
-      return { success: true, localPath: localFilePath }
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Помилка завантаження файлу з сервера' }
+        return { success: true, localPath: localFilePath }
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Помилка завантаження файлу з сервера' }
+      }
     }
-  })
+  )
 
   // 4. Upload Local File
-  safeHandle('remote:upload', async (event, config: RemoteConnectionConfig, localFilePath: string, remoteDestinationDir: string) => {
-    try {
-      if (!fs.existsSync(localFilePath)) {
-        return { success: false, error: 'Локальний файл не існує' }
-      }
+  safeHandle(
+    'remote:upload',
+    async (event, config: RemoteConnectionConfig, localFilePath: string, remoteDestinationDir: string) => {
+      try {
+        if (!fs.existsSync(localFilePath)) {
+          return { success: false, error: 'Локальний файл не існує' }
+        }
 
-      const fileName = path.basename(localFilePath)
-      const remoteFilePath = path.posix.join(remoteDestinationDir, fileName)
-      const totalBytes = fs.statSync(localFilePath).size
-      const tracker = createProgressTracker(event.sender, 'upload', fileName, totalBytes)
+        const fileName = path.basename(localFilePath)
+        const remoteFilePath = path.posix.join(remoteDestinationDir, fileName)
+        const totalBytes = fs.statSync(localFilePath).size
+        const tracker = createProgressTracker(event.sender, 'upload', fileName, totalBytes)
 
-      if (isSsh(config.protocol)) {
-        const session = await getSftpSession(config)
-        try {
-          await new Promise<void>((resolve, reject) => {
-            session.sftp.fastPut(
-              localFilePath,
-              remoteFilePath,
-              {
-                step: (total_transferred, _chunk, total) => {
-                  tracker.update(total_transferred, total || totalBytes)
+        if (isSsh(config.protocol)) {
+          const session = await getSftpSession(config)
+          try {
+            await new Promise<void>((resolve, reject) => {
+              session.sftp.fastPut(
+                localFilePath,
+                remoteFilePath,
+                {
+                  step: (total_transferred, _chunk, total) => {
+                    tracker.update(total_transferred, total || totalBytes)
+                  },
                 },
-              },
-              (err) => {
-                if (err) return reject(err)
-                tracker.finish(totalBytes)
-                resolve()
-              },
-            )
-          })
-        } finally {
-          session.client.end()
-        }
-      } else {
-        const client = await getFtpSession(config)
-        try {
-          client.trackProgress((info) => {
-            tracker.update(info.bytesOverall, totalBytes)
-          })
+                (err) => {
+                  if (err) return reject(err)
+                  tracker.finish(totalBytes)
+                  resolve()
+                }
+              )
+            })
+          } finally {
+            session.client.end()
+          }
+        } else {
+          const client = await getFtpSession(config)
+          try {
+            client.trackProgress((info) => {
+              tracker.update(info.bytesOverall, totalBytes)
+            })
 
-          await client.uploadFrom(localFilePath, remoteFilePath)
-          client.trackProgress()
-          tracker.finish(totalBytes)
-        } finally {
-          client.close()
+            await client.uploadFrom(localFilePath, remoteFilePath)
+            client.trackProgress()
+            tracker.finish(totalBytes)
+          } finally {
+            client.close()
+          }
         }
+
+        return { success: true, remotePath: remoteFilePath }
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Помилка надсилання файлу на сервер' }
       }
-
-      return { success: true, remotePath: remoteFilePath }
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Помилка надсилання файлу на сервер' }
     }
-  })
+  )
 
   // 5. Create Directory
   safeHandle('remote:mkdir', async (_, config: RemoteConnectionConfig, remotePath: string) => {
@@ -643,7 +655,7 @@ export function setupRemoteIpc(): void {
       }
       return { success: true }
     } catch (err: any) {
-      return { success: false, error: err.message || 'Помилка видалення об\'єкта на сервері' }
+      return { success: false, error: err.message || "Помилка видалення об'єкта на сервері" }
     }
   })
 
@@ -698,4 +710,3 @@ export function setupRemoteIpc(): void {
     }
   })
 }
-

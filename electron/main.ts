@@ -16,6 +16,22 @@ import { setupRemoteIpc as registerRemoteIpc } from './ipc/remote'
 app.setName('Total Commander')
 app.name = 'Total Commander'
 
+// Prevent GPU cache permission crashes and black screen glitches on Windows
+app.commandLine.appendSwitch('disable-gpu-sandbox')
+
+// Ensure single instance to prevent cache lock collisions (Access Denied / Black Screen)
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+}
+
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
@@ -46,6 +62,17 @@ function createWindow(): void {
 
   win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
     console.log(`[Renderer Log level=${level}] ${message} (${sourceId}:${line})`)
+  })
+
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Renderer Fail Load] ${errorCode}: ${errorDescription} (${validatedURL})`)
+  })
+
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' || (input.control && input.shift && (input.key === 'I' || input.key === 'i'))) {
+      win?.webContents.toggleDevTools()
+      event.preventDefault()
+    }
   })
 
   win.once('ready-to-show', () => {
