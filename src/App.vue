@@ -12,6 +12,7 @@
       :build-version="
         'v' + BUILD_INFO.version + ' (b.' + BUILD_INFO.buildNumber + ')'
       "
+      @open-remote="openRemoteModal"
       @open-search="openSearchModal"
       @open-analyzer="openLargeFilesModal"
       @open-virtual-disks="openVirtualDisksModal"
@@ -212,6 +213,20 @@
       @close="openWithModal.open = false"
     />
 
+    <!-- Remote Connections Modal (SSH / SFTP / FTP) [Ctrl+F] -->
+    <RemoteConnectionModal
+      v-if="remoteConnectionModal.open"
+      :active-local-path="activePaneState.currentPath"
+      :active-selected-item="getActiveCursorItem()"
+      :minimized="remoteConnectionModal.minimized"
+      @update:minimized="remoteConnectionModal.minimized = $event"
+      @file-downloaded="handleRemoteFileDownloaded"
+      @close="
+        remoteConnectionModal.open = false;
+        remoteConnectionModal.minimized = false;
+      "
+    />
+
     <!-- Right-Click Context Menu -->
     <ContextMenu
       :visible="contextMenuState.visible"
@@ -265,6 +280,7 @@ import UnlockerModal from "@/components/UnlockerModal.vue";
 import VirtualDisksModal from "@/components/VirtualDisksModal.vue";
 import FileOperationProgressModal from "@/components/FileOperationProgressModal.vue";
 import OpenWithModal from "@/components/OpenWithModal.vue";
+import RemoteConnectionModal from "@/components/RemoteConnectionModal.vue";
 
 import { useToast } from "@/composables/useToast";
 import { useModals } from "@/composables/useModals";
@@ -296,6 +312,7 @@ const {
   virtualDisksModal,
   operationProgressModal,
   openWithModal,
+  remoteConnectionModal,
   contextMenuState,
   isAnyModalOpen,
   closeAllModals,
@@ -381,6 +398,7 @@ const {
   virtualDisksModal,
   operationProgressModal,
   openWithModal,
+  remoteConnectionModal,
   contextMenuState,
   isAnyModalOpen,
   closeAllModals,
@@ -430,6 +448,16 @@ function openVirtualDisksModal() {
   virtualDisksModal.open = true;
 }
 
+function openRemoteModal() {
+  remoteConnectionModal.open = true;
+  remoteConnectionModal.minimized = false;
+}
+
+function handleRemoteFileDownloaded(targetDir: string) {
+  loadDirectory(activePaneState.value, targetDir);
+  showToast("Файл успішно завантажено на комп'ютер", "success");
+}
+
 function handleEjectDrive(path: string) {
   ejectDrive(path, leftPane, rightPane, navigatePane);
 }
@@ -451,6 +479,7 @@ const { handleGlobalShortcuts } = useShortcuts({
   handleBottomAction,
   openLargeFilesModal,
   openVirtualDisksModal,
+  openRemoteConnectionsModal: openRemoteModal,
   openCreateArchiveModal,
   openArchiveInViewer,
   openSearchModal,
@@ -536,41 +565,58 @@ onMounted(async () => {
     window.addEventListener("drop", preventDragDefault);
     window.addEventListener("keydown", handleGlobalShortcuts);
 
+    window.addEventListener("copy", (e) => {
+      const activeEl = document.activeElement as HTMLElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.isContentEditable);
+      if (!isInput && !isAnyModalOpen.value) {
+        e.preventDefault();
+        copySelectedToClipboard(getSelectedOrCursorPaths(), "copy");
+      }
+    });
+
+    window.addEventListener("paste", (e) => {
+      const activeEl = document.activeElement as HTMLElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.isContentEditable);
+      if (!isInput && !isAnyModalOpen.value) {
+        e.preventDefault();
+        pasteFromClipboard(activePaneState.value.currentPath, () =>
+          Promise.all([
+            loadDirectory(leftPane, leftPane.currentPath),
+            loadDirectory(rightPane, rightPane.currentPath),
+          ]).then(() => {}),
+        );
+      }
+    });
+
     window.electronAPI.onAppCommand((cmd) => {
       const activeEl = document.activeElement as HTMLElement;
       const isInput =
         activeEl &&
         (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA");
 
+      if (isInput) return;
+
       if (cmd === "copy") {
-        if (isInput) {
-          document.execCommand("copy");
-        } else {
-          copySelectedToClipboard(getSelectedOrCursorPaths(), "copy");
-        }
+        copySelectedToClipboard(getSelectedOrCursorPaths(), "copy");
       } else if (cmd === "cut") {
-        if (isInput) {
-          document.execCommand("cut");
-        } else {
-          copySelectedToClipboard(getSelectedOrCursorPaths(), "cut");
-        }
+        copySelectedToClipboard(getSelectedOrCursorPaths(), "cut");
       } else if (cmd === "paste") {
-        if (isInput) {
-          document.execCommand("paste");
-        } else {
-          pasteFromClipboard(activePaneState.value.currentPath, () =>
-            Promise.all([
-              loadDirectory(leftPane, leftPane.currentPath),
-              loadDirectory(rightPane, rightPane.currentPath),
-            ]).then(() => {}),
-          );
-        }
+        pasteFromClipboard(activePaneState.value.currentPath, () =>
+          Promise.all([
+            loadDirectory(leftPane, leftPane.currentPath),
+            loadDirectory(rightPane, rightPane.currentPath),
+          ]).then(() => {}),
+        );
       } else if (cmd === "selectAll") {
-        if (isInput) {
-          document.execCommand("selectAll");
-        } else {
-          selectAllInActivePane();
-        }
+        selectAllInActivePane();
       }
     });
 

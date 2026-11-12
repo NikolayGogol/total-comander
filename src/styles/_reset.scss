@@ -11,6 +11,13 @@
   -webkit-user-drag: none;
 }
 
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 // Global sleek custom scrollbar
 * {
   scrollbar-width: thin;

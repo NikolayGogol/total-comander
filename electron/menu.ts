@@ -1,4 +1,4 @@
-import { app, Menu, BrowserWindow } from 'electron'
+import { app, Menu } from 'electron'
 
 export function setupAppMenu() {
   if (process.platform === 'darwin') {
@@ -22,34 +22,10 @@ export function setupAppMenu() {
           { role: 'undo' },
           { role: 'redo' },
           { type: 'separator' },
-          {
-            label: 'Copy',
-            accelerator: 'CmdOrCtrl+C',
-            click: (_, focusedWindow) => {
-              (focusedWindow as BrowserWindow | null)?.webContents?.send('app:command', 'copy')
-            },
-          },
-          {
-            label: 'Cut',
-            accelerator: 'CmdOrCtrl+X',
-            click: (_, focusedWindow) => {
-              (focusedWindow as BrowserWindow | null)?.webContents?.send('app:command', 'cut')
-            },
-          },
-          {
-            label: 'Paste',
-            accelerator: 'CmdOrCtrl+V',
-            click: (_, focusedWindow) => {
-              (focusedWindow as BrowserWindow | null)?.webContents?.send('app:command', 'paste')
-            },
-          },
-          {
-            label: 'Select All',
-            accelerator: 'CmdOrCtrl+A',
-            click: (_, focusedWindow) => {
-              (focusedWindow as BrowserWindow | null)?.webContents?.send('app:command', 'selectAll')
-            },
-          },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'selectAll' },
         ],
       },
       { role: 'viewMenu' },

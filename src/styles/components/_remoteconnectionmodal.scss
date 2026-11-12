@@ -1,0 +1,559 @@
+// ==========================================
+// REMOTE CONNECTIONS MODAL (SSH / SFTP / FTP)
+// ==========================================
+
+@use "../variables" as *;
+@use "../mixins" as *;
+
+.remote-modal-root {
+  display: contents;
+}
+
+.remote-modal-card {
+  width: 95vw;
+  max-width: 1440px;
+  height: 90vh;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+
+  .remote-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: $font-size-2xs;
+    font-weight: $font-weight-semibold;
+    padding: 2px $size-space-sm;
+    border-radius: $radius-full;
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-emerald);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 6px var(--accent-emerald);
+    }
+  }
+
+  .modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: $size-space-xs;
+
+    .modal-close-btn {
+      @include button-base;
+      @include flex-center;
+      width: 28px;
+      height: 28px;
+      border-radius: $radius-xs;
+      background: var(--bg-btn-fn);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: var(--row-hover);
+        color: var(--text-main);
+        border-color: var(--accent-blue);
+      }
+    }
+  }
+
+  .remote-modal-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  // --- Left Profiles Sidebar ---
+  .remote-profiles-sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    background: var(--bg-panel-header);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+
+    .profiles-header {
+      @include flex-between;
+      padding: $size-space-md;
+      border-bottom: 1px solid var(--border-subtle);
+
+      .sidebar-title {
+        font-size: $font-size-xs;
+        font-weight: $font-weight-bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+      }
+
+      .btn-icon-sm {
+        @include button-base;
+        @include flex-center;
+        width: 24px;
+        height: 24px;
+        border-radius: $radius-xs;
+        background: var(--bg-btn-fn);
+        color: var(--text-main);
+        border: 1px solid var(--border-subtle);
+
+        &:hover {
+          background: var(--row-hover);
+          color: var(--accent-blue);
+          border-color: var(--accent-blue);
+        }
+      }
+    }
+
+    .profiles-list {
+      flex: 1;
+      overflow-y: auto;
+      @include custom-scrollbar;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-item {
+      @include flex-between;
+      gap: $size-space-sm;
+      padding: $size-space-sm $size-space-md;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      border-bottom: 1px solid var(--border-subtle);
+      transition: all 0.12s ease;
+      user-select: none;
+
+      &:hover {
+        background: var(--row-hover);
+        .btn-delete-profile {
+          opacity: 1;
+        }
+      }
+
+      &.is-selected {
+        background: rgba(37, 99, 235, 0.12);
+        border-left-color: var(--accent-blue);
+        .profile-name {
+          color: var(--accent-blue);
+          font-weight: $font-weight-bold;
+        }
+      }
+
+      .profile-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .profile-name {
+          font-size: $font-size-xs;
+          font-weight: $font-weight-semibold;
+          color: var(--text-main);
+          @include truncate-text;
+        }
+
+        .profile-subtitle {
+          font-size: 10px;
+          color: var(--text-muted);
+          font-family: $font-family-mono;
+          @include truncate-text;
+        }
+      }
+
+      .profile-badges {
+        display: flex;
+        align-items: center;
+        gap: $size-space-xs;
+        flex-shrink: 0;
+
+        .protocol-badge {
+          font-size: 9px;
+          font-weight: $font-weight-extrabold;
+          padding: 1px 5px;
+          border-radius: $radius-xs;
+          letter-spacing: 0.3px;
+
+          &.sftp {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+          }
+          &.ssh {
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--accent-purple);
+          }
+          &.ftp,
+          &.ftps {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+          }
+        }
+
+        .btn-delete-profile {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 2px;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+
+          &:hover {
+            color: var(--accent-rose);
+          }
+        }
+      }
+    }
+  }
+
+  // --- Right Main View ---
+  .remote-main-view {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .remote-status-banner {
+    display: flex;
+    align-items: center;
+    gap: $size-space-sm;
+    padding: $size-space-xs $size-space-md;
+    font-size: $font-size-xs;
+    border-bottom: 1px solid var(--border-subtle);
+
+    &.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-emerald);
+      border-color: rgba(16, 185, 129, 0.25);
+    }
+    &.error {
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--accent-rose);
+      border-color: rgba(244, 63, 94, 0.25);
+    }
+    &.info {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-blue);
+      border-color: rgba(59, 130, 246, 0.25);
+    }
+
+    .banner-icon {
+      flex-shrink: 0;
+    }
+    .banner-text {
+      flex: 1;
+      @include truncate-text;
+    }
+  }
+
+  // --- Config Form View ---
+  .remote-config-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: $size-space-lg $size-space-xl;
+    overflow-y: auto;
+    @include custom-scrollbar;
+
+    .config-section {
+      display: flex;
+      flex-direction: column;
+      gap: $size-space-md;
+    }
+
+    .form-col {
+      display: flex;
+      flex-direction: column;
+      gap: $size-space-2xs;
+
+      &.col-4 {
+        width: 33.33%;
+      }
+      &.col-6 {
+        width: 50%;
+      }
+      &.col-8 {
+        width: 66.66%;
+      }
+      &.col-12 {
+        width: 100%;
+      }
+    }
+
+    .protocol-selector,
+    .auth-type-pills {
+      display: flex;
+      gap: 2px;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-subtle);
+      border-radius: $radius-sm;
+      padding: 2px;
+      height: 32px;
+    }
+
+    .protocol-btn,
+    .auth-pill {
+      flex: 1;
+      @include button-base;
+      @include flex-center;
+      font-size: $font-size-2xs;
+      font-weight: $font-weight-semibold;
+      color: var(--text-muted);
+      border-radius: $radius-xs;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover:not(:disabled) {
+        color: var(--text-main);
+      }
+      &.is-active {
+        background: var(--bg-card);
+        color: var(--accent-blue);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      }
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+
+    .input-with-action {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .form-input {
+        padding-right: 65px;
+      }
+
+      .input-action-btn {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 24px;
+        padding: 0 $size-space-sm;
+        font-size: 11px;
+        background: var(--bg-btn-fn);
+        border: 1px solid var(--border-subtle);
+        border-radius: $radius-xs;
+        color: var(--text-main);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        &:hover {
+          background: var(--row-hover);
+          color: var(--accent-blue);
+        }
+      }
+    }
+
+    .config-footer-actions,
+    .config-actions {
+      @include flex-between;
+      align-items: center;
+      padding-top: $size-space-md;
+      border-top: 1px solid var(--border-subtle);
+      margin-top: $size-space-lg;
+
+      .left-actions,
+      .actions-left {
+        display: flex;
+        align-items: center;
+        gap: $size-space-sm;
+      }
+
+      .btn-secondary {
+        @include button-base;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 $size-space-md;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-medium;
+        background: var(--bg-btn-fn);
+        border: 1px solid var(--border-subtle);
+        border-radius: $radius-sm;
+        color: var(--text-main);
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover:not(:disabled) {
+          background: var(--row-hover);
+          color: var(--accent-blue);
+          border-color: var(--accent-blue);
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+
+      .btn-primary.btn-connect {
+        @include button-base;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 $size-space-lg;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-semibold;
+        background: var(--accent-blue);
+        color: #ffffff;
+        border: 1px solid transparent;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover:not(:disabled) {
+          filter: brightness(1.1);
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+
+  .icon-spinning {
+    animation: spin 1s linear infinite;
+  }
+}
+
+.remote-editor-overlay {
+  z-index: 500;
+}
+
+// ==========================================
+// GENIE MINIMIZE / MAXIMIZE ANIMATIONS
+// ==========================================
+
+.remote-modal-overlay {
+  &.remote-modal-anim-enter-active {
+    animation: overlayFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+    .remote-modal-card {
+      animation: genieExpand 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  }
+
+  &.remote-modal-anim-leave-active {
+    animation: overlayFadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+    .remote-modal-card {
+      animation: genieShrink 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  }
+}
+
+// Dock Pill spring pop animation
+.remote-pill-anim-enter-active {
+  animation: pillSpringIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.remote-pill-anim-leave-active {
+  animation: pillSpringOut 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes genieShrink {
+  0% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+  35% {
+    opacity: 0.95;
+    transform: scale(0.65) translate3d(calc(18vw - 30px), calc(16vh - 15px), 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.06) translate3d(calc(45vw - 80px), calc(42vh - 30px), 0);
+    filter: blur(4px);
+  }
+}
+
+@keyframes genieExpand {
+  0% {
+    opacity: 0;
+    transform: scale(0.06) translate3d(calc(45vw - 80px), calc(42vh - 30px), 0);
+    filter: blur(4px);
+  }
+  40% {
+    opacity: 0.95;
+    transform: scale(0.65) translate3d(calc(18vw - 30px), calc(16vh - 15px), 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+
+@keyframes pillSpringIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translate3d(0, 24px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pillSpringOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.4) translate3d(0, 16px, 0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

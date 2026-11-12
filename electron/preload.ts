@@ -101,6 +101,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ejectAllVirtualDisks: () => ipcRenderer.invoke('fs:ejectAllVirtualDisks'),
   deleteVirtualDiskSource: (payload: { imagePath: string; mountPoint?: string }) =>
     ipcRenderer.invoke('fs:deleteVirtualDiskSource', toPlain(payload)),
+  remoteTestConnection: (config: any) =>
+    ipcRenderer.invoke('remote:testConnection', toPlain(config)),
+  remoteListDir: (config: any, remotePath?: string) =>
+    ipcRenderer.invoke('remote:listDir', toPlain(config), remotePath),
+  remoteDownload: (config: any, remoteFilePath: string, localDestinationDir: string) =>
+    ipcRenderer.invoke('remote:download', toPlain(config), remoteFilePath, localDestinationDir),
+  remoteUpload: (config: any, localFilePath: string, remoteDestinationDir: string) =>
+    ipcRenderer.invoke('remote:upload', toPlain(config), localFilePath, remoteDestinationDir),
+  remoteMkdir: (config: any, remotePath: string) =>
+    ipcRenderer.invoke('remote:mkdir', toPlain(config), remotePath),
+  remoteCreateFile: (config: any, remotePath: string, content?: string) =>
+    ipcRenderer.invoke('remote:createFile', toPlain(config), remotePath, content),
+  remoteRename: (config: any, oldPath: string, newPath: string) =>
+    ipcRenderer.invoke('remote:rename', toPlain(config), oldPath, newPath),
+  remoteReadText: (config: any, remotePath: string) =>
+    ipcRenderer.invoke('remote:readText', toPlain(config), remotePath),
+  remoteWriteText: (config: any, remotePath: string, content: string) =>
+    ipcRenderer.invoke('remote:writeText', toPlain(config), remotePath, content),
+  remoteDelete: (config: any, remotePath: string, isDirectory: boolean) =>
+    ipcRenderer.invoke('remote:delete', toPlain(config), remotePath, isDirectory),
+  remoteOpenSshTerminal: (config: any) =>
+    ipcRenderer.invoke('remote:openSshTerminal', toPlain(config)),
+  remoteSelectPrivateKeyDialog: () =>
+    ipcRenderer.invoke('remote:selectPrivateKeyDialog'),
+  onRemoteTransferProgress: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('remote:transfer-progress', listener)
+    return () => ipcRenderer.removeListener('remote:transfer-progress', listener)
+  },
   onAppCommand: (callback: (cmd: 'copy' | 'cut' | 'paste' | 'selectAll') => void) => {
     const listener = (_: any, cmd: any) => callback(cmd)
     ipcRenderer.on('app:command', listener)

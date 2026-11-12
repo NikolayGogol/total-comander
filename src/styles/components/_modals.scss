@@ -53,6 +53,12 @@
     }
   }
 
+  .modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: $size-space-xs;
+  }
+
   .modal-close-btn,
   .btn-icon {
     @include button-base;

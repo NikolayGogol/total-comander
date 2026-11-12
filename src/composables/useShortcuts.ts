@@ -15,6 +15,7 @@ export interface ShortcutsHandlerContext {
   handleBottomAction: (type: string) => void;
   openLargeFilesModal: () => void;
   openVirtualDisksModal?: () => void;
+  openRemoteConnectionsModal?: () => void;
   openCreateArchiveModal: () => void;
   openArchiveInViewer: (item: FileItem) => void;
   openSearchModal: () => void;
@@ -148,6 +149,23 @@ export function useShortcuts(ctx: ShortcutsHandlerContext) {
         "Віртуальні пристрої та змонтовані образи",
       );
       ctx.openVirtualDisksModal?.();
+      return;
+    }
+
+    // Ctrl+F or Cmd+Shift+F - Remote Connections (SSH / SFTP / FTP)
+    if (
+      (e.ctrlKey &&
+        (e.key === "f" || e.key === "F") &&
+        !e.metaKey &&
+        !e.altKey) ||
+      (e.metaKey && e.shiftKey && (e.key === "f" || e.key === "F"))
+    ) {
+      e.preventDefault();
+      ctx.showShortcutToast(
+        "Ctrl + F",
+        "Мережеві підключення (SSH / SFTP / FTP)",
+      );
+      ctx.openRemoteConnectionsModal?.();
       return;
     }
 

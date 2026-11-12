@@ -42,6 +42,27 @@ export function formatDuration(seconds?: number | null): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
+export function formatEta(seconds?: number | null): string {
+  if (
+    seconds === undefined ||
+    seconds === null ||
+    isNaN(seconds) ||
+    seconds < 0
+  )
+    return "--";
+  if (seconds === 0) return "майже готово";
+  const s = Math.round(seconds);
+  if (s < 60) return `${s} сек`;
+  const mins = Math.floor(s / 60);
+  const secs = s % 60;
+  if (mins < 60) {
+    return secs > 0 ? `${mins} хв ${secs} сек` : `${mins} хв`;
+  }
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hrs} год ${remMins} хв`;
+}
+
 export type FileCategory =
   | "folder"
   | "app"

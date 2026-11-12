@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { setupAppMenu } from './menu'
@@ -11,6 +11,7 @@ import { registerIconsIpc } from './ipc/icons'
 import { registerUnlockerIpc } from './ipc/unlocker'
 import { registerFolderSizeIpc } from './ipc/folderSize'
 import { registerVirtualDisksIpc } from './ipc/virtualDisks'
+import { setupRemoteIpc } from './ipc/remote'
 
 app.setName('Total Commander')
 app.name = 'Total Commander'
@@ -53,6 +54,21 @@ function createWindow() {
     console.log(`[Renderer Log level=${level}] ${message} (${sourceId}:${line})`)
   })
 
+  win.webContents.on('context-menu', (_event, params) => {
+    if (params.isEditable) {
+      const editMenu = Menu.buildFromTemplate([
+        { role: 'undo', label: 'Скасувати' },
+        { role: 'redo', label: 'Повторити' },
+        { type: 'separator' },
+        { role: 'cut', label: 'Вирізати' },
+        { role: 'copy', label: 'Копіювати' },
+        { role: 'paste', label: 'Вставити' },
+        { role: 'selectAll', label: 'Виділити все' },
+      ])
+      editMenu.popup()
+    }
+  })
+
   win.once('ready-to-show', () => {
     win?.show()
   })
@@ -92,6 +108,7 @@ function setupIpcHandlers() {
   registerUnlockerIpc()
   registerFolderSizeIpc()
   registerVirtualDisksIpc()
+  setupRemoteIpc()
 }
 
 app.whenReady().then(() => {

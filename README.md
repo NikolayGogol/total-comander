@@ -36,7 +36,34 @@ A modern, high-performance orthodox two-panel file manager (Total Commander clon
 - **Built-in Archive Manager (ZIP / TAR / GZ / TGZ / BZ2)**:
   - **Create Archive (`Alt + F5`)**: Pack files/directories into ZIP or TAR.GZ via native macOS `ditto`, `tar`, and `zip`. Supports password encryption (`zip -P`) and custom compression levels (`0` Store, `6` Normal, `9` Maximum).
   - **Archive Explorer (`Alt + F6` / Double-Click)**: Virtual directory navigation with clickable breadcrumbs, internal directory hierarchy, search filtering, and password prompt banner for password-protected archives (`ArchiveViewModal.vue`).
+  - Distinctive purple archive icons for fast visual recognition.
   - Context menu shortcuts: "Розархівувати вміст...", "Створити архів (ZIP)...".
+
+- **Remote Connections Manager (SSH / SFTP / FTP / FTPS) (`Ctrl + F`)**:
+  - Full-featured **dual-pane Total Commander interface** for remote connections (`RemoteConnectionModal.vue`).
+  - **Dual-Pane View**: Left pane browses local computer files, right pane browses remote server files with bidirectional Drag-and-Drop and F5 transfer.
+  - **Bidirectional Drag & Drop**: Drag files from local to remote pane to upload, or from remote to local pane to download.
+  - **Minimizing to Background (`Cmd + M`)**: Minimize the connection window into a floating dock pill to freely navigate Total Commander without interrupting or disconnecting the session.
+  - **Right-Click Context Menu**: Full remote context menu for editing on server, deleting, renaming, copying paths, and creating folders/files.
+  - **In-App Remote Text Editor (`RemoteEditorModal.vue`, `F4`)**: Direct inline code/text editing with line numbers and `Cmd + S` remote save.
+  - **Native Dialogs (`RemotePromptModal.vue`)**: In-app prompt dialogs for creating folders (F7), files (Shift+F4), renaming (F2), and deleting.
+  - **Instant Profile Sync**: Real-time auto-saving of connection profiles, protocol badges (SFTP/SSH/FTP), and automatic port switching.
+
+- **"Open With..." Application Chooser (`OpenWithModal.vue`)**:
+  - Right-click context menu option «Відкрити за допомогою...» (Open With...).
+  - Scans `/Applications`, `/System/Applications`, and `~/Applications` for installed macOS apps with native bundle icons.
+  - Smart recommended apps matched against file extension (code editors, image viewers, media players, archives).
+  - Instant search filtering and native macOS file dialog to browse any custom application on disk.
+
+- **Mounted Virtual Disks & DMG Manager (`Alt + D`)**:
+  - TitleBar disc icon with active disk counter badge (`VirtualDisksModal.vue`).
+  - Displays all active disk images, mounted DMG volumes, source file paths, and mount points.
+  - Individual or batch unmount ("Eject All" via native `hdiutil detach`).
+  - Option to move source DMG image file to macOS Trash after unmounting.
+
+- **Real-Time Transfer Progress & Speed**:
+  - Detailed live progress modal (`FileOperationProgressModal.vue`) for copy and move operations.
+  - Real-time transfer speed (MB/s), ETA timer, byte progress bars, current item indicator, and cancel support.
 
 - **Disk Cleanup & Large Files Analyzer (`Alt + L`)**:
   - Rapid recursive disk inspection (`LargeFilesModal.vue`).
@@ -134,6 +161,8 @@ A modern, high-performance orthodox two-panel file manager (Total Commander clon
 | `F7` | Create new directory |
 | `Alt + F7` / `F10` | Search files (by name & content) |
 | `Alt + L` | Open large files & disk cleanup analyzer |
+| `Alt + D` | View mounted virtual disks and DMG images |
+| `Ctrl + F` / `Cmd + Shift + F` | Remote connections manager (SSH / SFTP / FTP) |
 | `F8` / `Delete` / `Cmd + Backspace` | Move selected files to macOS Trash |
 | `Shift + Delete` / `Shift + F8` | Permanently delete selected files (bypassing Trash) |
 | `F9` | Open Terminal at current directory |

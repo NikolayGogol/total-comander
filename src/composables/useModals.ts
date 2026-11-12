@@ -119,6 +119,11 @@ export function useModals() {
     item: null,
   });
 
+  const remoteConnectionModal = reactive({
+    open: false,
+    minimized: false,
+  });
+
   const contextMenuState = reactive<{
     visible: boolean;
     x: number;
@@ -146,7 +151,8 @@ export function useModals() {
       unlockerModal.open ||
       virtualDisksModal.open ||
       operationProgressModal.open ||
-      openWithModal.open
+      openWithModal.open ||
+      (remoteConnectionModal.open && !remoteConnectionModal.minimized)
     );
   });
 
@@ -163,6 +169,8 @@ export function useModals() {
     virtualDisksModal.open = false;
     operationProgressModal.open = false;
     openWithModal.open = false;
+    remoteConnectionModal.open = false;
+    remoteConnectionModal.minimized = false;
   }
 
   return {
@@ -178,6 +186,7 @@ export function useModals() {
     virtualDisksModal,
     operationProgressModal,
     openWithModal,
+    remoteConnectionModal,
     contextMenuState,
     isAnyModalOpen,
     closeAllModals,
